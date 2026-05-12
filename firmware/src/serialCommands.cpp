@@ -46,6 +46,8 @@ static void processCommand(char *cmd)
     // Trim leading/trailing whitespace in-place.
     while (*cmd == ' ' || *cmd == '\t')
         ++cmd;
+    if (*cmd == '\0')
+        return;
     char *end = cmd + strlen(cmd) - 1;
     while (end > cmd && (*end == ' ' || *end == '\t' || *end == '\r'))
         *end-- = '\0';
