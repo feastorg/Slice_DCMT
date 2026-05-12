@@ -20,6 +20,13 @@
 #include <bread/dcmt_ops.h>
 #include <math.h>
 
+// Watchdog
+#ifdef __AVR__
+#include <avr/wdt.h>
+#elif defined(ARDUINO_ARCH_MEGAAVR)
+#include <avr/wdt.h>
+#endif
+
 // ---- CRUMBS context ----
 static crumbs_context_t ctx;
 
@@ -204,13 +211,16 @@ static void apply_mode_transition(void)
 
 void setup()
 {
+    wdt_disable();
     setupSlice();
     setupDCMT();
     delay(1000);
+    wdt_enable(WDTO_1S);
 }
 
 void loop()
 {
+    wdt_reset();
     pollEStop();
     motorControlLogic();
     serialCommands();
