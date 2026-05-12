@@ -148,65 +148,65 @@ static void stop_control_loops(void)
 #endif
 }
 
-static void apply_position_pid_if_needed(void)
+static void apply_position_pid_if_needed(const DCMT_SLICE &s)
 {
     if (positionPidApplied &&
-        pid_tunings_equal(appliedPosPid1, slice.posPid1) &&
-        pid_tunings_equal(appliedPosPid2, slice.posPid2))
+        pid_tunings_equal(appliedPosPid1, s.posPid1) &&
+        pid_tunings_equal(appliedPosPid2, s.posPid2))
     {
         return;
     }
 
-    servo1.setPIDTunings(slice.posPid1.kp, slice.posPid1.ki, slice.posPid1.kd);
-    servo2.setPIDTunings(slice.posPid2.kp, slice.posPid2.ki, slice.posPid2.kd);
+    servo1.setPIDTunings(s.posPid1.kp, s.posPid1.ki, s.posPid1.kd);
+    servo2.setPIDTunings(s.posPid2.kp, s.posPid2.ki, s.posPid2.kd);
 
-    appliedPosPid1 = slice.posPid1;
-    appliedPosPid2 = slice.posPid2;
+    appliedPosPid1 = s.posPid1;
+    appliedPosPid2 = s.posPid2;
     positionPidApplied = true;
 }
 
 #if DCMT_ENABLE_SPEED_LOOP
-static void apply_speed_pid_if_needed(void)
+static void apply_speed_pid_if_needed(const DCMT_SLICE &s)
 {
     if (speedPidApplied &&
-        pid_tunings_equal(appliedSpeedPid1, slice.speedPid1) &&
-        pid_tunings_equal(appliedSpeedPid2, slice.speedPid2))
+        pid_tunings_equal(appliedSpeedPid1, s.speedPid1) &&
+        pid_tunings_equal(appliedSpeedPid2, s.speedPid2))
     {
         return;
     }
 
-    tacho1.setPIDTunings(slice.speedPid1.kp, slice.speedPid1.ki, slice.speedPid1.kd);
-    tacho2.setPIDTunings(slice.speedPid2.kp, slice.speedPid2.ki, slice.speedPid2.kd);
+    tacho1.setPIDTunings(s.speedPid1.kp, s.speedPid1.ki, s.speedPid1.kd);
+    tacho2.setPIDTunings(s.speedPid2.kp, s.speedPid2.ki, s.speedPid2.kd);
 
-    appliedSpeedPid1 = slice.speedPid1;
-    appliedSpeedPid2 = slice.speedPid2;
+    appliedSpeedPid1 = s.speedPid1;
+    appliedSpeedPid2 = s.speedPid2;
     speedPidApplied = true;
 }
 #endif
 
-static void apply_mode_transition(void)
+static void apply_mode_transition(const DCMT_SLICE &s)
 {
-    if (slice.mode == appliedMode)
+    if (s.mode == appliedMode)
         return;
 
     stop_control_loops();
 
-    if (slice.mode == CLOSED_LOOP_POSITION)
+    if (s.mode == CLOSED_LOOP_POSITION)
     {
         // Preserve controller-provided setpoints across mode transitions.
-        servo1.moveTo(slice.motor1PositionSetpoint);
-        servo2.moveTo(slice.motor2PositionSetpoint);
+        servo1.moveTo(s.motor1PositionSetpoint);
+        servo2.moveTo(s.motor2PositionSetpoint);
     }
 #if DCMT_ENABLE_SPEED_LOOP
-    else if (slice.mode == CLOSED_LOOP_SPEED)
+    else if (s.mode == CLOSED_LOOP_SPEED)
     {
         // Preserve controller-provided speed setpoints across mode transitions.
-        tacho1.setSpeedRPM(slice.motor1SpeedSetpoint);
-        tacho2.setSpeedRPM(slice.motor2SpeedSetpoint);
+        tacho1.setSpeedRPM(s.motor1SpeedSetpoint);
+        tacho2.setSpeedRPM(s.motor2SpeedSetpoint);
     }
 #endif
 
-    appliedMode = slice.mode;
+    appliedMode = s.mode;
 }
 
 void setup()
@@ -311,7 +311,7 @@ void setupDCMT()
     motor1Driver.write(0);
     motor2Driver.write(0);
 
-    apply_position_pid_if_needed();
+    apply_position_pid_if_needed(slice);
     servo1.setPWMSkip(DCMT_SERVO_PWM_SKIP);
     servo2.setPWMSkip(DCMT_SERVO_PWM_SKIP);
     servo1.setMaxPWM(DCMT_SERVO_MAX_PWM);
@@ -323,7 +323,7 @@ void setupDCMT()
     servo2.setCurrentPosition(motor2Encoder.read());
 
 #if DCMT_ENABLE_SPEED_LOOP
-    apply_speed_pid_if_needed();
+    apply_speed_pid_if_needed(slice);
     tacho1.setSpeedRPM(0);
     tacho2.setSpeedRPM(0);
 #endif
@@ -377,23 +377,32 @@ void processEStop()
         motor1Driver.brake();
         motor2Driver.brake();
 
+        noInterrupts();
         slice.eStop = true;
         slice.motor1PWM = 0;
         slice.motor2PWM = 0;
         slice.motor1SpeedSetpoint = 0;
         slice.motor2SpeedSetpoint = 0;
+        interrupts();
         SLICE_DEBUG_PRINTLN(F("ESTOP PRESSED!"));
     }
     else
     {
+        noInterrupts();
         slice.eStop = false;
+        interrupts();
         SLICE_DEBUG_PRINTLN(F("ESTOP RELEASED!"));
     }
 }
 
 void motorControlLogic()
 {
-    if (slice.eStop)
+    // Snapshot shared state atomically (ISR/I2C handlers write to slice).
+    noInterrupts();
+    DCMT_SLICE local = slice;
+    interrupts();
+
+    if (local.eStop)
     {
         stop_control_loops();
         motor1Driver.write(0);
@@ -403,117 +412,147 @@ void motorControlLogic()
         return;
     }
 
-    apply_mode_transition();
+    apply_mode_transition(local);
 
-    if (slice.mode == OPEN_LOOP)
+    if (local.mode == OPEN_LOOP)
     {
-        if (slice.motor1Brake)
+        if (local.motor1Brake)
         {
-            slice.motor1PWM = 0;
+            local.motor1PWM = 0;
             motor1Driver.write(0);
             motor1Driver.brake();
         }
         else
         {
-            motor1Driver.write(clamp_pwm(slice.motor1PWM));
+            motor1Driver.write(clamp_pwm(local.motor1PWM));
         }
 
-        if (slice.motor2Brake)
+        if (local.motor2Brake)
         {
-            slice.motor2PWM = 0;
+            local.motor2PWM = 0;
             motor2Driver.write(0);
             motor2Driver.brake();
         }
         else
         {
-            motor2Driver.write(clamp_pwm(slice.motor2PWM));
+            motor2Driver.write(clamp_pwm(local.motor2PWM));
         }
 
-        slice.motor1Position = clamp_i16(servo1.getActualPosition());
-        slice.motor2Position = clamp_i16(servo2.getActualPosition());
-        slice.motor1Speed = 0;
-        slice.motor2Speed = 0;
+        local.motor1Position = clamp_i16(servo1.getActualPosition());
+        local.motor2Position = clamp_i16(servo2.getActualPosition());
+        local.motor1Speed = 0;
+        local.motor2Speed = 0;
+
+        // Commit outputs atomically (reply_get_state reads from slice in ISR).
+        noInterrupts();
+        slice.motor1PWM = local.motor1PWM;
+        slice.motor2PWM = local.motor2PWM;
+        slice.motor1Position = local.motor1Position;
+        slice.motor2Position = local.motor2Position;
+        slice.motor1Speed = local.motor1Speed;
+        slice.motor2Speed = local.motor2Speed;
+        interrupts();
         return;
     }
 
-    if (slice.mode == CLOSED_LOOP_POSITION)
+    if (local.mode == CLOSED_LOOP_POSITION)
     {
-        apply_position_pid_if_needed();
+        apply_position_pid_if_needed(local);
 
-        if (slice.motor1Brake)
+        if (local.motor1Brake)
         {
-            slice.motor1PWM = 0;
+            local.motor1PWM = 0;
             servo1.stop();
             motor1Driver.brake();
         }
         else
         {
             // DCMotorServo::moveTo() is idempotent for same-value calls (setpoint assign only).
-            servo1.moveTo(slice.motor1PositionSetpoint);
+            servo1.moveTo(local.motor1PositionSetpoint);
             servo1.run();
         }
 
-        if (slice.motor2Brake)
+        if (local.motor2Brake)
         {
-            slice.motor2PWM = 0;
+            local.motor2PWM = 0;
             servo2.stop();
             motor2Driver.brake();
         }
         else
         {
-            servo2.moveTo(slice.motor2PositionSetpoint);
+            servo2.moveTo(local.motor2PositionSetpoint);
             servo2.run();
         }
 
-        slice.motor1Position = clamp_i16(servo1.getActualPosition());
-        slice.motor2Position = clamp_i16(servo2.getActualPosition());
-        slice.motor1Speed = 0;
-        slice.motor2Speed = 0;
+        local.motor1Position = clamp_i16(servo1.getActualPosition());
+        local.motor2Position = clamp_i16(servo2.getActualPosition());
+        local.motor1Speed = 0;
+        local.motor2Speed = 0;
+
+        noInterrupts();
+        slice.motor1PWM = local.motor1PWM;
+        slice.motor2PWM = local.motor2PWM;
+        slice.motor1Position = local.motor1Position;
+        slice.motor2Position = local.motor2Position;
+        slice.motor1Speed = local.motor1Speed;
+        slice.motor2Speed = local.motor2Speed;
+        interrupts();
         return;
     }
 
 #if DCMT_ENABLE_SPEED_LOOP
-    if (slice.mode == CLOSED_LOOP_SPEED)
+    if (local.mode == CLOSED_LOOP_SPEED)
     {
-        apply_speed_pid_if_needed();
+        apply_speed_pid_if_needed(local);
 
-        if (slice.motor1Brake)
+        if (local.motor1Brake)
         {
-            slice.motor1PWM = 0;
+            local.motor1PWM = 0;
             tacho1.stop();
             motor1Driver.brake();
-            slice.motor1Speed = 0;
+            local.motor1Speed = 0;
         }
         else
         {
-            tacho1.setSpeedRPM(slice.motor1SpeedSetpoint);
+            tacho1.setSpeedRPM(local.motor1SpeedSetpoint);
             tacho1.run();
-            slice.motor1Speed = clamp_i16((long)tacho1.getMeasuredSpeedRPM());
+            local.motor1Speed = clamp_i16((long)tacho1.getMeasuredSpeedRPM());
         }
 
-        if (slice.motor2Brake)
+        if (local.motor2Brake)
         {
-            slice.motor2PWM = 0;
+            local.motor2PWM = 0;
             tacho2.stop();
             motor2Driver.brake();
-            slice.motor2Speed = 0;
+            local.motor2Speed = 0;
         }
         else
         {
-            tacho2.setSpeedRPM(slice.motor2SpeedSetpoint);
+            tacho2.setSpeedRPM(local.motor2SpeedSetpoint);
             tacho2.run();
-            slice.motor2Speed = clamp_i16((long)tacho2.getMeasuredSpeedRPM());
+            local.motor2Speed = clamp_i16((long)tacho2.getMeasuredSpeedRPM());
         }
 
-        slice.motor1Position = clamp_i16(servo1.getActualPosition());
-        slice.motor2Position = clamp_i16(servo2.getActualPosition());
+        local.motor1Position = clamp_i16(servo1.getActualPosition());
+        local.motor2Position = clamp_i16(servo2.getActualPosition());
+
+        noInterrupts();
+        slice.motor1PWM = local.motor1PWM;
+        slice.motor2PWM = local.motor2PWM;
+        slice.motor1Position = local.motor1Position;
+        slice.motor2Position = local.motor2Position;
+        slice.motor1Speed = local.motor1Speed;
+        slice.motor2Speed = local.motor2Speed;
+        interrupts();
         return;
     }
 #endif
 
     // Unknown mode: fail safe to open-loop with brakes.
+    noInterrupts();
     slice.mode = OPEN_LOOP;
     slice.motor1Brake = true;
     slice.motor2Brake = true;
+    interrupts();
     SLICE_DEBUG_PRINTLN(F("ERROR: Unknown mode, forcing OPEN_LOOP with brakes."));
 }
