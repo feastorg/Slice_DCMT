@@ -52,7 +52,7 @@ struct DCMT_SLICE
 
 struct Timing
 {
-    long lastSerialPrint;
+    unsigned long lastSerialPrint;
 };
 
 // ---- Extern globals (defined in main.cpp) ----

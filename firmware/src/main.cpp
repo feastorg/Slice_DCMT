@@ -21,9 +21,7 @@
 #include <math.h>
 
 // Watchdog
-#ifdef __AVR__
-#include <avr/wdt.h>
-#elif defined(ARDUINO_ARCH_MEGAAVR)
+#if defined(__AVR__) || defined(ARDUINO_ARCH_MEGAAVR)
 #include <avr/wdt.h>
 #endif
 
