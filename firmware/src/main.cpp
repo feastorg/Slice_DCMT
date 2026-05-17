@@ -379,6 +379,8 @@ void processEStop()
         slice.eStop = true;
         slice.motor1PWM = 0;
         slice.motor2PWM = 0;
+        slice.motor1Speed = 0;
+        slice.motor2Speed = 0;
         slice.motor1SpeedSetpoint = 0;
         slice.motor2SpeedSetpoint = 0;
         interrupts();
@@ -416,7 +418,6 @@ void motorControlLogic()
     {
         if (local.motor1Brake)
         {
-            local.motor1PWM = 0;
             motor1Driver.write(0);
             motor1Driver.brake();
         }
@@ -427,7 +428,6 @@ void motorControlLogic()
 
         if (local.motor2Brake)
         {
-            local.motor2PWM = 0;
             motor2Driver.write(0);
             motor2Driver.brake();
         }
@@ -442,9 +442,10 @@ void motorControlLogic()
         local.motor2Speed = 0;
 
         // Commit outputs atomically (reply_get_state reads from slice in ISR).
+        // motor1PWM/motor2PWM are handler-owned inputs — only zero them when braking.
         noInterrupts();
-        slice.motor1PWM = local.motor1PWM;
-        slice.motor2PWM = local.motor2PWM;
+        if (local.motor1Brake) slice.motor1PWM = 0;
+        if (local.motor2Brake) slice.motor2PWM = 0;
         slice.motor1Position = local.motor1Position;
         slice.motor2Position = local.motor2Position;
         slice.motor1Speed = local.motor1Speed;
@@ -459,7 +460,6 @@ void motorControlLogic()
 
         if (local.motor1Brake)
         {
-            local.motor1PWM = 0;
             servo1.stop();
             motor1Driver.brake();
         }
@@ -472,7 +472,6 @@ void motorControlLogic()
 
         if (local.motor2Brake)
         {
-            local.motor2PWM = 0;
             servo2.stop();
             motor2Driver.brake();
         }
@@ -488,8 +487,8 @@ void motorControlLogic()
         local.motor2Speed = 0;
 
         noInterrupts();
-        slice.motor1PWM = local.motor1PWM;
-        slice.motor2PWM = local.motor2PWM;
+        if (local.motor1Brake) slice.motor1PWM = 0;
+        if (local.motor2Brake) slice.motor2PWM = 0;
         slice.motor1Position = local.motor1Position;
         slice.motor2Position = local.motor2Position;
         slice.motor1Speed = local.motor1Speed;
@@ -505,7 +504,6 @@ void motorControlLogic()
 
         if (local.motor1Brake)
         {
-            local.motor1PWM = 0;
             tacho1.stop();
             motor1Driver.brake();
             local.motor1Speed = 0;
@@ -519,7 +517,6 @@ void motorControlLogic()
 
         if (local.motor2Brake)
         {
-            local.motor2PWM = 0;
             tacho2.stop();
             motor2Driver.brake();
             local.motor2Speed = 0;
@@ -535,8 +532,8 @@ void motorControlLogic()
         local.motor2Position = clamp_i16(servo2.getActualPosition());
 
         noInterrupts();
-        slice.motor1PWM = local.motor1PWM;
-        slice.motor2PWM = local.motor2PWM;
+        if (local.motor1Brake) slice.motor1PWM = 0;
+        if (local.motor2Brake) slice.motor2PWM = 0;
         slice.motor1Position = local.motor1Position;
         slice.motor2Position = local.motor2Position;
         slice.motor1Speed = local.motor1Speed;
