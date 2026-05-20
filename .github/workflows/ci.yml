@@ -1,0 +1,15 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "slice.yaml"
+  pull_request:
+    paths:
+      - "slice.yaml"
+  workflow_dispatch:
+
+jobs:
+  validate:
+    uses: feastorg/bread-infra/.github/workflows/validate-manifest.yml@main
