@@ -10,6 +10,11 @@ This project did not use formal release tags through most of its history, so thi
 
 - Added a curated root changelog derived from the full repository and history review.
 
+### Changed
+
+- Updated active firmware metadata to reference CRUMBS `0.12.4` and
+  `bread-crumbs-contracts` `0.4.3`.
+
 ## [2026-05-12] Firmware Runtime Hardening
 
 ### Added
