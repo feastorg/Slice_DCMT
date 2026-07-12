@@ -28,3 +28,8 @@ working/
 # <project>/.history). The .gitignore KiCad writes inside it governs
 # KiCad's history repo, not this one. Committing it adds a broken gitlink.
 .history/
+
+# KiCad rewrites .kicad_prl on every project open (open sheet, zoom, selection
+# filter). Per-developer local state, not design intent -- tracking it dirties
+# the working tree every time anyone opens the board.
+*.kicad_prl
