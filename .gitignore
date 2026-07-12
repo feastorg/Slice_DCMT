@@ -13,6 +13,12 @@
 fp-info-cache
 sym-lib-table
 fp-lib-table
+# KiCad 10 adds design blocks; like the other lib tables it holds absolute
+# paths, so it is machine-local and generated, never committed.
+design-block-lib-table
+
+# KiCad's project lock file, written while a project is open (~<prj>.kicad_pro.lck)
+*.lck
 
 # Ignore other temporary files
 *.tmp
