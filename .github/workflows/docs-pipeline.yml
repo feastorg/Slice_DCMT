@@ -28,22 +28,22 @@ jobs:
   # (error-severity) schematic-parity gate, every library reference resolving,
   # and un-swapped Makefile targets. Green here means the board is done.
   validate-board:
-    uses: feastorg/bread-infra/.github/workflows/validate-board.yml@v1.1.0
+    uses: feastorg/bread-infra/.github/workflows/validate-board.yml@v1.2.0
 
   kibot:
-    uses: feastorg/bread-infra/.github/workflows/kibot-ci.yml@v1.1.0
+    uses: feastorg/bread-infra/.github/workflows/kibot-ci.yml@v1.2.0
 
   # Publishing only makes sense for the canonical branch.
   gen-kibot-index:
     if: github.event_name != 'pull_request'
-    uses: feastorg/bread-infra/.github/workflows/publish-kibot.yml@v1.1.0
+    uses: feastorg/bread-infra/.github/workflows/publish-kibot.yml@v1.2.0
     needs: [kibot]
     with:
       kibot_run_id: ${{ needs.kibot.outputs.kibot_run_id }}
 
   deploy-pages:
     if: github.event_name != 'pull_request'
-    uses: feastorg/bread-infra/.github/workflows/deploy-pages.yml@v1.1.0
+    uses: feastorg/bread-infra/.github/workflows/deploy-pages.yml@v1.2.0
     needs: [gen-kibot-index, kibot]
     with:
       kibot_run_id: ${{ needs.kibot.outputs.kibot_run_id }}
