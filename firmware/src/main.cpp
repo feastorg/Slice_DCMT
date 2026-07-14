@@ -397,9 +397,26 @@ void processEStop()
 
 void motorControlLogic()
 {
-    // Snapshot shared state atomically (ISR/I2C handlers write to slice).
+    // Snapshot only the scalar control inputs in a short masked window.
+    // Copying the whole ~72-byte DCMT_SLICE here (~20-36 us with interrupts
+    // off, every iteration) held off TWI ISR entry at the SLA+R boundary; the
+    // resulting clock stretch is mishandled by Linux SBC I2C controllers and
+    // corrupted ~30% of CRUMBS state queries (#3). Keep every cli window in
+    // this loop under ~10 us. PID tunings are fetched in a separate short
+    // window only when a closed-loop mode needs them; a torn view across the
+    // two windows self-corrects next iteration.
+    DCMT_SLICE local;
     noInterrupts();
-    DCMT_SLICE local = slice;
+    local.mode = slice.mode;
+    local.eStop = slice.eStop;
+    local.motor1Brake = slice.motor1Brake;
+    local.motor2Brake = slice.motor2Brake;
+    local.motor1PWM = slice.motor1PWM;
+    local.motor2PWM = slice.motor2PWM;
+    local.motor1PositionSetpoint = slice.motor1PositionSetpoint;
+    local.motor2PositionSetpoint = slice.motor2PositionSetpoint;
+    local.motor1SpeedSetpoint = slice.motor1SpeedSetpoint;
+    local.motor2SpeedSetpoint = slice.motor2SpeedSetpoint;
     interrupts();
 
     if (local.eStop)
@@ -456,6 +473,10 @@ void motorControlLogic()
 
     if (local.mode == CLOSED_LOOP_POSITION)
     {
+        noInterrupts();
+        local.posPid1 = slice.posPid1;
+        local.posPid2 = slice.posPid2;
+        interrupts();
         apply_position_pid_if_needed(local);
 
         if (local.motor1Brake)
@@ -500,6 +521,10 @@ void motorControlLogic()
 #if DCMT_ENABLE_SPEED_LOOP
     if (local.mode == CLOSED_LOOP_SPEED)
     {
+        noInterrupts();
+        local.speedPid1 = slice.speedPid1;
+        local.speedPid2 = slice.speedPid2;
+        interrupts();
         apply_speed_pid_if_needed(local);
 
         if (local.motor1Brake)

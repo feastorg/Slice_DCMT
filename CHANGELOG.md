@@ -15,6 +15,19 @@ This project did not use formal release tags through most of its history, so thi
 - Updated active firmware metadata to reference CRUMBS `0.12.4` and
   `bread-crumbs-contracts` `0.4.3`.
 
+### Fixed
+
+- Fixed intermittent CRUMBS query failures (all-`0xFF` non-responses and
+  CRC-corrupt replies, ~1-47% of reads from a Raspberry Pi master) caused by
+  the whole-struct interrupt-masked snapshot in `motorControlLogic()`
+  introduced by the 2026-05-12 shared-state hardening. The ~72-byte copy
+  masked interrupts for ~20-36 µs every loop iteration, delaying TWI ISR
+  entry at the SLA+R boundary; the resulting clock stretch is mishandled by
+  the Pi's I2C controller. The snapshot now copies only the scalar control
+  inputs in a short window, with PID tunings fetched separately only in
+  closed-loop modes. Verified on hardware: 0/1050 failed queries versus
+  26/1050 on a same-bus stock control board. (#3)
+
 ## [2026-05-12] Firmware Runtime Hardening
 
 ### Added
