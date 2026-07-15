@@ -1,0 +1,41 @@
+name: Firmware Build
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "firmware/**"
+      - ".github/workflows/firmware-build.yml"
+  pull_request:
+    paths:
+      - "firmware/**"
+      - ".github/workflows/firmware-build.yml"
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: pio run (${{ matrix.env }})
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        env: [gen1_nano, gen2_nano, gen1_nanoevery, gen2_nanoevery]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Cache PlatformIO
+        uses: actions/cache@v4
+        with:
+          path: ~/.platformio
+          key: pio-${{ runner.os }}-${{ matrix.env }}-${{ hashFiles('firmware/platformio.ini') }}
+
+      - name: Install PlatformIO
+        run: pip install platformio
+
+      - name: Build
+        working-directory: firmware
+        run: pio run -e ${{ matrix.env }}
