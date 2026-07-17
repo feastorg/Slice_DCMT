@@ -32,6 +32,13 @@ static crumbs_context_t ctx;
 volatile bool estopTriggered = false;
 CRGB led;
 
+// Command watchdog state (see globals.h). ISR-written; main loop snapshots
+// under short masked windows.
+volatile uint16_t wdTimeoutMs = 0;
+volatile unsigned long wdLastRxMs = 0;
+volatile bool wdTripped = false;
+volatile uint8_t wdTripCount = 0;
+
 static const unsigned long ESTOP_DEBOUNCE_MS = 25;
 static bool estopDebouncePending = false;
 static unsigned long estopDebounceStartMs = 0;
@@ -220,9 +227,20 @@ void loop()
 {
     wdt_reset();
     pollEStop();
+    watchdogLogic();
     motorControlLogic();
     serialCommands();
     printSerialOutput();
+}
+
+// Fires for every CRC-valid inbound command frame (SET_REPLY excluded by
+// CRUMBS): any valid command proves a live master and clears a trip.
+static void on_crumbs_message(crumbs_context_t *c, const crumbs_message_t *msg)
+{
+    (void)c;
+    (void)msg;
+    wdLastRxMs = millis();
+    wdTripped = false;
 }
 
 // ---- Implementation (previously in .ino files) ----
@@ -234,6 +252,7 @@ void setupSlice()
 
     // CRUMBS
     crumbs_arduino_init_peripheral(&ctx, I2C_ADR);
+    crumbs_set_callbacks(&ctx, on_crumbs_message, nullptr, nullptr);
 
     rc = crumbs_register_handler(&ctx, DCMT_OP_SET_OPEN_LOOP, handler_set_open_loop, nullptr);
     if (rc != 0)
@@ -255,6 +274,10 @@ void setupSlice()
     if (rc != 0)
         SLICE_DEBUG_PRINTLN(F("CRUMBS: Failed to register DCMT_OP_SET_PID"));
 
+    rc = crumbs_register_handler(&ctx, BREAD_OP_SET_WATCHDOG, handler_set_watchdog, nullptr);
+    if (rc != 0)
+        SLICE_DEBUG_PRINTLN(F("CRUMBS: Failed to register BREAD_OP_SET_WATCHDOG"));
+
     rc = crumbs_register_reply_handler(&ctx, 0x00, reply_version, nullptr);
     if (rc != 0)
         SLICE_DEBUG_PRINTLN(F("CRUMBS: Failed to register version reply handler"));
@@ -266,6 +289,17 @@ void setupSlice()
     rc = crumbs_register_reply_handler(&ctx, BREAD_OP_GET_CAPS, reply_get_caps, nullptr);
     if (rc != 0)
         SLICE_DEBUG_PRINTLN(F("CRUMBS: Failed to register BREAD_OP_GET_CAPS reply handler"));
+
+    rc = crumbs_register_reply_handler(&ctx, BREAD_OP_GET_WATCHDOG, reply_get_watchdog, nullptr);
+    if (rc != 0)
+        SLICE_DEBUG_PRINTLN(F("CRUMBS: Failed to register BREAD_OP_GET_WATCHDOG reply handler"));
+
+#ifdef DCMT_WATCHDOG_BOOT_MS
+    // Integration opt-in: come up armed (e.g. e-stop wirings that power-cycle
+    // the board). Default builds boot disarmed.
+    wdTimeoutMs = (uint16_t)DCMT_WATCHDOG_BOOT_MS;
+    wdLastRxMs = millis();
+#endif
 
     // LED
     FastLED.addLeds<NEOPIXEL, LED_PIN>(&led, 1);
@@ -393,6 +427,54 @@ void processEStop()
         interrupts();
         SLICE_DEBUG_PRINTLN(F("ESTOP RELEASED!"));
     }
+}
+
+void watchdogLogic()
+{
+    uint16_t timeout;
+    unsigned long lastRx;
+    bool tripped;
+
+    noInterrupts();
+    timeout = wdTimeoutMs;
+    lastRx = wdLastRxMs;
+    tripped = wdTripped;
+    interrupts();
+
+    if (timeout == 0)
+        return;
+
+    if (tripped)
+    {
+        // Hold safe state until fresh traffic clears the trip (ISR side).
+        stop_control_loops();
+        motor1Driver.write(0);
+        motor2Driver.write(0);
+        motor1Driver.brake();
+        motor2Driver.brake();
+        return;
+    }
+
+    if (millis() - lastRx < timeout)
+        return;
+
+    stop_control_loops();
+    motor1Driver.brake();
+    motor2Driver.brake();
+
+    // Same safe-state fields as processEStop: zero PWM/speed, preserve
+    // position setpoints and mode so controller state stays coherent.
+    noInterrupts();
+    wdTripped = true;
+    wdTripCount++;
+    slice.motor1PWM = 0;
+    slice.motor2PWM = 0;
+    slice.motor1Speed = 0;
+    slice.motor2Speed = 0;
+    slice.motor1SpeedSetpoint = 0;
+    slice.motor2SpeedSetpoint = 0;
+    interrupts();
+    SLICE_DEBUG_PRINTLN(F("WATCHDOG TRIPPED: bus silent, motors braked"));
 }
 
 void motorControlLogic()

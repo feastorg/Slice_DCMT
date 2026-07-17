@@ -61,12 +61,21 @@ extern CRGB led;
 extern DCMT_SLICE slice;
 extern Timing timing;
 
+// Command watchdog (BREAD_OP_SET/GET_WATCHDOG): boots disarmed (timeout 0)
+// unless DCMT_WATCHDOG_BOOT_MS is defined. ISR handlers write these; main-loop
+// access goes through short masked windows (multi-byte volatiles on AVR).
+extern volatile uint16_t wdTimeoutMs;
+extern volatile unsigned long wdLastRxMs;
+extern volatile bool wdTripped;
+extern volatile uint8_t wdTripCount;
+
 // ---- Functions implemented across translation units ----
 void setupSlice();
 void setupDCMT();
 void pollEStop();
 void estopISR();
 void processEStop();
+void watchdogLogic();
 void motorControlLogic();
 void printSliceState(Print &out);
 void printSerialOutput();
@@ -76,8 +85,10 @@ void handler_set_brake(crumbs_context_t *ctx, uint8_t opcode, const uint8_t *dat
 void handler_set_mode(crumbs_context_t *ctx, uint8_t opcode, const uint8_t *data, uint8_t data_len, void *user_data);
 void handler_set_setpoint(crumbs_context_t *ctx, uint8_t opcode, const uint8_t *data, uint8_t data_len, void *user_data);
 void handler_set_pid(crumbs_context_t *ctx, uint8_t opcode, const uint8_t *data, uint8_t data_len, void *user_data);
+void handler_set_watchdog(crumbs_context_t *ctx, uint8_t opcode, const uint8_t *data, uint8_t data_len, void *user_data);
 void reply_version(crumbs_context_t *ctx, crumbs_message_t *reply, void *user_data);
 void reply_get_state(crumbs_context_t *ctx, crumbs_message_t *reply, void *user_data);
 void reply_get_caps(crumbs_context_t *ctx, crumbs_message_t *reply, void *user_data);
+void reply_get_watchdog(crumbs_context_t *ctx, crumbs_message_t *reply, void *user_data);
 
 #endif // GLOBALS_H
