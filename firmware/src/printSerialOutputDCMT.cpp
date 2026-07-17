@@ -43,7 +43,25 @@ void printSliceState(Print &out)
     out.print(F(", B2:"));
     out.print(slice.motor2Brake);
     out.print(F(", ESTOP:"));
-    out.println(slice.eStop);
+    out.print(slice.eStop);
+
+    out.print(F(", WDOG:"));
+    uint16_t wdTimeout;
+    bool wdTrip;
+    uint8_t wdTrips;
+    noInterrupts();
+    wdTimeout = wdTimeoutMs;
+    wdTrip = wdTripped;
+    wdTrips = wdTripCount;
+    interrupts();
+    if (wdTimeout == 0)
+        out.print(F("off"));
+    else
+        out.print(wdTimeout);
+    out.print(F(", WDTRIP:"));
+    out.print(wdTrip);
+    out.print(F("/"));
+    out.println(wdTrips);
 }
 
 void printSerialOutput()

@@ -55,6 +55,12 @@ static void processCommand(char *cmd)
     if (*cmd == '\0')
         return;
 
+    // A serial operator is a live master too: feed the command watchdog.
+    noInterrupts();
+    wdLastRxMs = millis();
+    wdTripped = false;
+    interrupts();
+
     if (starts_with_P(cmd, PSTR("MODE=")))
     {
         char *mode = (char *)after_prefix_P(cmd, PSTR("MODE="));
@@ -198,6 +204,27 @@ static void processCommand(char *cmd)
         slice.motor2Brake = false;
         Serial.println(F("Motor2 brake released"));
     }
+    else if (starts_with_P(cmd, PSTR("WDOG=")))
+    {
+        long v = atol(after_prefix_P(cmd, PSTR("WDOG=")));
+        if (v < 0)
+            v = 0;
+        if (v > 65535)
+            v = 65535;
+        noInterrupts();
+        wdTimeoutMs = (uint16_t)v;
+        wdLastRxMs = millis();
+        wdTripped = false;
+        interrupts();
+        Serial.print(F("WDOG-> "));
+        if (v == 0)
+            Serial.println(F("disarmed"));
+        else
+        {
+            Serial.print(v);
+            Serial.println(F(" ms"));
+        }
+    }
     else if (strcmp_P(cmd, PSTR("READ")) == 0)
     {
         printSliceState(Serial);
@@ -205,7 +232,7 @@ static void processCommand(char *cmd)
     else
     {
         Serial.println(F("Invalid command."));
-        Serial.println(F("Open/Pos: MODE=OPEN|POS, M1PWM=, M2PWM=, M1POS=, M2POS=, PIDPOS=kp,ki,kd, BRAKE1=0/1, BRAKE2=0/1, READ"));
+        Serial.println(F("Open/Pos: MODE=OPEN|POS, M1PWM=, M2PWM=, M1POS=, M2POS=, PIDPOS=kp,ki,kd, BRAKE1=0/1, BRAKE2=0/1, WDOG=ms(0=off), READ"));
 #if DCMT_ENABLE_SPEED_LOOP
         Serial.println(F("Closed-loop: MODE=POS|SPEED, M1POS=, M2POS=, M1SPEED=, M2SPEED=, PIDPOS=kp,ki,kd, PIDSPEED=kp,ki,kd"));
 #endif
