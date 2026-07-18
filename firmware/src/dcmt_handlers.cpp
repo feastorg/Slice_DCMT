@@ -156,6 +156,9 @@ void reply_version(crumbs_context_t *ctx, crumbs_message_t *reply, void *user_da
 {
     (void)ctx;
     (void)user_data;
+    // Every reply build proves a live master (SET_REPLY staging frames are
+    // not dispatched to on_message, so this is where poll traffic stamps).
+    wdLastRxMs = millis();
     crumbs_build_version_reply(reply, DCMT_TYPE_ID, DCMT_MODULE_VER_MAJOR, DCMT_MODULE_VER_MINOR, DCMT_MODULE_VER_PATCH);
 }
 
@@ -164,6 +167,9 @@ void reply_get_state(crumbs_context_t *ctx, crumbs_message_t *reply, void *user_
     uint8_t brakes = 0;
     (void)ctx;
     (void)user_data;
+
+    // The controller's periodic state poll is the primary liveness signal.
+    wdLastRxMs = millis();
 
     if (slice.motor1Brake)
         brakes |= 0x01;
@@ -219,6 +225,8 @@ void reply_get_caps(crumbs_context_t *ctx, crumbs_message_t *reply, void *user_d
                      DCMT_CAP_CMD_WATCHDOG;
     (void)ctx;
     (void)user_data;
+
+    wdLastRxMs = millis();
 
 #if DCMT_ENABLE_SPEED_LOOP
     level = DCMT_CAP_LEVEL_3;
