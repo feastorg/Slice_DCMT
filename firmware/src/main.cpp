@@ -447,9 +447,10 @@ void watchdogLogic()
     if (tripped)
     {
         // Hold safe state until fresh traffic clears the trip (ISR side).
+        // brake() only (no write(0) first): write() releases the brake pin,
+        // so alternating them every iteration toggles the driver at loop
+        // frequency — audible squeal (found live at first watchdog trip).
         stop_control_loops();
-        motor1Driver.write(0);
-        motor2Driver.write(0);
         motor1Driver.brake();
         motor2Driver.brake();
         return;
@@ -503,9 +504,9 @@ void motorControlLogic()
 
     if (local.eStop)
     {
+        // brake() only — see the watchdog hold note; this branch also runs
+        // every iteration while a signal-wired e-stop is held.
         stop_control_loops();
-        motor1Driver.write(0);
-        motor2Driver.write(0);
         motor1Driver.brake();
         motor2Driver.brake();
         return;
@@ -517,7 +518,6 @@ void motorControlLogic()
     {
         if (local.motor1Brake)
         {
-            motor1Driver.write(0);
             motor1Driver.brake();
         }
         else
@@ -527,7 +527,6 @@ void motorControlLogic()
 
         if (local.motor2Brake)
         {
-            motor2Driver.write(0);
             motor2Driver.brake();
         }
         else
