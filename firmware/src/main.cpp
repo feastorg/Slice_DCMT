@@ -489,6 +489,7 @@ void motorControlLogic()
     // window only when a closed-loop mode needs them; a torn view across the
     // two windows self-corrects next iteration.
     DCMT_SLICE local;
+    bool wdTrippedNow;
     noInterrupts();
     local.mode = slice.mode;
     local.eStop = slice.eStop;
@@ -500,12 +501,20 @@ void motorControlLogic()
     local.motor2PositionSetpoint = slice.motor2PositionSetpoint;
     local.motor1SpeedSetpoint = slice.motor1SpeedSetpoint;
     local.motor2SpeedSetpoint = slice.motor2SpeedSetpoint;
+    wdTrippedNow = wdTripped;
     interrupts();
 
-    if (local.eStop)
+    // A tripped command watchdog holds the same safe state as a signal-wired
+    // e-stop until fresh traffic clears the trip (ISR side) — mirrors RLHT's
+    // relayControlLogic, which guards `slice.eStop || wdTripped`. Without the
+    // wdTripped half, the OPEN_LOOP write(0) / CLOSED_LOOP servo.run() below
+    // release the brake that watchdogLogic() engaged, so brake+PWM toggle every
+    // loop: an audible driver whine and a soft oscillating brake instead of a
+    // clean hard-brake on a driven motor (feastorg/Slice_DCMT#11).
+    if (local.eStop || wdTrippedNow)
     {
         // brake() only — see the watchdog hold note; this branch also runs
-        // every iteration while a signal-wired e-stop is held.
+        // every iteration while a signal-wired e-stop or watchdog trip is held.
         stop_control_loops();
         motor1Driver.brake();
         motor2Driver.brake();
