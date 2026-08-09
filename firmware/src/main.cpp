@@ -234,13 +234,31 @@ void loop()
 }
 
 // Fires for every CRC-valid inbound command frame (SET_REPLY excluded by
-// CRUMBS): any valid command proves a live master and clears a trip.
+// CRUMBS): any valid command proves a live master, so it stamps liveness.
+//
+// It deliberately does NOT clear the trip. A trip means the master went away
+// while this board was driving something, and the hold engaged by
+// watchdogLogic()/motorControlLogic() is a safe state. Incidental traffic
+// arriving afterwards proves the master is back; it does not prove anyone
+// decided it is safe to release a brake holding a load.
+//
+// Clearing here made the trip releasable by accident, and the accident had a
+// name: the controller's e-stop ladder drives its safe state as ordinary
+// command frames, so pressing e-stop on a tripped board cleared the trip, and
+// the OPEN_LOOP write(0) that followed released the brake the watchdog had
+// engaged. The emergency stop left the machine LESS stopped than it found it
+// (anolishq/anolis#261).
+//
+// The trip now latches until the master explicitly re-arms with SET_WATCHDOG
+// (handler_set_watchdog) or a local operator clears it over serial. Both are
+// deliberate acts. anolis-provider-bread arms on startup and again on
+// address-recovery, so a controller restart or a recovered bus fault still
+// clears it without operator action.
 static void on_crumbs_message(crumbs_context_t *c, const crumbs_message_t *msg)
 {
     (void)c;
     (void)msg;
     wdLastRxMs = millis();
-    wdTripped = false;
 }
 
 // ---- Implementation (previously in .ino files) ----
