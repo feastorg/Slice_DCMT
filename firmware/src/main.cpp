@@ -301,11 +301,13 @@ void setupSlice()
     wdLastRxMs = millis();
 #endif
 
-    // LED
+    // LED (gen2 only -- gen1 shares this pin with MOTOR1_DIR, see config_hardware.h)
+#if DCMT_HAS_STATUS_LED
     FastLED.addLeds<NEOPIXEL, LED_PIN>(&led, 1);
     FastLED.setBrightness(50);
     led = CRGB::Blue;
     FastLED.show();
+#endif
 
     // e-stop: no external bias resistor on current boards, so use internal pull-up.
     pinMode(ESTOP, INPUT_PULLUP);
@@ -383,6 +385,7 @@ void pollEStop()
         estopDebouncePending = false;
     }
 
+#if DCMT_HAS_STATUS_LED
     {
         static CRGB lastLed = CRGB::Black;
         CRGB next = slice.eStop ? CRGB::Red : CRGB::Green;
@@ -393,6 +396,7 @@ void pollEStop()
             lastLed = next;
         }
     }
+#endif
 }
 
 void estopISR()
