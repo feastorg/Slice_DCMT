@@ -30,7 +30,9 @@ static crumbs_context_t ctx;
 
 // ---- Global flags/objects ----
 volatile bool estopTriggered = false;
+#if DCMT_HAS_STATUS_LED
 CRGB led;
+#endif
 
 // Command watchdog state (see globals.h). ISR-written; main loop snapshots
 // under short masked windows.
@@ -301,7 +303,7 @@ void setupSlice()
     wdLastRxMs = millis();
 #endif
 
-    // LED (gen2 only -- gen1 shares this pin with MOTOR1_DIR, see config_hardware.h)
+    // Status LED -- gen2 only; see config_hardware.h
 #if DCMT_HAS_STATUS_LED
     FastLED.addLeds<NEOPIXEL, LED_PIN>(&led, 1);
     FastLED.setBrightness(50);

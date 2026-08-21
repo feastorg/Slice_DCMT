@@ -5,23 +5,31 @@
 
 // ----- General BREAD -----
 #define ESTOP 2
-#define LED_PIN 5
 
-// Gen1 wires MOTOR1_DIR to the same MCU pin as LED_PIN (5), so the status LED
-// and motor 1's direction line cannot coexist. FastLED bit-bangs NeoPixel
-// timing, so driving the LED on a gen1 board writes garbage onto MOTOR1_DIR --
-// at boot and on every e-stop state change. Motor 1 is the sample pump on
-// dcmt0 and a dosing pump on dcmt1.
+// Whether this board populates the shared BREAD status LED.
 //
-// Compile the LED out on gen1, exactly as Slice_RLHT does with
-// RLHT_HAS_STATUS_LED. Gen2 moves MOTOR1_DIR to pin 7, so there is no conflict
-// and the LED stays.
+// LED_PIN lives in this platform block and is inherited by every slice,
+// populated or not -- Slice_RLHT carries the identical line. Gen1 DCMT boards
+// do not populate the LED, and gen1 additionally maps MOTOR1_DIR to the same
+// MCU pin (5), which is what turns an unpopulated LED from harmless into
+// harmful: FastLED bit-bangs NeoPixel timing onto motor 1's direction line.
+//
+// Slice_RLHT encoded the same fact as RLHT_HAS_STATUS_LED in the gen1/gen2
+// split (97c11af, 2026-03-09); DCMT's split landed the same day without it.
+//
+// LED_PIN is defined only where the LED exists, so a future call site that
+// reaches for it on gen1 is a build failure rather than a silent repeat of
+// this bug.
 #if (DCMT_HW_GEN == 1)
 #define DCMT_HAS_STATUS_LED 0
 #elif (DCMT_HW_GEN == 2)
 #define DCMT_HAS_STATUS_LED 1
 #else
 #error "Unsupported DCMT_HW_GEN value"
+#endif
+
+#if DCMT_HAS_STATUS_LED
+#define LED_PIN 5
 #endif
 
 // ----- DCMT Specific -----
