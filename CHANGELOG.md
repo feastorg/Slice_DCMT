@@ -6,6 +6,36 @@ This project did not use formal release tags through most of its history, so thi
 
 ## [Unreleased]
 
+### Fixed
+
+- **The status LED no longer drives motor 1's direction line on gen1** (#15).
+  `LED_PIN` sits in the shared "General BREAD" block and is inherited by every
+  slice whether or not that board populates an LED — `Slice_RLHT` carries the
+  identical line. Gen1 DCMT boards do not populate it, and gen1 additionally maps
+  `MOTOR1_DIR` to the same MCU pin (5), so FastLED's NeoPixel bit-banging wrote
+  onto motor 1's direction line. Motor 1 is the sample pump on `dcmt0` and a
+  dosing pump on `dcmt1`; the impeller is motor 2 and is unaffected.
+
+  `Slice_RLHT` encoded the same fact as `RLHT_HAS_STATUS_LED` when the gen1/gen2
+  split was done (2026-03-09); DCMT's split landed the same day without it. This
+  adds the mirror-image `DCMT_HAS_STATUS_LED`.
+
+  The worst case was the e-stop path rather than boot. `LMD18200::brake()` never
+  touches DIR and is idempotent, and a held e-stop or watchdog trip calls only
+  `brake()` — so a direction bit scrambled by `FastLED.show()` during an e-stop
+  **persisted until the next `write()`**, rather than being corrected on the next
+  control cycle. (At boot the LED write is overwritten microseconds later by
+  `motor1Driver.begin()`/`write(0)`, so the boot case was benign.)
+
+  `LED_PIN` itself is now defined only on boards that have the LED, so a future
+  call site that reaches for it on gen1 is a build failure rather than a silent
+  repeat of this bug.
+
+  **Gen1 boards no longer have a local e-stop indicator.** The red/green LED was
+  the only unconditional at-the-bench signal; `SLICE_DEBUG` serial output is
+  compiled out by default. E-stop state remains readable over the bus via
+  `reply_get_state`.
+
 ### Added
 
 - Added a curated root changelog derived from the full repository and history review.
