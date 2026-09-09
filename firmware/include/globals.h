@@ -57,7 +57,9 @@ struct Timing
 
 // ---- Extern globals (defined in main.cpp) ----
 extern volatile bool estopTriggered;
+#if DCMT_HAS_STATUS_LED
 extern CRGB led;
+#endif
 extern DCMT_SLICE slice;
 extern Timing timing;
 

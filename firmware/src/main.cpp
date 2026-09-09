@@ -30,7 +30,9 @@ static crumbs_context_t ctx;
 
 // ---- Global flags/objects ----
 volatile bool estopTriggered = false;
+#if DCMT_HAS_STATUS_LED
 CRGB led;
+#endif
 
 // Command watchdog state (see globals.h). ISR-written; main loop snapshots
 // under short masked windows.
@@ -301,11 +303,13 @@ void setupSlice()
     wdLastRxMs = millis();
 #endif
 
-    // LED
+    // Status LED -- gen2 only; see config_hardware.h
+#if DCMT_HAS_STATUS_LED
     FastLED.addLeds<NEOPIXEL, LED_PIN>(&led, 1);
     FastLED.setBrightness(50);
     led = CRGB::Blue;
     FastLED.show();
+#endif
 
     // e-stop: no external bias resistor on current boards, so use internal pull-up.
     pinMode(ESTOP, INPUT_PULLUP);
@@ -383,6 +387,7 @@ void pollEStop()
         estopDebouncePending = false;
     }
 
+#if DCMT_HAS_STATUS_LED
     {
         static CRGB lastLed = CRGB::Black;
         CRGB next = slice.eStop ? CRGB::Red : CRGB::Green;
@@ -393,6 +398,7 @@ void pollEStop()
             lastLed = next;
         }
     }
+#endif
 }
 
 void estopISR()
