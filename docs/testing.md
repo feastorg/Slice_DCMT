@@ -14,7 +14,7 @@ Testing procedures for this Slice. Covers manual validation and optional automat
 ## ⚡ Power-On Verification
 
 1. Apply logic power (e.g., 5V).
-2. Confirm LED heartbeat (if present).
+2. Confirm LED heartbeat (G2/G3 only — G1 has no LED, see [Hardware Revisions](hardware-revisions.md)).
 3. Measure voltage rails at test points.
 
 ## 📟 Functional Tests
