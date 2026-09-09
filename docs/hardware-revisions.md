@@ -115,16 +115,34 @@ The firmware's encoder macros are shared across generations
 firmware reads channels in the order (A, B) on G1 and (B, A) on G2. Transposed
 channels negate the encoder count.
 
-**On G2 the motor leads are reversed at the screw terminal to compensate.** There
-is no firmware invert flag — none exists in `firmware/`, `DCMotorServo` takes no
-polarity argument, and the DCMT op set has no polarity field. The physical
-reversal is the only correction.
+**On G2 a second physical inversion cancels this**, and closed-loop position and
+speed control were both validated on G2 at the bench in early 2026. There is no
+firmware invert flag — none exists in `firmware/`, `DCMotorServo` takes no
+polarity argument, and the DCMT op set has no polarity field — so the correction
+is necessarily in the wiring.
 
-> **Both inversions must be present, or neither.** A G2 board wired with
-> "normal" motor leads has inverted closed-loop feedback, and no code change
-> reveals it. Equally, transposing the encoder macros in firmware to "fix" G2
-> would double-apply the correction and turn a converging axis into a diverging
-> one. See #19.
+Which wiring is **not currently recorded**. Two candidates produce the same
+cancellation:
+
+| what was swapped | closed loop | open-loop direction vs G1 |
+|---|---|---|
+| **motor leads** at the screw terminal | converges | **reversed** — positive PWM spins the other way |
+| **encoder leads** (A/B) in the cable | converges | **same as G1** |
+
+They are not interchangeable. Motor-lead reversal also flips the open-loop
+direction sense, which matters to anything that assumes a direction — a stirring
+impeller, a peristaltic pump's flow direction. Encoder-lead swapping does not.
+
+> **To settle it:** on a G2 board, command a small positive open-loop PWM and
+> compare the shaft direction against G1 under the same command. Same direction
+> means the encoder leads were swapped; opposite means the motor leads were.
+> Record the answer here.
+
+> **Whichever it is, both inversions must be present or neither.** A G2 board
+> wired without the compensating swap has inverted closed-loop feedback, and no
+> code change reveals it. Equally, transposing the encoder macros in firmware to
+> "fix" G2 would double-apply the correction and turn a converging axis into a
+> diverging one. See #19.
 
 ## G3 has no firmware profile
 
