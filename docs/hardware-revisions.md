@@ -16,13 +16,23 @@ in service.
 
 | | Board files | Status |
 |---|---|---|
-| **G1** | `archive/hw_archive/2021-06-08/`, `archive/hw_archive/2023-12-13/` (netlists byte-identical) | Superseded, still **supported**. In service on the reference rig. |
-| **G2** | `archive/hw_archive/recent_finn/` | Next onto the bench. **Requires hand rework — see below.** |
+| **G1** | `archive/hw_archive/g1-2021-06-08-mtu/` | Superseded, still **supported**. In service on the reference rig. |
+| **G2** | `archive/hw_archive/g2-2024-02-13-finn/` | Next onto the bench. **Requires hand rework — see below.** |
 | **G3** | `hardware/` (current KiCad) | **Not deployed.** Still in bench testing. No firmware profile exists. |
+
+Archive directory names carry the generation, the board date and where the
+boards came from. The G2 date is the one marked on the JLC silkscreen.
 
 `hardware/` holds G3. The board actually in service is under `archive/`. That is
 counter-intuitive and is worth remembering before concluding anything from the
 current schematic.
+
+A second G1 directory, `archive/hw_archive/2023-12-13/`, was removed on
+2026-09-10. It was a KiCad 6 re-save of the same project rather than a second
+fabrication run: with both projects converted to a common format, its pad → net
+map and its copper geometry — 112 pads, 198 tracks, arcs and vias — were
+identical to `2021-06-08`, and its exported netlist was byte-identical. It is
+recoverable from git history if that provenance is ever wanted.
 
 ## Pin maps
 
@@ -34,18 +44,28 @@ pads 19–22 = A0–A3. LMD18200: pin 3 = DIRECTION, 4 = BRAKE, 5 = PWM.
 | D5 | `/DIR2` | `/LED` | `/LED` |
 | D6 | `/MC2` (PWM) | `/DIR1` | `/PWM2` |
 | D7 | `/BR2` | `/MC1` (PWM) | `/DIR2` |
-| D8 | — | `/BR1` | `/BR2` |
+| D8 | `/THRM2` | `/BR1` | `/BR2` |
 | D9 | `/DIR1` | `/THRM1` | `/THRM2` |
 | D10 | `/MC1` (PWM) | `/DIR2` | `/PWM1` |
 | D11 | `/BR1` | `/MC2` (PWM) | `/DIR1` |
-| D12 | — | `/BR2` | `/BR1` |
+| D12 | `/THRM1` | `/BR2` | `/BR1` |
 | D13 | — | `/THRM2` | `/THRM1` |
 | A0–A3 | `/A1 /B1 /A2 /B2` | `/B2 /A2 /B1 /A1` | `/B1 /A1 /B2 /A2` |
+
+Every column above was regenerated from the board files on 2026-09-10 by
+reading each `A1` pad's net out of the PCB, so it is the boards' own account of
+themselves rather than a transcription.
+
+The thermal flags are wired on all three generations but are not read anywhere
+in `firmware/`; `MOTOR1_THERMAL_PIN` and `MOTOR2_THERMAL_PIN` are defined only
+in the gen2 map. D13 is unconnected on G1, where the thermal flags sit on D8
+and D12 instead; every pin in the table is used on G2 and G3. D0 and D1, the
+serial pins, are unconnected on all three.
 
 ## G1 has no status LED
 
 Not unpopulated — **absent from the design**. Zero WS2812 parts and no `/LED`
-net in either G1 board file, and no G1 board ever carried an LED of any kind.
+net in the G1 board file, and no G1 board ever carried an LED of any kind.
 
 `LED_PIN 5` lives in the shared "General BREAD" block that every slice inherits
 (`Slice_RLHT` carries the identical line), so it was defined on G1 regardless.
