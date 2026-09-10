@@ -8,6 +8,12 @@ This project did not use formal release tags through most of its history, so thi
 
 ### Fixed
 
+- **Corrected the G1 pin map in `docs/hardware-revisions.md`.** D8 and D12
+  were listed as unused; G1 routes `/THRM2` to D8 and `/THRM1` to D12, on
+  Nano pads 11 and 15. D13 is the unused one. The whole table has since been
+  regenerated from the board files. No firmware impact — the thermal flags
+  are not read anywhere in `firmware/`.
+
 - **The status LED no longer drives motor 1's direction line on gen1** (#15).
   `LED_PIN` sits in the shared "General BREAD" block and is inherited by every
   slice whether or not that board populates an LED — `Slice_RLHT` carries the
@@ -41,6 +47,20 @@ This project did not use formal release tags through most of its history, so thi
 - Added a curated root changelog derived from the full repository and history review.
 
 ### Changed
+
+- **Archived board directories now name their generation**:
+  `archive/hw_archive/g1-2021-06-08-mtu/` and
+  `archive/hw_archive/g2-2024-02-13-finn/`. The dates are the boards' own;
+  the G2 one is marked on the JLC silkscreen. Directory names were the only
+  record of which archived project was which generation, and they did not
+  say, which is what made a G1 board in service look like the board in
+  `hardware/`.
+
+- **Removed the redundant second G1 archive** (`archive/hw_archive/2023-12-13/`).
+  Converting both projects to a common format showed it was a KiCad 6
+  re-save rather than a second fabrication run: identical pad-to-net map
+  (112 pads), identical copper geometry (198 tracks, arcs and vias) and a
+  byte-identical exported netlist. Recoverable from git history.
 
 - Updated active firmware metadata to reference CRUMBS `0.12.4` and
   `bread-crumbs-contracts` `0.4.3`.
