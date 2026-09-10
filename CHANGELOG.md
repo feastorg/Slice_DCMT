@@ -12,8 +12,11 @@ This project did not use formal release tags through most of its history, so thi
   gitlink (mode `160000`) with no `.gitmodules` entry, so `actions/checkout`
   failed with `fatal: No url found for submodule path 'hardware/.history'`
   and all three KiBot jobs — Fab, ERC and DRC — died before running, taking
-  the index and Pages deploy with them. The directory is VS Code Local
-  History state and is empty on disk.
+  the index and Pages deploy with them. The directory is KiCad 10's own
+  Local History: KiCad runs `git_repository_init` on `<project>/.history`,
+  so committing it records a gitlink to a repository this one knows nothing
+  about. It is recreated on every project open, on every machine, which is
+  why the ignore rule matters rather than a one-time cleanup.
 
 - **Corrected the G1 pin map in `docs/hardware-revisions.md`.** D8 and D12
   were listed as unused; G1 routes `/THRM2` to D8 and `/THRM1` to D12, on
