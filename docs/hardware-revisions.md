@@ -21,7 +21,8 @@ in service.
 | **G3** | `hardware/` (current KiCad) | **Not deployed.** Still in bench testing. No firmware profile exists. |
 
 Archive directory names carry the generation, the board date and where the
-boards came from. The G2 date is the one marked on the JLC silkscreen.
+boards came from. The G2 date was read off a physical board — a JLCPCB date
+mark — not from the KiCad files, whose silkscreen carries only `R1 2024`.
 
 `hardware/` holds G3. The board actually in service is under `archive/`. That is
 counter-intuitive and is worth remembering before concluding anything from the
@@ -55,6 +56,13 @@ pads 19–22 = A0–A3. LMD18200: pin 3 = DIRECTION, 4 = BRAKE, 5 = PWM.
 Every column above was regenerated from the board files on 2026-09-10 by
 reading each `A1` pad's net out of the PCB, so it is the boards' own account of
 themselves rather than a transcription.
+
+**The table names the board's nets, and on G1 those run opposite to the
+firmware's motor numbering.** Firmware `MOTOR1_*` (D6, D5, D7) lands on `/MC2`,
+`/DIR2`, `/BR2` — driver U2, whose outputs go to J7 — while `MOTOR2_*` (D10, D9,
+D11) lands on U1 and J6. On G2 the two agree. Both are correct; it means the G1
+row of the PWM table below, which uses firmware numbering, refers to the
+opposite driver from the G1 column here.
 
 The thermal flags are wired on all three generations but are not read anywhere
 in `firmware/`; `MOTOR1_THERMAL_PIN` and `MOTOR2_THERMAL_PIN` are defined only
