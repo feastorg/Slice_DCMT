@@ -29,7 +29,7 @@ current schematic.
 Nano footprint pad → Arduino pin: pad 5 = D2, pad 8 = D5, pad 13 = D10,
 pads 19–22 = A0–A3. LMD18200: pin 3 = DIRECTION, 4 = BRAKE, 5 = PWM.
 
-| Arduino pin | G1 | G2 (as fabricated) | G3 |
+| Arduino pin | G1 | G2 (**as fabricated** — see reworks below) | G3 |
 |---|---|---|---|
 | D5 | `/DIR2` | `/LED` | `/LED` |
 | D6 | `/MC2` (PWM) | `/DIR1` | `/PWM2` |
@@ -56,17 +56,39 @@ Fixed by `DCMT_HAS_STATUS_LED` (#15), mirroring `Slice_RLHT`'s
 `RLHT_HAS_STATUS_LED`. RLHT received that guard in the gen1/gen2 split on
 2026-03-09; DCMT's split landed the same day without it.
 
-## G2 requires a D6↔D7 trace swap — motor 1 only
+## G2 requires two trace swaps, and both are expected
 
-**G2 as fabricated puts motor 1's PWM on D7, which has no hardware PWM on the
-ATmega328P.** The boards in service have a trace cut and swap exchanging D6 and
-D7, so PWM lands on D6 and DIRECTION on D7.
+A G2 board is **not** considered correct as fabricated. Both swaps below were
+applied to the entire G2 fleet (six boards) on 2026-09-09, and the `gen2`
+firmware map describes the board **after** both. Treat them as part of the board
+definition, not as modifications.
 
-The `gen2` firmware map describes the board **after** this rework. A G2 board
-built from the schematic without it will not have proportional speed control on
-motor 1.
+| # | swap | motor | why |
+|---|---|---|---|
+| 1 | **D6 ↔ D7** | motor 1 | as fabricated `/MC1` (PWM) is on **D7**, which has no hardware timer on *either* MCU |
+| 2 | **D10 ↔ D11** | motor 2 | as fabricated `/MC2` (PWM) is on **D11**, which has a timer on the ATmega328P but **not** on the ATmega4809 |
 
-Motor 2 was not touched.
+After both, PWM lands on **D6** and **D10** — timer pins on both MCUs — and
+DIRECTION on D7 and D11, which only ever need digital pins.
+
+Swap 2 in detail, since it is the more recent: motor 2's driver is **U3**.
+`/DIR2` ran Nano pad 13 (**D10**) → U3 pin 3 (DIRECTION), and `/MC2` ran Nano pad
+14 (**D11**) → U3 pin 5 (PWM). The swap exchanges them at the MCU end. `/BR2`
+(D12 → pin 4) and `/THRM2` (D13 → pin 9) are untouched.
+
+Neither swap costs anything on the Nano: Timer1 (D10) and Timer2 (D11) both
+default to roughly 490 Hz, so the PWM frequency is unchanged, and nothing in the
+firmware or its libraries claims a timer register. On the ATmega4809, `millis()`
+uses a TCB rather than TCA0, so D10 is uncontended there too.
+
+**A G2 board without both swaps is mismatched by the current firmware**, and the
+mismatch is the dangerous direction — PWM driving the direction line means a
+command of zero produces full output. The bus cannot tell them apart: the
+reported module version is `1.0.0` regardless (#13). Mark reworked boards
+physically.
+
+The firmware now refuses to build a map that puts PWM on a non-timer pin
+(`DCMT_PIN_HAS_TIMER`), so this class of defect cannot recur silently.
 
 ## PWM capability differs by MCU, and both are used
 
@@ -90,17 +112,18 @@ write at a threshold of 128 (`wiring_analog.c`). So the failure is silent.
 | | motor 1 PWM | motor 2 PWM | Nano | Nano Every |
 |---|---|---|---|---|
 | G1 | D6 | D10 | ok | ok |
-| G2 as fabricated | D7 | D11 | no | no |
-| G2 after D6↔D7 rework | D6 | D11 | ok | **motor 2 is bang-bang** |
+| G2 as fabricated (never run) | D7 | D11 | no | no |
+| G2 after both reworks | D6 | D10 | ok | ok |
 | G3 | D6 | D10 | ok | ok |
 
-G2 + Nano Every therefore gives motor 2 no proportional control — off below 128,
-full output at or above — in exactly the configuration chosen for closed loop.
-A second trace swap (D10↔D11) would fix it on both MCUs, since D10 is a timer pin
-on both and DIRECTION only needs a digital pin. **G3 is already laid out that
-way**; G2 simply never received the second half of the lesson. Tracked in #18.
+Before its second rework, G2 + Nano Every gave motor 2 no proportional control —
+off below 128, full output at or above — in exactly the configuration chosen for
+closed loop. The D10↔D11 swap resolved it; **G3 was already laid out that way.**
 
-## The encoder connector is mirrored between G1 and G2, and motor leads compensate
+The guard added alongside that fix means a map putting PWM on a non-timer pin now
+fails the build rather than shipping. Resolved; see #18 for the history.
+
+## The encoder connector is mirrored between G1 and G2, and a lead swap compensates
 
 The connector pinout is reversed end-for-end:
 
