@@ -22,9 +22,9 @@
           "arrow_length": 1270000,
           "extension_offset": 500000,
           "keep_text_aligned": true,
-          "suppress_zeroes": false,
+          "suppress_zeroes": true,
           "text_position": 0,
-          "units_format": 1
+          "units_format": 0
         },
         "fab_line_width": 0.1,
         "fab_text_italic": false,
@@ -50,7 +50,6 @@
         "silk_text_thickness": 0.15,
         "silk_text_upright": false,
         "zones": {
-          "45_degree_only": false,
           "border_display_style": 2,
           "border_hatch_pitch": 0.5,
           "corner_radius": 0.0,
@@ -93,10 +92,9 @@
         "footprint_filters_mismatch": "ignore",
         "footprint_symbol_field_mismatch": "warning",
         "footprint_symbol_mismatch": "warning",
-        "footprint_type_mismatch": "error",
+        "footprint_type_mismatch": "ignore",
         "hole_clearance": "error",
-        "hole_near_hole": "error",
-        "hole_to_hole": "error",
+        "hole_to_hole": "warning",
         "holes_co_located": "warning",
         "invalid_outline": "error",
         "isolated_copper": "warning",
@@ -114,7 +112,7 @@
         "net_conflict": "warning",
         "nonmirrored_text_on_back_layer": "warning",
         "npth_inside_courtyard": "ignore",
-        "padstack": "error",
+        "padstack": "warning",
         "pth_inside_courtyard": "ignore",
         "shorting_items": "error",
         "silk_edge_clearance": "warning",
@@ -139,14 +137,11 @@
         "unconnected_items": "error",
         "unresolved_variable": "error",
         "via_dangling": "warning",
-        "zone_has_empty_net": "error",
         "zones_intersect": "error"
       },
       "rule_severitieslegacy_courtyards_overlap": true,
       "rule_severitieslegacy_no_courtyard_defined": false,
       "rules": {
-        "allow_blind_buried_vias": false,
-        "allow_microvias": false,
         "max_error": 0.005,
         "min_clearance": 0.0,
         "min_connection": 0.0,
@@ -162,7 +157,7 @@
         "min_text_thickness": 0.08,
         "min_through_hole_diameter": 0.3,
         "min_track_width": 0.2,
-        "min_via_annular_width": 0.05,
+        "min_via_annular_width": 0.1,
         "min_via_diameter": 0.4,
         "solder_mask_to_copper_clearance": 0.0,
         "use_height_for_length_calcs": true
@@ -254,8 +249,7 @@
           "drill": 1.0
         }
       ],
-      "zones_allow_external_fillets": false,
-      "zones_use_no_outline": true
+      "zones_allow_external_fillets": false
     },
     "ipc2581": {
       "bom_rev": "",
@@ -461,10 +455,8 @@
     "rule_severities": {
       "bus_definition_conflict": "error",
       "bus_entry_needed": "error",
-      "bus_label_syntax": "error",
       "bus_to_bus_conflict": "error",
       "bus_to_net_conflict": "error",
-      "conflicting_netclasses": "error",
       "different_unit_footprint": "error",
       "different_unit_net": "error",
       "duplicate_reference": "error",
@@ -531,7 +523,7 @@
         "microvia_drill": 0.1,
         "name": "Default",
         "pcb_color": "rgba(0, 0, 0, 0.000)",
-        "priority": 2147483647,
+        "priority": -1,
         "schematic_color": "rgba(0, 0, 0, 0.000)",
         "track_width": 0.25,
         "tuning_profile": "",
@@ -545,7 +537,172 @@
     },
     "net_colors": null,
     "netclass_assignments": null,
-    "netclass_patterns": []
+    "netclass_patterns": [
+      {
+        "netclass": "Default",
+        "pattern": "+12V"
+      },
+      {
+        "netclass": "Default",
+        "pattern": "+5V"
+      },
+      {
+        "netclass": "Default",
+        "pattern": "/A1"
+      },
+      {
+        "netclass": "Default",
+        "pattern": "/A2"
+      },
+      {
+        "netclass": "Default",
+        "pattern": "/B1"
+      },
+      {
+        "netclass": "Default",
+        "pattern": "/B2"
+      },
+      {
+        "netclass": "Default",
+        "pattern": "/BR1"
+      },
+      {
+        "netclass": "Default",
+        "pattern": "/BR2"
+      },
+      {
+        "netclass": "Default",
+        "pattern": "/CSEN1"
+      },
+      {
+        "netclass": "Default",
+        "pattern": "/CSEN2"
+      },
+      {
+        "netclass": "Default",
+        "pattern": "/CUST1"
+      },
+      {
+        "netclass": "Default",
+        "pattern": "/CUST2"
+      },
+      {
+        "netclass": "Default",
+        "pattern": "/DIR1"
+      },
+      {
+        "netclass": "Default",
+        "pattern": "/DIR2"
+      },
+      {
+        "netclass": "Default",
+        "pattern": "/E_STOP"
+      },
+      {
+        "netclass": "Default",
+        "pattern": "/I2C_CLK"
+      },
+      {
+        "netclass": "Default",
+        "pattern": "/I2C_DAT"
+      },
+      {
+        "netclass": "Default",
+        "pattern": "/INT"
+      },
+      {
+        "netclass": "Default",
+        "pattern": "/MC1"
+      },
+      {
+        "netclass": "Default",
+        "pattern": "/MC2"
+      },
+      {
+        "netclass": "Default",
+        "pattern": "/SYNC"
+      },
+      {
+        "netclass": "Default",
+        "pattern": "/THRM1"
+      },
+      {
+        "netclass": "Default",
+        "pattern": "/THRM2"
+      },
+      {
+        "netclass": "Default",
+        "pattern": "GND"
+      },
+      {
+        "netclass": "Default",
+        "pattern": "Net-(A1-Pad1)"
+      },
+      {
+        "netclass": "Default",
+        "pattern": "Net-(A1-Pad16)"
+      },
+      {
+        "netclass": "Default",
+        "pattern": "Net-(A1-Pad17)"
+      },
+      {
+        "netclass": "Default",
+        "pattern": "Net-(A1-Pad18)"
+      },
+      {
+        "netclass": "Default",
+        "pattern": "Net-(A1-Pad2)"
+      },
+      {
+        "netclass": "Default",
+        "pattern": "Net-(A1-Pad28)"
+      },
+      {
+        "netclass": "Default",
+        "pattern": "Net-(A1-Pad3)"
+      },
+      {
+        "netclass": "Default",
+        "pattern": "Net-(C3-Pad1)"
+      },
+      {
+        "netclass": "Default",
+        "pattern": "Net-(C4-Pad1)"
+      },
+      {
+        "netclass": "Default",
+        "pattern": "Net-(C5-Pad1)"
+      },
+      {
+        "netclass": "Default",
+        "pattern": "Net-(C5-Pad2)"
+      },
+      {
+        "netclass": "Default",
+        "pattern": "Net-(C6-Pad1)"
+      },
+      {
+        "netclass": "Default",
+        "pattern": "Net-(C6-Pad2)"
+      },
+      {
+        "netclass": "Default",
+        "pattern": "Net-(C7-Pad1)"
+      },
+      {
+        "netclass": "Default",
+        "pattern": "Net-(C7-Pad2)"
+      },
+      {
+        "netclass": "Default",
+        "pattern": "Net-(C8-Pad1)"
+      },
+      {
+        "netclass": "Default",
+        "pattern": "Net-(C8-Pad2)"
+      }
+    ]
   },
   "pcbnew": {
     "last_paths": {
@@ -555,7 +712,7 @@
       "plot": "",
       "pos_files": "",
       "specctra_dsn": "",
-      "step": "BREAD_Slice.step",
+      "step": "",
       "svg": "",
       "vrml": ""
     },
@@ -567,7 +724,7 @@
       "method": 0,
       "sort_order": 0
     },
-    "bom_export_filename": "",
+    "bom_export_filename": "${PROJECTNAME}.csv",
     "bom_fmt_presets": [],
     "bom_fmt_settings": {
       "field_delimiter": ",",
@@ -589,24 +746,6 @@
           "show": true
         },
         {
-          "group_by": true,
-          "label": "Value",
-          "name": "Value",
-          "show": true
-        },
-        {
-          "group_by": false,
-          "label": "Datasheet",
-          "name": "Datasheet",
-          "show": true
-        },
-        {
-          "group_by": false,
-          "label": "Footprint",
-          "name": "Footprint",
-          "show": true
-        },
-        {
           "group_by": false,
           "label": "Qty",
           "name": "${QUANTITY}",
@@ -614,15 +753,45 @@
         },
         {
           "group_by": true,
+          "label": "Value",
+          "name": "Value",
+          "show": true
+        },
+        {
+          "group_by": true,
           "label": "DNP",
           "name": "${DNP}",
+          "show": true
+        },
+        {
+          "group_by": true,
+          "label": "Exclude from BOM",
+          "name": "${EXCLUDE_FROM_BOM}",
+          "show": true
+        },
+        {
+          "group_by": true,
+          "label": "Exclude from Board",
+          "name": "${EXCLUDE_FROM_BOARD}",
+          "show": true
+        },
+        {
+          "group_by": true,
+          "label": "Footprint",
+          "name": "Footprint",
+          "show": true
+        },
+        {
+          "group_by": false,
+          "label": "Datasheet",
+          "name": "Datasheet",
           "show": true
         }
       ],
       "filter_string": "",
       "group_symbols": true,
-      "include_excluded_from_bom": false,
-      "name": "Grouped By Value",
+      "include_excluded_from_bom": true,
+      "name": "Default Editing",
       "sort_asc": true,
       "sort_field": "Reference"
     },
@@ -656,15 +825,6 @@
       "version": 1
     },
     "net_format_name": "Pcbnew",
-    "ngspice": {
-      "fix_include_paths": true,
-      "fix_passive_vals": false,
-      "meta": {
-        "version": 0
-      },
-      "model_mode": 0,
-      "workbook_filename": ""
-    },
     "page_layout_descr_file": "",
     "plot_directory": "",
     "reuse_designators": true,
@@ -682,15 +842,15 @@
       {
         "filename": "BREAD_Slice.kicad_sch",
         "name": "BREAD_Slice",
-        "uuid": "b6f74721-6f5a-43a9-b4ef-0d199625bae1"
+        "uuid": "8c7528d7-a75f-4d03-92d9-3d18b23b35b7"
       }
     ],
-    "used_designators": "J1,J5,C1,C11",
+    "used_designators": "",
     "variants": []
   },
   "sheets": [
     [
-      "b6f74721-6f5a-43a9-b4ef-0d199625bae1",
+      "8c7528d7-a75f-4d03-92d9-3d18b23b35b7",
       "BREAD_Slice"
     ]
   ],

@@ -23,3 +23,6 @@ fp-lib-table
 *-backups/
 
 working/
+
+# Ignore VS Code Local History
+.history/
