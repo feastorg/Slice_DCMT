@@ -76,8 +76,14 @@
 #define MOTOR2_DIR_PIN 9
 #define MOTOR2_BRAKE_PIN 11
 #elif (DCMT_HW_GEN == 2)
-#define MOTOR2_PWM_PIN 11
-#define MOTOR2_DIR_PIN 10
+// Requires the D10<->D11 rework. As fabricated G2 routes /MC2 (PWM) to D11 and
+// /DIR2 to D10; D11 has no hardware timer on the ATmega4809 (Nano Every), so
+// analogWrite() there degrades to a digital write at a threshold of 128 and
+// motor 2 loses proportional control on exactly the MCU used for closed loop.
+// The rework swaps them so PWM lands on D10, which is a timer pin on both the
+// ATmega328P and the ATmega4809. See docs/hardware-revisions.md.
+#define MOTOR2_PWM_PIN 10
+#define MOTOR2_DIR_PIN 11
 #define MOTOR2_BRAKE_PIN 12
 #define MOTOR2_THERMAL_PIN 13
 #else
@@ -86,6 +92,34 @@
 #define MOTOR2_ENCODER_PIN1 A0
 #define MOTOR2_ENCODER_PIN2 A1
 #define MOTOR2_CSENSE_PIN A7
+
+// ----- Build-time PWM-pin validation -----
+//
+// Both G2 defects to date were the same mistake: a PWM signal assigned to a pin
+// with no hardware timer. analogWrite() does not fail there -- it degrades to a
+// digital write at a threshold of 128 -- so the board runs, the motor moves at
+// full output above 128 and not at all below, and nothing reports a problem.
+//
+// D11 is the trap: it has a timer on the ATmega328P but not on the ATmega4809,
+// so a map can be correct on a Nano and silently wrong on a Nano Every. Both
+// MCUs are in use on these boards.
+//
+// Fail the build instead. Pin sets are from the cores' own timer tables
+// (framework-arduino-avr/variants/standard, framework-arduino-megaavr/variants/nona4809).
+#if defined(__AVR_ATmega4809__)
+#define DCMT_PIN_HAS_TIMER(p) ((p) == 3 || (p) == 5 || (p) == 6 || (p) == 9 || (p) == 10)
+#elif defined(__AVR_ATmega328P__)
+#define DCMT_PIN_HAS_TIMER(p) ((p) == 3 || (p) == 5 || (p) == 6 || (p) == 9 || (p) == 10 || (p) == 11)
+#else
+#error "Unknown MCU: add its hardware-PWM pin set to DCMT_PIN_HAS_TIMER"
+#endif
+
+#if !DCMT_PIN_HAS_TIMER(MOTOR1_PWM_PIN)
+#error "MOTOR1_PWM_PIN has no hardware timer on this MCU -- analogWrite would degrade to on/off. See docs/hardware-revisions.md"
+#endif
+#if !DCMT_PIN_HAS_TIMER(MOTOR2_PWM_PIN)
+#error "MOTOR2_PWM_PIN has no hardware timer on this MCU -- analogWrite would degrade to on/off. See docs/hardware-revisions.md"
+#endif
 
 // Encoder counts-per-rev (archive-proven closed-loop value).
 #define MOTOR1_CPR 798
