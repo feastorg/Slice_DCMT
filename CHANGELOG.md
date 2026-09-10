@@ -8,6 +8,13 @@ This project did not use formal release tags through most of its history, so thi
 
 ### Fixed
 
+- **The Docs Pipeline runs again.** `hardware/.history` was committed as a
+  gitlink (mode `160000`) with no `.gitmodules` entry, so `actions/checkout`
+  failed with `fatal: No url found for submodule path 'hardware/.history'`
+  and all three KiBot jobs — Fab, ERC and DRC — died before running, taking
+  the index and Pages deploy with them. The directory is VS Code Local
+  History state and is empty on disk.
+
 - **Corrected the G1 pin map in `docs/hardware-revisions.md`.** D8 and D12
   were listed as unused; G1 routes `/THRM2` to D8 and `/THRM1` to D12, on
   Nano pads 11 and 15. D13 is the unused one. The whole table has since been
