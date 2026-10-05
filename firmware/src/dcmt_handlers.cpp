@@ -123,8 +123,29 @@ void handler_set_watchdog(crumbs_context_t *ctx, uint8_t opcode, const uint8_t *
     if (crumbs_msg_read_u16(data, data_len, 0, &timeout_ms) != 0)
         return;
 
+    // Arms, re-arms or disarms (0) and stamps liveness. It does not clear a
+    // latched trip: re-arming is safe to send while tripped, and releasing
+    // the hold is a separate, explicit act (handler_clear_watchdog_trip).
     wdTimeoutMs = timeout_ms;
     wdLastRxMs = millis();
+}
+
+void handler_clear_watchdog_trip(crumbs_context_t *ctx, uint8_t opcode, const uint8_t *data, uint8_t data_len, void *user_data)
+{
+    (void)ctx;
+    (void)opcode;
+    (void)data;
+    (void)user_data;
+
+    // BREAD_OP_CLEAR_WATCHDOG_TRIP: an operator's acknowledgement that
+    // releasing the hold is safe. Clears the trip and nothing else: the
+    // timeout, armed state and trip count are left as they are (liveness is
+    // stamped by on_crumbs_message, as for any valid frame).
+    //
+    // The payload is empty by contract. A non-empty one is rejected and the
+    // trip stays set, so a future payload form is never taken for a clear.
+    if (data_len != BREAD_WATCHDOG_CLEAR_TRIP_PAYLOAD_LEN)
+        return;
     wdTripped = false;
 }
 
@@ -202,7 +223,7 @@ void reply_get_caps(crumbs_context_t *ctx, crumbs_message_t *reply, void *user_d
 {
     uint8_t level = DCMT_CAP_LEVEL_2;
     uint32_t flags = DCMT_CAP_BASELINE_FLAGS | DCMT_CAP_CLOSED_LOOP_POSITION | DCMT_CAP_PID_TUNING |
-                     DCMT_CAP_CMD_WATCHDOG;
+                     DCMT_CAP_CMD_WATCHDOG | DCMT_CAP_CLEAR_WATCHDOG_TRIP;
     (void)ctx;
     (void)user_data;
 

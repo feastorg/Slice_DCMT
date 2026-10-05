@@ -56,9 +56,10 @@ static void processCommand(char *cmd)
         return;
 
     // A serial operator is a live master too: feed the command watchdog.
+    // Ordinary input (READ included) does not clear a latched trip, so a
+    // logger polling READ cannot release a hold; only WDCLEAR does.
     noInterrupts();
     wdLastRxMs = millis();
-    wdTripped = false;
     interrupts();
 
     if (starts_with_P(cmd, PSTR("MODE=")))
@@ -214,7 +215,6 @@ static void processCommand(char *cmd)
         noInterrupts();
         wdTimeoutMs = (uint16_t)v;
         wdLastRxMs = millis();
-        wdTripped = false;
         interrupts();
         Serial.print(F("WDOG-> "));
         if (v == 0)
@@ -225,6 +225,15 @@ static void processCommand(char *cmd)
             Serial.println(F(" ms"));
         }
     }
+    else if (strcmp_P(cmd, PSTR("WDCLEAR")) == 0)
+    {
+        // Serial counterpart of BREAD_OP_CLEAR_WATCHDOG_TRIP: clears the trip
+        // and nothing else (timeout, armed state and trip count unchanged).
+        noInterrupts();
+        wdTripped = false;
+        interrupts();
+        Serial.println(F("WDOG trip cleared"));
+    }
     else if (strcmp_P(cmd, PSTR("READ")) == 0)
     {
         printSliceState(Serial);
@@ -232,7 +241,7 @@ static void processCommand(char *cmd)
     else
     {
         Serial.println(F("Invalid command."));
-        Serial.println(F("Open/Pos: MODE=OPEN|POS, M1PWM=, M2PWM=, M1POS=, M2POS=, PIDPOS=kp,ki,kd, BRAKE1=0/1, BRAKE2=0/1, WDOG=ms(0=off), READ"));
+        Serial.println(F("Open/Pos: MODE=OPEN|POS, M1PWM=, M2PWM=, M1POS=, M2POS=, PIDPOS=kp,ki,kd, BRAKE1=0/1, BRAKE2=0/1, WDOG=ms(0=off), WDCLEAR, READ"));
 #if DCMT_ENABLE_SPEED_LOOP
         Serial.println(F("Closed-loop: MODE=POS|SPEED, M1POS=, M2POS=, M1SPEED=, M2SPEED=, PIDPOS=kp,ki,kd, PIDSPEED=kp,ki,kd"));
 #endif

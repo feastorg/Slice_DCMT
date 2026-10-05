@@ -56,7 +56,31 @@ This project did not use formal release tags through most of its history, so thi
 
 - Added a curated root changelog derived from the full repository and history review.
 
+- **An explicit clear for a latched watchdog trip** (#26). The firmware
+  handles `BREAD_OP_CLEAR_WATCHDOG_TRIP` (`0x7C`, empty payload), which
+  clears the trip and nothing else: the timeout, the armed state and the
+  trip count are unchanged. A frame with a non-empty payload is ignored
+  and the trip stays set. `GET_CAPS` advertises
+  `DCMT_CAP_CLEAR_WATCHDOG_TRIP` (bit 6) beside `DCMT_CAP_CMD_WATCHDOG`,
+  so a controller can tell this firmware from one where `SET_WATCHDOG`
+  still clears. The serial console gains the matching `WDCLEAR` command;
+  `firmware/README.md` describes both.
+
 ### Changed
+
+- **A watchdog trip latches until an operator clears it** (#26, supersedes
+  #14). A trip used to be cleared by any valid command frame, by every
+  `SET_WATCHDOG`, and by any line on the serial console. The controller's
+  e-stop ladder drives its safe state as ordinary command frames, so
+  pressing e-stop on a tripped board cleared the trip and the
+  `OPEN_LOOP` `write(0)` that followed released the brake the watchdog had
+  engaged (anolishq/anolis#261). Now only `BREAD_OP_CLEAR_WATCHDOG_TRIP`,
+  the serial `WDCLEAR` command or a reboot clears it. Command frames,
+  reply builds and serial input (including `READ`) still refresh
+  liveness, so a returning master does not cause a fresh trip.
+  `SET_WATCHDOG` and serial `WDOG=<ms>` set the timeout (`0` disarms) and
+  refresh liveness without clearing, so re-arming is safe while tripped;
+  disarming does not release a held trip either.
 
 - **SET payloads are unpacked and the `GET_STATE` reply is packed with the
   shared contracts codec** (#28). Each SET handler reads its payload with
@@ -70,8 +94,8 @@ This project did not use formal release tags through most of its history, so thi
 
 - **Requires CRUMBS `0.14.0` and `bread-crumbs-contracts` `0.6.0`**
   (`platformio.ini`: `^0.14.0`, `^0.6.0`; previously `^0.12.4` and
-  `^0.4.5`). The codec first ships in contracts 0.6.0, which needs
-  CRUMBS 0.14. The version reply now reports CRUMBS
+  `^0.4.5`). The codec and the clear-trip op first ship in contracts
+  0.6.0, which needs CRUMBS 0.14. The version reply now reports CRUMBS
   `1400` instead of `1205`. Until contracts 0.6.0 is on the PlatformIO
   registry, the Firmware Build workflow cannot resolve it and fails.
 
