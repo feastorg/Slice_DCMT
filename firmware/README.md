@@ -64,9 +64,12 @@ All levels also advertise `DCMT_CAP_CMD_WATCHDOG` and
 The watchdog boots disarmed (unless built with `-DDCMT_WATCHDOG_BOOT_MS=<ms>`).
 Once armed, by `BREAD_OP_SET_WATCHDOG` or `WDOG=<ms>`, it trips when no I2C
 command, I2C reply or serial line has arrived within the timeout. A trip
-brakes both motors and holds them braked until the trip is cleared; it zeroes
-the PWM commands and speed setpoints and keeps the mode and the position
-setpoints.
+brakes both motors and leaves no motion pending: it zeroes the PWM commands
+and speed setpoints, sets both brake flags, and keeps both position
+setpoints at the encoder positions for as long as the trip is held, so they
+follow a shaft that coasts to a stop after the brake engages. The mode is
+kept. `GET_STATE` after a trip therefore shows both brakes engaged and, in
+closed-loop position, the setpoint at the position where the shaft stopped.
 
 A trip latches. It is cleared only by:
 
@@ -80,13 +83,30 @@ A trip latches. It is cleared only by:
 frame or serial line (including `READ`) refreshes liveness only. Clearing
 leaves the timeout, the armed state and the trip count as they were.
 
-Clearing releases the hold into whatever the stored state then commands.
-SET commands received while tripped are stored, not ignored. In open-loop
-the motors are driven at the stored PWM, which is 0 unless a
-`SET_OPEN_LOOP` arrived during the hold (the brake is released unless
-`BRAKE1`/`BRAKE2` is set); in closed-loop position the servos resume driving
-to the position setpoints. A motor can therefore move as soon as the trip
-is cleared.
+While a trip is held, commands that could make a motor move are ignored,
+not stored: `SET_OPEN_LOOP`, `SET_SETPOINT`, `SET_MODE` and a `SET_BRAKE`
+that would release a brake, and over serial `MODE=`, `M1PWM=`/`M2PWM=`,
+`M1POS=`/`M2POS=`, `M1SPEED=`/`M2SPEED=`, `BRAKE1=0` and `BRAKE2=0`.
+Engaging a brake, PID tuning (`SET_PID`, `PIDPOS=`, `PIDSPEED=`),
+`SET_WATCHDOG`/`WDOG=` and `READ` still work.
+
+Clearing a trip resumes nothing; the brakes stay engaged and no motor
+moves. To resume:
+
+1. clear the trip (`BREAD_OP_CLEAR_WATCHDOG_TRIP` or `WDCLEAR`);
+2. release the brakes (`SET_BRAKE(0, 0)`, or `BRAKE1=0` and `BRAKE2=0`).
+   In closed-loop position the motors then hold the position where they
+   stopped, in open-loop they coast at PWM 0, and in closed-loop speed
+   they stay stopped;
+3. send new commands: setpoints first, then the mode. A mode change to
+   closed-loop position drives to whatever setpoint is stored at that
+   moment.
+
+Positions are `int16` on the wire, so closed-loop position works only while
+the encoder count stays within ±32767. Beyond that the stored setpoint is
+clamped to ±32767, including the one a trip writes, and releasing the brakes
+in position mode drives the motor toward the clamp value. Keep position-mode
+travel inside that range.
 
 Serial commands (115200 baud, newline-terminated):
 

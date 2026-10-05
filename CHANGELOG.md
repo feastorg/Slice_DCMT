@@ -82,6 +82,27 @@ This project did not use formal release tags through most of its history, so thi
   refresh liveness without clearing, so re-arming is safe while tripped;
   disarming does not release a held trip either.
 
+- **Clearing a watchdog trip resumes nothing** (#26). A trip now also sets
+  both brake flags, alongside zeroing the PWM and speed setpoints, and
+  keeps both position setpoints at the encoder positions for as long as it
+  is held, so they follow a shaft that coasts after the (dynamic) brake
+  engages. `GET_STATE` after a trip shows both brakes engaged and, in
+  closed-loop position, the setpoint at the position where the shaft
+  stopped. While a trip is
+  held, `SET_OPEN_LOOP`, `SET_SETPOINT`, `SET_MODE` and a `SET_BRAKE` that
+  would release a brake are ignored, as are the serial `MODE=`, `M1PWM=`,
+  `M2PWM=`, `M1POS=`, `M2POS=`, `M1SPEED=`, `M2SPEED=`, `BRAKE1=0` and
+  `BRAKE2=0`; engaging a brake, PID tuning and the watchdog commands still
+  work. Previously a clear released the hold into the stored state: a
+  closed-loop position trip mid-move finished the move after the clear,
+  and commands sent during the hold took effect on it. To resume after a
+  trip: clear it, release the brakes with `SET_BRAKE(0, 0)` (the motors
+  then hold position, coast at PWM 0 or stay stopped, by mode), then send
+  setpoints and then the mode. Closed-loop position is limited to encoder
+  counts within ±32767 (positions are `int16` on the wire): beyond that the
+  setpoint a trip writes is clamped, and a brake release in position mode
+  drives toward the clamp value.
+
 - **SET payloads are unpacked and the `GET_STATE` reply is packed with the
   shared contracts codec** (#28). Each SET handler reads its payload with
   the generated `dcmt_*_unpack()` from `bread/dcmt_ops.h` instead of

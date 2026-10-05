@@ -491,8 +491,20 @@ void watchdogLogic()
     motor1Driver.brake();
     motor2Driver.brake();
 
-    // Same safe-state fields as processEStop: zero PWM/speed, preserve
-    // position setpoints and mode so controller state stays coherent.
+    // Clearing a trip resumes nothing: the operator re-commands afterwards.
+    // So the trip leaves no motion pending: PWM and speed setpoints zeroed,
+    // both brake flags set, and the position setpoints moved to where the
+    // shafts are now, so a later brake release holds position instead of
+    // finishing an interrupted move (motorControlLogic() keeps them synced
+    // while the shafts coast during the hold). Read the encoders here,
+    // outside the masked window (Encoder::read() re-enables interrupts), not
+    // from slice.motorNPosition, which is one loop stale.
+    const int16_t pos1 = clamp_i16(servo1.getActualPosition());
+    const int16_t pos2 = clamp_i16(servo2.getActualPosition());
+
+    // wdTripped is set in the same masked window, so the I2C handlers, which
+    // refuse actuating commands while it is set, can never store one after
+    // these fields are reset.
     noInterrupts();
     wdTripped = true;
     wdTripCount++;
@@ -502,6 +514,10 @@ void watchdogLogic()
     slice.motor2Speed = 0;
     slice.motor1SpeedSetpoint = 0;
     slice.motor2SpeedSetpoint = 0;
+    slice.motor1Brake = true;
+    slice.motor2Brake = true;
+    slice.motor1PositionSetpoint = pos1;
+    slice.motor2PositionSetpoint = pos2;
     interrupts();
     SLICE_DEBUG_PRINTLN(F("WATCHDOG TRIPPED: bus silent, motors braked"));
 }
@@ -546,6 +562,33 @@ void motorControlLogic()
         stop_control_loops();
         motor1Driver.brake();
         motor2Driver.brake();
+
+        if (wdTrippedNow)
+        {
+            // The LMD18200 brake is dynamic, so a shaft keeps coasting after
+            // watchdogLogic() synced the setpoints at the trip. Re-sync them
+            // to the encoders every loop of the hold, so a brake release
+            // after the clear holds where the shaft stopped instead of
+            // driving it back by the coast distance. This runs here, not in
+            // watchdogLogic(), which returns early once WDOG=0 disarms
+            // during a trip. Read before the masked window: Encoder::read()
+            // re-enables interrupts.
+            //
+            // The release then starts the PID cleanly only because
+            // stop_control_loops() -> DCMotorServo::stop()/haltMotor() zeroes
+            // _PID_output (DCMotorServo 1.0.1 and 1.1.0). Without that, the
+            // first run() after a release lunges on the stale output. Check
+            // it again on a DCMotorServo bump.
+            const int16_t h1 = clamp_i16(servo1.getActualPosition());
+            const int16_t h2 = clamp_i16(servo2.getActualPosition());
+            noInterrupts();
+            if (wdTripped)
+            {
+                slice.motor1PositionSetpoint = h1;
+                slice.motor2PositionSetpoint = h2;
+            }
+            interrupts();
+        }
         return;
     }
 

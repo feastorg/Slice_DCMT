@@ -6,6 +6,12 @@
 
 #include "globals.h"
 
+// While a watchdog trip is held, SET_OPEN_LOOP, SET_SETPOINT, SET_MODE and a
+// brake release are ignored rather than stored: clearing the trip resumes
+// nothing, and the operator re-commands afterwards. wdTripped is set in the
+// same masked window that zeroes the outputs (watchdogLogic), so these
+// ISR-side checks cannot let a command in after the reset.
+
 static bool is_valid_mode(uint8_t mode)
 {
     if (mode == OPEN_LOOP || mode == CLOSED_LOOP_POSITION)
@@ -26,6 +32,8 @@ void handler_set_open_loop(crumbs_context_t *ctx, uint8_t opcode, const uint8_t 
 
     if (dcmt_set_open_loop_unpack(data, data_len, &v) != 0)
         return;
+    if (wdTripped)
+        return;
 
     if (slice.mode != OPEN_LOOP)
         return;
@@ -44,8 +52,17 @@ void handler_set_brake(crumbs_context_t *ctx, uint8_t opcode, const uint8_t *dat
     if (dcmt_set_brake_unpack(data, data_len, &v) != 0)
         return;
 
-    slice.motor1Brake = (v.m1_brake != 0);
-    slice.motor2Brake = (v.m2_brake != 0);
+    // Engaging a brake is always allowed; releasing one is not while a
+    // watchdog trip is held.
+    const bool hold = wdTripped;
+    if (v.m1_brake != 0)
+        slice.motor1Brake = true;
+    else if (!hold)
+        slice.motor1Brake = false;
+    if (v.m2_brake != 0)
+        slice.motor2Brake = true;
+    else if (!hold)
+        slice.motor2Brake = false;
 }
 
 void handler_set_mode(crumbs_context_t *ctx, uint8_t opcode, const uint8_t *data, uint8_t data_len, void *user_data)
@@ -56,6 +73,8 @@ void handler_set_mode(crumbs_context_t *ctx, uint8_t opcode, const uint8_t *data
     (void)user_data;
 
     if (dcmt_set_mode_unpack(data, data_len, &v) != 0)
+        return;
+    if (wdTripped)
         return;
 
     if (!is_valid_mode(v.mode))
@@ -76,6 +95,8 @@ void handler_set_setpoint(crumbs_context_t *ctx, uint8_t opcode, const uint8_t *
     (void)user_data;
 
     if (dcmt_set_setpoint_unpack(data, data_len, &v) != 0)
+        return;
+    if (wdTripped)
         return;
 
     // Persist setpoints independent of current mode so controllers can preload.

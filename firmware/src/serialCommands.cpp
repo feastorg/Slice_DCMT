@@ -62,6 +62,21 @@ static void processCommand(char *cmd)
     wdLastRxMs = millis();
     interrupts();
 
+    // While a watchdog trip is held, commands that could make a motor move
+    // are refused, as over I2C (dcmt_handlers.cpp): clearing the trip
+    // resumes nothing. Engaging a brake, PID tuning, WDOG=, WDCLEAR and READ
+    // stay available.
+    if (wdTripped &&
+        (starts_with_P(cmd, PSTR("MODE=")) ||
+         starts_with_P(cmd, PSTR("M1PWM=")) || starts_with_P(cmd, PSTR("M2PWM=")) ||
+         starts_with_P(cmd, PSTR("M1POS=")) || starts_with_P(cmd, PSTR("M2POS=")) ||
+         starts_with_P(cmd, PSTR("M1SPEED=")) || starts_with_P(cmd, PSTR("M2SPEED=")) ||
+         strcmp_P(cmd, PSTR("BRAKE1=0")) == 0 || strcmp_P(cmd, PSTR("BRAKE2=0")) == 0))
+    {
+        Serial.println(F("Ignored: watchdog trip held; send WDCLEAR, then release the brakes"));
+        return;
+    }
+
     if (starts_with_P(cmd, PSTR("MODE=")))
     {
         char *mode = (char *)after_prefix_P(cmd, PSTR("MODE="));
