@@ -58,6 +58,23 @@ This project did not use formal release tags through most of its history, so thi
 
 ### Changed
 
+- **SET payloads are unpacked and the `GET_STATE` reply is packed with the
+  shared contracts codec** (#28). Each SET handler reads its payload with
+  the generated `dcmt_*_unpack()` from `bread/dcmt_ops.h` instead of
+  reading at hand-written offsets, and `GET_STATE` fills a `dcmt_state_t`
+  and packs it with `dcmt_state_pack()`. Handler behaviour is unchanged,
+  and so are the bytes on the wire: a short payload is still ignored
+  whole, trailing bytes are still accepted, and every `GET_STATE` frame
+  is byte-identical. `SET_WATCHDOG` keeps its direct `u16` read, since the
+  contracts declare no payload layout for it.
+
+- **Requires CRUMBS `0.14.0` and `bread-crumbs-contracts` `0.6.0`**
+  (`platformio.ini`: `^0.14.0`, `^0.6.0`; previously `^0.12.4` and
+  `^0.4.5`). The codec first ships in contracts 0.6.0, which needs
+  CRUMBS 0.14. The version reply now reports CRUMBS
+  `1400` instead of `1205`. Until contracts 0.6.0 is on the PlatformIO
+  registry, the Firmware Build workflow cannot resolve it and fails.
+
 - **Archived board directories now name their generation**:
   `archive/hw_archive/g1-2021-06-08-mtu/` and
   `archive/hw_archive/g2-2024-02-13-finn/`. The dates are the boards' own;
