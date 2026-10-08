@@ -88,6 +88,7 @@ void handler_set_mode(crumbs_context_t *ctx, uint8_t opcode, const uint8_t *data
 void handler_set_setpoint(crumbs_context_t *ctx, uint8_t opcode, const uint8_t *data, uint8_t data_len, void *user_data);
 void handler_set_pid(crumbs_context_t *ctx, uint8_t opcode, const uint8_t *data, uint8_t data_len, void *user_data);
 void handler_set_watchdog(crumbs_context_t *ctx, uint8_t opcode, const uint8_t *data, uint8_t data_len, void *user_data);
+void handler_clear_watchdog_trip(crumbs_context_t *ctx, uint8_t opcode, const uint8_t *data, uint8_t data_len, void *user_data);
 void reply_version(crumbs_context_t *ctx, crumbs_message_t *reply, void *user_data);
 void reply_get_state(crumbs_context_t *ctx, crumbs_message_t *reply, void *user_data);
 void reply_get_caps(crumbs_context_t *ctx, crumbs_message_t *reply, void *user_data);
