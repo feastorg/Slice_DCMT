@@ -236,13 +236,30 @@ void loop()
 }
 
 // Fires for every CRC-valid inbound command frame (SET_REPLY excluded by
-// CRUMBS): any valid command proves a live master and clears a trip.
+// CRUMBS): any valid command proves a live master, so it stamps liveness.
+//
+// It deliberately does NOT clear the trip. A trip means the master went away
+// while this board was driving something, and the hold engaged by
+// watchdogLogic()/motorControlLogic() is a safe state. Incidental traffic
+// arriving afterwards proves the master is back; it does not prove anyone
+// decided it is safe to release a brake holding a load.
+//
+// Clearing here made the trip releasable by accident, and the accident had a
+// name: the controller's e-stop ladder drives its safe state as ordinary
+// command frames, so pressing e-stop on a tripped board cleared the trip, and
+// the OPEN_LOOP write(0) that followed released the brake the watchdog had
+// engaged. The emergency stop left the machine LESS stopped than it found it
+// (anolishq/anolis#261).
+//
+// The trip now latches until an explicit clear: BREAD_OP_CLEAR_WATCHDOG_TRIP
+// (handler_clear_watchdog_trip), the serial WDCLEAR command, or a reboot.
+// SET_WATCHDOG re-arms without clearing (feastorg/Slice_DCMT#26), and
+// DCMT_CAP_CLEAR_WATCHDOG_TRIP in GET_CAPS tells a controller so.
 static void on_crumbs_message(crumbs_context_t *c, const crumbs_message_t *msg)
 {
     (void)c;
     (void)msg;
     wdLastRxMs = millis();
-    wdTripped = false;
 }
 
 // ---- Implementation (previously in .ino files) ----
@@ -279,6 +296,10 @@ void setupSlice()
     rc = crumbs_register_handler(&ctx, BREAD_OP_SET_WATCHDOG, handler_set_watchdog, nullptr);
     if (rc != 0)
         SLICE_DEBUG_PRINTLN(F("CRUMBS: Failed to register BREAD_OP_SET_WATCHDOG"));
+
+    rc = crumbs_register_handler(&ctx, BREAD_OP_CLEAR_WATCHDOG_TRIP, handler_clear_watchdog_trip, nullptr);
+    if (rc != 0)
+        SLICE_DEBUG_PRINTLN(F("CRUMBS: Failed to register BREAD_OP_CLEAR_WATCHDOG_TRIP"));
 
     rc = crumbs_register_reply_handler(&ctx, 0x00, reply_version, nullptr);
     if (rc != 0)
@@ -452,7 +473,8 @@ void watchdogLogic()
 
     if (tripped)
     {
-        // Hold safe state until fresh traffic clears the trip (ISR side).
+        // Hold safe state until an explicit clear (CLEAR_WATCHDOG_TRIP or
+        // serial WDCLEAR) releases the trip.
         // brake() only (no write(0) first): write() releases the brake pin,
         // so alternating them every iteration toggles the driver at loop
         // frequency — audible squeal (found live at first watchdog trip).
@@ -469,8 +491,20 @@ void watchdogLogic()
     motor1Driver.brake();
     motor2Driver.brake();
 
-    // Same safe-state fields as processEStop: zero PWM/speed, preserve
-    // position setpoints and mode so controller state stays coherent.
+    // Clearing a trip resumes nothing: the operator re-commands afterwards.
+    // So the trip leaves no motion pending: PWM and speed setpoints zeroed,
+    // both brake flags set, and the position setpoints moved to where the
+    // shafts are now, so a later brake release holds position instead of
+    // finishing an interrupted move (motorControlLogic() keeps them synced
+    // while the shafts coast during the hold). Read the encoders here,
+    // outside the masked window (Encoder::read() re-enables interrupts), not
+    // from slice.motorNPosition, which is one loop stale.
+    const int16_t pos1 = clamp_i16(servo1.getActualPosition());
+    const int16_t pos2 = clamp_i16(servo2.getActualPosition());
+
+    // wdTripped is set in the same masked window, so the I2C handlers, which
+    // refuse actuating commands while it is set, can never store one after
+    // these fields are reset.
     noInterrupts();
     wdTripped = true;
     wdTripCount++;
@@ -480,6 +514,10 @@ void watchdogLogic()
     slice.motor2Speed = 0;
     slice.motor1SpeedSetpoint = 0;
     slice.motor2SpeedSetpoint = 0;
+    slice.motor1Brake = true;
+    slice.motor2Brake = true;
+    slice.motor1PositionSetpoint = pos1;
+    slice.motor2PositionSetpoint = pos2;
     interrupts();
     SLICE_DEBUG_PRINTLN(F("WATCHDOG TRIPPED: bus silent, motors braked"));
 }
@@ -511,7 +549,7 @@ void motorControlLogic()
     interrupts();
 
     // A tripped command watchdog holds the same safe state as a signal-wired
-    // e-stop until fresh traffic clears the trip (ISR side) — mirrors RLHT's
+    // e-stop until an explicit clear releases the trip — mirrors RLHT's
     // relayControlLogic, which guards `slice.eStop || wdTripped`. Without the
     // wdTripped half, the OPEN_LOOP write(0) / CLOSED_LOOP servo.run() below
     // release the brake that watchdogLogic() engaged, so brake+PWM toggle every
@@ -524,6 +562,33 @@ void motorControlLogic()
         stop_control_loops();
         motor1Driver.brake();
         motor2Driver.brake();
+
+        if (wdTrippedNow)
+        {
+            // The LMD18200 brake is dynamic, so a shaft keeps coasting after
+            // watchdogLogic() synced the setpoints at the trip. Re-sync them
+            // to the encoders every loop of the hold, so a brake release
+            // after the clear holds where the shaft stopped instead of
+            // driving it back by the coast distance. This runs here, not in
+            // watchdogLogic(), which returns early once WDOG=0 disarms
+            // during a trip. Read before the masked window: Encoder::read()
+            // re-enables interrupts.
+            //
+            // The release then starts the PID cleanly only because
+            // stop_control_loops() -> DCMotorServo::stop()/haltMotor() zeroes
+            // _PID_output (DCMotorServo 1.0.1 and 1.1.0). Without that, the
+            // first run() after a release lunges on the stale output. Check
+            // it again on a DCMotorServo bump.
+            const int16_t h1 = clamp_i16(servo1.getActualPosition());
+            const int16_t h2 = clamp_i16(servo2.getActualPosition());
+            noInterrupts();
+            if (wdTripped)
+            {
+                slice.motor1PositionSetpoint = h1;
+                slice.motor2PositionSetpoint = h2;
+            }
+            interrupts();
+        }
         return;
     }
 

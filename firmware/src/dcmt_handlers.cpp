@@ -6,6 +6,12 @@
 
 #include "globals.h"
 
+// While a watchdog trip is held, SET_OPEN_LOOP, SET_SETPOINT, SET_MODE and a
+// brake release are ignored rather than stored: clearing the trip resumes
+// nothing, and the operator re-commands afterwards. wdTripped is set in the
+// same masked window that zeroes the outputs (watchdogLogic), so these
+// ISR-side checks cannot let a command in after the reset.
+
 static bool is_valid_mode(uint8_t mode)
 {
     if (mode == OPEN_LOOP || mode == CLOSED_LOOP_POSITION)
@@ -19,54 +25,61 @@ static bool is_valid_mode(uint8_t mode)
 
 void handler_set_open_loop(crumbs_context_t *ctx, uint8_t opcode, const uint8_t *data, uint8_t data_len, void *user_data)
 {
-    int16_t m1 = 0;
-    int16_t m2 = 0;
+    dcmt_set_open_loop_t v;
     (void)ctx;
     (void)opcode;
     (void)user_data;
 
-    if (crumbs_msg_read_i16(data, data_len, 0, &m1) != 0)
+    if (dcmt_set_open_loop_unpack(data, data_len, &v) != 0)
         return;
-    if (crumbs_msg_read_i16(data, data_len, 2, &m2) != 0)
+    if (wdTripped)
         return;
 
     if (slice.mode != OPEN_LOOP)
         return;
 
-    slice.motor1PWM = constrain(m1, -255, 255);
-    slice.motor2PWM = constrain(m2, -255, 255);
+    slice.motor1PWM = constrain(v.m1_pwm, -255, 255);
+    slice.motor2PWM = constrain(v.m2_pwm, -255, 255);
 }
 
 void handler_set_brake(crumbs_context_t *ctx, uint8_t opcode, const uint8_t *data, uint8_t data_len, void *user_data)
 {
-    uint8_t b1 = 0;
-    uint8_t b2 = 0;
+    dcmt_set_brake_t v;
     (void)ctx;
     (void)opcode;
     (void)user_data;
 
-    if (crumbs_msg_read_u8(data, data_len, 0, &b1) != 0)
-        return;
-    if (crumbs_msg_read_u8(data, data_len, 1, &b2) != 0)
+    if (dcmt_set_brake_unpack(data, data_len, &v) != 0)
         return;
 
-    slice.motor1Brake = (b1 != 0);
-    slice.motor2Brake = (b2 != 0);
+    // Engaging a brake is always allowed; releasing one is not while a
+    // watchdog trip is held.
+    const bool hold = wdTripped;
+    if (v.m1_brake != 0)
+        slice.motor1Brake = true;
+    else if (!hold)
+        slice.motor1Brake = false;
+    if (v.m2_brake != 0)
+        slice.motor2Brake = true;
+    else if (!hold)
+        slice.motor2Brake = false;
 }
 
 void handler_set_mode(crumbs_context_t *ctx, uint8_t opcode, const uint8_t *data, uint8_t data_len, void *user_data)
 {
-    uint8_t mode = OPEN_LOOP;
+    dcmt_set_mode_t v;
     (void)ctx;
     (void)opcode;
     (void)user_data;
 
-    if (crumbs_msg_read_u8(data, data_len, 0, &mode) != 0)
+    if (dcmt_set_mode_unpack(data, data_len, &v) != 0)
+        return;
+    if (wdTripped)
         return;
 
-    if (!is_valid_mode(mode))
+    if (!is_valid_mode(v.mode))
         return;
-    slice.mode = static_cast<ControlModes>(mode);
+    slice.mode = static_cast<ControlModes>(v.mode);
     if (slice.mode != OPEN_LOOP)
     {
         slice.motor1PWM = 0;
@@ -76,57 +89,41 @@ void handler_set_mode(crumbs_context_t *ctx, uint8_t opcode, const uint8_t *data
 
 void handler_set_setpoint(crumbs_context_t *ctx, uint8_t opcode, const uint8_t *data, uint8_t data_len, void *user_data)
 {
-    int16_t t1 = 0;
-    int16_t t2 = 0;
+    dcmt_set_setpoint_t v;
     (void)ctx;
     (void)opcode;
     (void)user_data;
 
-    if (crumbs_msg_read_i16(data, data_len, 0, &t1) != 0)
+    if (dcmt_set_setpoint_unpack(data, data_len, &v) != 0)
         return;
-    if (crumbs_msg_read_i16(data, data_len, 2, &t2) != 0)
+    if (wdTripped)
         return;
 
     // Persist setpoints independent of current mode so controllers can preload.
-    slice.motor1PositionSetpoint = t1;
-    slice.motor2PositionSetpoint = t2;
+    slice.motor1PositionSetpoint = v.target1;
+    slice.motor2PositionSetpoint = v.target2;
 #if DCMT_ENABLE_SPEED_LOOP
-    slice.motor1SpeedSetpoint = t1;
-    slice.motor2SpeedSetpoint = t2;
+    slice.motor1SpeedSetpoint = v.target1;
+    slice.motor2SpeedSetpoint = v.target2;
 #endif
 }
 
 void handler_set_pid(crumbs_context_t *ctx, uint8_t opcode, const uint8_t *data, uint8_t data_len, void *user_data)
 {
-    uint8_t kp1_x10 = 0;
-    uint8_t ki1_x10 = 0;
-    uint8_t kd1_x10 = 0;
-    uint8_t kp2_x10 = 0;
-    uint8_t ki2_x10 = 0;
-    uint8_t kd2_x10 = 0;
+    dcmt_set_pid_t v;
     (void)ctx;
     (void)opcode;
     (void)user_data;
 
-    if (crumbs_msg_read_u8(data, data_len, 0, &kp1_x10) != 0)
-        return;
-    if (crumbs_msg_read_u8(data, data_len, 1, &ki1_x10) != 0)
-        return;
-    if (crumbs_msg_read_u8(data, data_len, 2, &kd1_x10) != 0)
-        return;
-    if (crumbs_msg_read_u8(data, data_len, 3, &kp2_x10) != 0)
-        return;
-    if (crumbs_msg_read_u8(data, data_len, 4, &ki2_x10) != 0)
-        return;
-    if (crumbs_msg_read_u8(data, data_len, 5, &kd2_x10) != 0)
+    if (dcmt_set_pid_unpack(data, data_len, &v) != 0)
         return;
 
-    const float kp1 = static_cast<float>(kp1_x10) / 10.0f;
-    const float ki1 = static_cast<float>(ki1_x10) / 10.0f;
-    const float kd1 = static_cast<float>(kd1_x10) / 10.0f;
-    const float kp2 = static_cast<float>(kp2_x10) / 10.0f;
-    const float ki2 = static_cast<float>(ki2_x10) / 10.0f;
-    const float kd2 = static_cast<float>(kd2_x10) / 10.0f;
+    const float kp1 = static_cast<float>(v.kp1_x10) / 10.0f;
+    const float ki1 = static_cast<float>(v.ki1_x10) / 10.0f;
+    const float kd1 = static_cast<float>(v.kd1_x10) / 10.0f;
+    const float kp2 = static_cast<float>(v.kp2_x10) / 10.0f;
+    const float ki2 = static_cast<float>(v.ki2_x10) / 10.0f;
+    const float kd2 = static_cast<float>(v.kd2_x10) / 10.0f;
 
     // Persist PID tunings independent of current mode so controllers can preload.
     slice.posPid1 = {kp1, ki1, kd1};
@@ -147,8 +144,29 @@ void handler_set_watchdog(crumbs_context_t *ctx, uint8_t opcode, const uint8_t *
     if (crumbs_msg_read_u16(data, data_len, 0, &timeout_ms) != 0)
         return;
 
+    // Arms, re-arms or disarms (0) and stamps liveness. It does not clear a
+    // latched trip: re-arming is safe to send while tripped, and releasing
+    // the hold is a separate, explicit act (handler_clear_watchdog_trip).
     wdTimeoutMs = timeout_ms;
     wdLastRxMs = millis();
+}
+
+void handler_clear_watchdog_trip(crumbs_context_t *ctx, uint8_t opcode, const uint8_t *data, uint8_t data_len, void *user_data)
+{
+    (void)ctx;
+    (void)opcode;
+    (void)data;
+    (void)user_data;
+
+    // BREAD_OP_CLEAR_WATCHDOG_TRIP: an operator's acknowledgement that
+    // releasing the hold is safe. Clears the trip and nothing else: the
+    // timeout, armed state and trip count are left as they are (liveness is
+    // stamped by on_crumbs_message, as for any valid frame).
+    //
+    // The payload is empty by contract. A non-empty one is rejected and the
+    // trip stays set, so a future payload form is never taken for a clear.
+    if (data_len != BREAD_WATCHDOG_CLEAR_TRIP_PAYLOAD_LEN)
+        return;
     wdTripped = false;
 }
 
@@ -202,27 +220,31 @@ void reply_get_state(crumbs_context_t *ctx, crumbs_message_t *reply, void *user_
     int16_t spd2 = BREAD_INVALID_I16;
 #endif
 
+    // Fixed payload layout across all modes, declared once in dcmt_ops.h
+    // (dcmt_state): [mode][m1_pwm][m2_pwm][sp1][sp2][pos1][pos2][spd1][spd2]
+    // [brakes][estop].
+    dcmt_state_t st;
+    st.mode = static_cast<uint8_t>(slice.mode);
+    st.m1_pwm = slice.motor1PWM;
+    st.m2_pwm = slice.motor2PWM;
+    st.sp1 = sp1;
+    st.sp2 = sp2;
+    st.pos1 = slice.motor1Position;
+    st.pos2 = slice.motor2Position;
+    st.spd1 = spd1;
+    st.spd2 = spd2;
+    st.brakes = brakes;
+    st.estop = slice.eStop ? 1 : 0;
+
     crumbs_msg_init(reply, DCMT_TYPE_ID, DCMT_OP_GET_STATE);
-    crumbs_msg_add_u8(reply, static_cast<uint8_t>(slice.mode));
-    // Fixed payload layout across all modes:
-    // [mode][m1_pwm][m2_pwm][sp1][sp2][pos1][pos2][spd1][spd2][brakes][estop]
-    crumbs_msg_add_i16(reply, slice.motor1PWM);
-    crumbs_msg_add_i16(reply, slice.motor2PWM);
-    crumbs_msg_add_i16(reply, sp1);
-    crumbs_msg_add_i16(reply, sp2);
-    crumbs_msg_add_i16(reply, slice.motor1Position);
-    crumbs_msg_add_i16(reply, slice.motor2Position);
-    crumbs_msg_add_i16(reply, spd1);
-    crumbs_msg_add_i16(reply, spd2);
-    crumbs_msg_add_u8(reply, brakes);
-    crumbs_msg_add_u8(reply, slice.eStop ? 1 : 0);
+    (void)dcmt_state_pack(reply, &st);
 }
 
 void reply_get_caps(crumbs_context_t *ctx, crumbs_message_t *reply, void *user_data)
 {
     uint8_t level = DCMT_CAP_LEVEL_2;
     uint32_t flags = DCMT_CAP_BASELINE_FLAGS | DCMT_CAP_CLOSED_LOOP_POSITION | DCMT_CAP_PID_TUNING |
-                     DCMT_CAP_CMD_WATCHDOG;
+                     DCMT_CAP_CMD_WATCHDOG | DCMT_CAP_CLEAR_WATCHDOG_TRIP;
     (void)ctx;
     (void)user_data;
 

@@ -56,7 +56,69 @@ This project did not use formal release tags through most of its history, so thi
 
 - Added a curated root changelog derived from the full repository and history review.
 
+- **An explicit clear for a latched watchdog trip** (#26). The firmware
+  handles `BREAD_OP_CLEAR_WATCHDOG_TRIP` (`0x7C`, empty payload), which
+  clears the trip and nothing else: the timeout, the armed state and the
+  trip count are unchanged. A frame with a non-empty payload is ignored
+  and the trip stays set. `GET_CAPS` advertises
+  `DCMT_CAP_CLEAR_WATCHDOG_TRIP` (bit 6) beside `DCMT_CAP_CMD_WATCHDOG`,
+  so a controller can tell this firmware from one where `SET_WATCHDOG`
+  still clears. The serial console gains the matching `WDCLEAR` command;
+  `firmware/README.md` describes both.
+
 ### Changed
+
+- **A watchdog trip latches until an operator clears it** (#26, supersedes
+  #14). A trip used to be cleared by any valid command frame, by every
+  `SET_WATCHDOG`, and by any line on the serial console. The controller's
+  e-stop ladder drives its safe state as ordinary command frames, so
+  pressing e-stop on a tripped board cleared the trip and the
+  `OPEN_LOOP` `write(0)` that followed released the brake the watchdog had
+  engaged (anolishq/anolis#261). Now only `BREAD_OP_CLEAR_WATCHDOG_TRIP`,
+  the serial `WDCLEAR` command or a reboot clears it. Command frames,
+  reply builds and serial input (including `READ`) still refresh
+  liveness, so a returning master does not cause a fresh trip.
+  `SET_WATCHDOG` and serial `WDOG=<ms>` set the timeout (`0` disarms) and
+  refresh liveness without clearing, so re-arming is safe while tripped;
+  disarming does not release a held trip either.
+
+- **Clearing a watchdog trip resumes nothing** (#26). A trip now also sets
+  both brake flags, alongside zeroing the PWM and speed setpoints, and
+  keeps both position setpoints at the encoder positions for as long as it
+  is held, so they follow a shaft that coasts after the (dynamic) brake
+  engages. `GET_STATE` after a trip shows both brakes engaged and, in
+  closed-loop position, the setpoint at the position where the shaft
+  stopped. While a trip is
+  held, `SET_OPEN_LOOP`, `SET_SETPOINT`, `SET_MODE` and a `SET_BRAKE` that
+  would release a brake are ignored, as are the serial `MODE=`, `M1PWM=`,
+  `M2PWM=`, `M1POS=`, `M2POS=`, `M1SPEED=`, `M2SPEED=`, `BRAKE1=0` and
+  `BRAKE2=0`; engaging a brake, PID tuning and the watchdog commands still
+  work. Previously a clear released the hold into the stored state: a
+  closed-loop position trip mid-move finished the move after the clear,
+  and commands sent during the hold took effect on it. To resume after a
+  trip: clear it, release the brakes with `SET_BRAKE(0, 0)` (the motors
+  then hold position, coast at PWM 0 or stay stopped, by mode), then send
+  setpoints and then the mode. Closed-loop position is limited to encoder
+  counts within ±32767 (positions are `int16` on the wire): beyond that the
+  setpoint a trip writes is clamped, and a brake release in position mode
+  drives toward the clamp value.
+
+- **SET payloads are unpacked and the `GET_STATE` reply is packed with the
+  shared contracts codec** (#28). Each SET handler reads its payload with
+  the generated `dcmt_*_unpack()` from `bread/dcmt_ops.h` instead of
+  reading at hand-written offsets, and `GET_STATE` fills a `dcmt_state_t`
+  and packs it with `dcmt_state_pack()`. Handler behaviour is unchanged,
+  and so are the bytes on the wire: a short payload is still ignored
+  whole, trailing bytes are still accepted, and every `GET_STATE` frame
+  is byte-identical. `SET_WATCHDOG` keeps its direct `u16` read, since the
+  contracts declare no payload layout for it.
+
+- **Requires CRUMBS `0.14.0` and `bread-crumbs-contracts` `0.6.0`**
+  (`platformio.ini`: `^0.14.0`, `^0.6.0`; previously `^0.12.4` and
+  `^0.4.5`). The codec and the clear-trip op first ship in contracts
+  0.6.0, which needs CRUMBS 0.14. The version reply now reports CRUMBS
+  `1400` instead of `1205`. Until contracts 0.6.0 is on the PlatformIO
+  registry, the Firmware Build workflow cannot resolve it and fails.
 
 - **Archived board directories now name their generation**:
   `archive/hw_archive/g1-2021-06-08-mtu/` and
