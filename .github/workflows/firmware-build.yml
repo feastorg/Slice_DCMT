@@ -36,6 +36,16 @@ jobs:
       - name: Install PlatformIO
         run: pip install platformio
 
+      - name: Reject a missing hardware generation
+        if: matrix.env == 'gen1_nano'
+        working-directory: firmware
+        run: |
+          if printf '#include "config_hardware.h"\n' | cc -E -D__AVR_ATmega328P__ -Iinclude -x c - > "$RUNNER_TEMP/missing-gen.out" 2> "$RUNNER_TEMP/missing-gen.err"; then
+            echo "config_hardware.h accepted a missing DCMT_HW_GEN" >&2
+            exit 1
+          fi
+          grep -F 'DCMT_HW_GEN must be set by the build env (see platformio.ini)' "$RUNNER_TEMP/missing-gen.err"
+
       - name: Build
         working-directory: firmware
         run: pio run -e ${{ matrix.env }}

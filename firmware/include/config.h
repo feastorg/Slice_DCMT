@@ -1,9 +1,10 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
-// Build profile defaults (overridden by PlatformIO env build_flags)
+// Hardware generation must be selected explicitly by the build environment.
+// A silent default can drive motors through the wrong pin map.
 #ifndef DCMT_HW_GEN
-#define DCMT_HW_GEN 1
+#error "DCMT_HW_GEN must be set by the build env (see platformio.ini)"
 #endif
 
 // Speed-loop default is based on MCU family:

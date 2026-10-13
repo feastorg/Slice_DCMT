@@ -8,6 +8,11 @@ This project did not use formal release tags through most of its history, so thi
 
 ### Fixed
 
+- **Firmware builds now require an explicit hardware generation** (#17).
+  Omitting `DCMT_HW_GEN` previously selected the generation 1 motor pin map,
+  which could silently drive a generation 2 board through the wrong pins.
+  CI now verifies that an unspecified generation is rejected.
+
 - **The Docs Pipeline runs again.** `hardware/.history` was committed as a
   gitlink (mode `160000`) with no `.gitmodules` entry, so `actions/checkout`
   failed with `fatal: No url found for submodule path 'hardware/.history'`
