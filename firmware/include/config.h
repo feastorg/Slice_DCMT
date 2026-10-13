@@ -1,9 +1,10 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
-// Build profile defaults (overridden by PlatformIO env build_flags)
+// Hardware generation has no default: it selects the motor pin map, and a
+// wrong guess drives the motors through the wrong pins (#17).
 #ifndef DCMT_HW_GEN
-#define DCMT_HW_GEN 1
+#error "DCMT_HW_GEN is not set: build a gen* env from firmware/platformio.ini, e.g. pio run -e gen2_nano"
 #endif
 
 // Speed-loop default is based on MCU family:
