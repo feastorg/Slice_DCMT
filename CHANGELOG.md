@@ -8,6 +8,16 @@ This project did not use formal release tags through most of its history, so thi
 
 ### Fixed
 
+- **A build without `DCMT_HW_GEN` now fails instead of building gen1** (#17).
+  `config.h` defaulted the generation to 1 when the flag was absent, so the
+  `#error "Unsupported DCMT_HW_GEN value"` guards in `config_hardware.h`
+  could only catch an out-of-range value, never a missing one. A gen2 board
+  built outside the PlatformIO envs got the gen1 motor pin map: `MOTOR1_DIR`
+  5, `MOTOR1_BRAKE` 7, `MOTOR2_DIR` 9 and `MOTOR2_BRAKE` 11 instead of 7, 8,
+  11 and 12. The `gen*` envs all set the flag and are unaffected;
+  `nano_base` and `nanoevery_base` now fail to build, as they should.
+  Firmware Build checks that a build without the flag is rejected.
+
 - **The Docs Pipeline runs again.** `hardware/.history` was committed as a
   gitlink (mode `160000`) with no `.gitmodules` entry, so `actions/checkout`
   failed with `fatal: No url found for submodule path 'hardware/.history'`

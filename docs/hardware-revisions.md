@@ -202,9 +202,9 @@ correct pins for motor 1 but **swaps motor 2's PWM and DIRECTION**, because G3
 uses `D10 = /PWM1`, `D11 = /DIR1` while `gen2` expects the opposite. Tracked in
 #18.
 
-Note also that `DCMT_HW_GEN` defaults to 1 when the build flag is absent, so the
-`#error` guard never fires for a *missing* generation — only for an out-of-range
-one. Tracked in #17.
+`DCMT_HW_GEN` has no default: a build without the flag fails with an `#error`
+in `firmware/include/config.h` rather than picking a pin map (#17). Build one
+of the `gen*` environments in `firmware/platformio.ini`.
 
 ## Firmware version cannot identify the build
 

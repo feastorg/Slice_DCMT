@@ -36,6 +36,16 @@ jobs:
       - name: Install PlatformIO
         run: pip install platformio
 
+      - name: Reject a build without DCMT_HW_GEN
+        if: matrix.env == 'gen1_nano'
+        working-directory: firmware
+        run: |
+          if cc -E include/config.h > /dev/null 2> "$RUNNER_TEMP/no-gen.err"; then
+            echo "config.h accepted a build without DCMT_HW_GEN" >&2
+            exit 1
+          fi
+          grep -F "DCMT_HW_GEN is not set" "$RUNNER_TEMP/no-gen.err"
+
       - name: Build
         working-directory: firmware
         run: pio run -e ${{ matrix.env }}
