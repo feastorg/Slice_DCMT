@@ -115,23 +115,39 @@ void handler_set_pid(crumbs_context_t *ctx, uint8_t opcode, const uint8_t *data,
     (void)opcode;
     (void)user_data;
 
-    if (dcmt_set_pid_unpack(data, data_len, &v) != 0)
+    // Exactly DCMT_SET_PID_PAYLOAD_LEN bytes (dcmt_set_pid_unpack alone accepts
+    // trailing bytes), or reject and apply nothing.
+    if (dcmt_parse_set_pid_payload(data, data_len, &v) != 0)
         return;
 
-    const float kp1 = static_cast<float>(v.kp1_x10) / 10.0f;
-    const float ki1 = static_cast<float>(v.ki1_x10) / 10.0f;
-    const float kd1 = static_cast<float>(v.kd1_x10) / 10.0f;
-    const float kp2 = static_cast<float>(v.kp2_x10) / 10.0f;
-    const float ki2 = static_cast<float>(v.ki2_x10) / 10.0f;
-    const float kd2 = static_cast<float>(v.kd2_x10) / 10.0f;
+    const float kp1 = static_cast<float>(v.kp1_x1000) / 1000.0f;
+    const float ki1 = static_cast<float>(v.ki1_x1000) / 1000.0f;
+    const float kd1 = static_cast<float>(v.kd1_x1000) / 1000.0f;
+    const float kp2 = static_cast<float>(v.kp2_x1000) / 1000.0f;
+    const float ki2 = static_cast<float>(v.ki2_x1000) / 1000.0f;
+    const float kd2 = static_cast<float>(v.kd2_x1000) / 1000.0f;
 
-    // Persist PID tunings independent of current mode so controllers can preload.
-    slice.posPid1 = {kp1, ki1, kd1};
-    slice.posPid2 = {kp2, ki2, kd2};
+    // Contracts 0.7.0: the gains tune the loop named by v.loop on both motors;
+    // the other loop keeps its gains. A loop the firmware does not define --
+    // including DCMT_PID_LOOP_SPEED when the speed loop is not built -- is
+    // rejected and nothing is applied. Tunings persist across modes so a
+    // controller can preload them.
+    if (v.loop == DCMT_PID_LOOP_POSITION)
+    {
+        slice.posPid1 = {kp1, ki1, kd1};
+        slice.posPid2 = {kp2, ki2, kd2};
+    }
 #if DCMT_ENABLE_SPEED_LOOP
-    slice.speedPid1 = {kp1, ki1, kd1};
-    slice.speedPid2 = {kp2, ki2, kd2};
+    else if (v.loop == DCMT_PID_LOOP_SPEED)
+    {
+        slice.speedPid1 = {kp1, ki1, kd1};
+        slice.speedPid2 = {kp2, ki2, kd2};
+    }
 #endif
+    else
+    {
+        return;
+    }
 }
 
 void handler_set_watchdog(crumbs_context_t *ctx, uint8_t opcode, const uint8_t *data, uint8_t data_len, void *user_data)
@@ -222,7 +238,7 @@ void reply_get_state(crumbs_context_t *ctx, crumbs_message_t *reply, void *user_
 
     // Fixed payload layout across all modes, declared once in dcmt_ops.h
     // (dcmt_state): [mode][m1_pwm][m2_pwm][sp1][sp2][pos1][pos2][spd1][spd2]
-    // [brakes][estop].
+    // [brakes][estop][estop_count].
     dcmt_state_t st;
     st.mode = static_cast<uint8_t>(slice.mode);
     st.m1_pwm = slice.motor1PWM;
@@ -235,6 +251,7 @@ void reply_get_state(crumbs_context_t *ctx, crumbs_message_t *reply, void *user_
     st.spd2 = spd2;
     st.brakes = brakes;
     st.estop = slice.eStop ? 1 : 0;
+    st.estop_count = estopCount;
 
     crumbs_msg_init(reply, DCMT_TYPE_ID, DCMT_OP_GET_STATE);
     (void)dcmt_state_pack(reply, &st);

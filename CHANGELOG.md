@@ -6,6 +6,28 @@ This project did not use formal release tags through most of its history, so thi
 
 ## [Unreleased]
 
+### Changed
+
+- **Migrated to CRUMBS 0.16.0 and bread-crumbs-contracts 0.8.0** (was CRUMBS
+  0.14.0 / contracts 0.6.0 in `firmware/platformio.ini`; `slice.yaml`
+  `lib_deps` were stale at 0.12.4 / 0.4.3 and now match). The version reply's
+  CRUMBS field reports 1600.
+- **SET_PID adopts the contracts 0.7.0 layout (module major 2).** The payload
+  is 13 bytes, `[loop:u8][kp1..kd2 u16 x1000]`: `dcmt_parse_set_pid_payload`
+  rejects any other length, and `loop` (`DCMT_PID_LOOP_POSITION` or
+  `DCMT_PID_LOOP_SPEED`) selects which loop of both motors the gains tune,
+  leaving the other loop's gains unchanged. A loop the firmware does not
+  define -- `DCMT_PID_LOOP_SPEED` when the speed loop is not built -- is
+  rejected and nothing is applied. Was six `u8` gains x10 written to both
+  loops at once. `DCMT_MODULE_VER_MAJOR` is now 2 (from contracts); a
+  controller built for one major refuses firmware reporting the other.
+- **GET_STATE carries `estop_count`.** The reply is the fixed 20-byte
+  `dcmt_state` layout with `estop_count` at `DCMT_STATE_OFF_ESTOP_COUNT`: a
+  count of hardware e-stop presses since boot, wrapping at 255, so a
+  controller sees a press it did not poll during. A new volatile `estopCount`
+  is incremented on the released->pressed transition in `processEStop()`,
+  mirroring `wdTripCount`.
+
 ### Fixed
 
 - **A build without `DCMT_HW_GEN` now fails instead of building gen1** (#17).
