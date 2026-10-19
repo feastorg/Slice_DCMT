@@ -256,11 +256,31 @@ void loop()
 // (handler_clear_watchdog_trip), the serial WDCLEAR command, or a reboot.
 // SET_WATCHDOG re-arms without clearing (feastorg/Slice_DCMT#26), and
 // DCMT_CAP_CLEAR_WATCHDOG_TRIP in GET_CAPS tells a controller so.
+//
+// Every valid frame stamps liveness, a refused one included: the watchdog
+// watches for a live master, not for commands it accepts. on_message runs
+// before the opcode's handler, so a frame whose opcode neither DCMT nor
+// bread-common defines is refused here; CRUMBS cannot reject it itself,
+// since on_message takes every frame.
+#define DCMT_DEFINED_OP_CASE_(name, value) case (value):
+static bool is_defined_op(uint8_t opcode)
+{
+    switch (opcode)
+    {
+        DCMT_OPS(DCMT_DEFINED_OP_CASE_)
+        BREAD_COMMON_OPS(DCMT_DEFINED_OP_CASE_)
+        return true;
+    default:
+        return false;
+    }
+}
+#undef DCMT_DEFINED_OP_CASE_
+
 static void on_crumbs_message(crumbs_context_t *c, const crumbs_message_t *msg)
 {
-    (void)c;
-    (void)msg;
     wdLastRxMs = millis();
+    if (!is_defined_op(msg->opcode))
+        (void)crumbs_refuse(c, BREAD_REFUSE_UNKNOWN_OP);
 }
 
 // ---- Implementation (previously in .ino files) ----

@@ -6,8 +6,41 @@ This project did not use formal release tags through most of its history, so thi
 
 ## [Unreleased]
 
+### Fixed
+
+- **GET_ACK now reports a dropped SET as refused** (#43). Before this, no
+  handler called `crumbs_refuse()`, and `on_crumbs_message`, registered as
+  `on_message`, made CRUMBS count every decoded frame as applied. On
+  dcmt0, a SPEED SET_PID with the speed loop not built, a SET_PID with
+  loop `0x07`, a 12-byte SET_PID and opcode `0x3F` all read applied. Each
+  early return now refuses with a `BREAD_REFUSE_*` reason
+  (bread-crumbs-contracts `bread_refuse.h`):
+  - `MALFORMED`: a payload that does not unpack, a SET_PID that is not 13
+    bytes, a SET_WATCHDOG without its u16, a CLEAR_WATCHDOG_TRIP with a
+    payload;
+  - `WATCHDOG_TRIP`: SET_OPEN_LOOP, SET_MODE and SET_SETPOINT while a trip
+    is held, and a SET_BRAKE that asks for a release then. That SET_BRAKE
+    still engages any brake it names before it refuses;
+  - `UNDEFINED_VALUE`: a SET_MODE or SET_PID loop the contract does not
+    define, and a SET_OPEN_LOOP PWM outside `-DCMT_PWM_MAX` to
+    `DCMT_PWM_MAX` (255). That PWM was clamped to ±255 before; now its
+    motor keeps its PWM, the other motor still takes its own, and the
+    frame is refused;
+  - `NOT_BUILT`: SET_MODE closed-loop speed or SET_PID loop SPEED with
+    `DCMT_ENABLE_SPEED_LOOP=0`;
+  - `WRONG_MODE`: SET_OPEN_LOOP outside open loop;
+  - `UNKNOWN_OP`: an opcode neither DCMT nor bread-common defines, refused
+    in `on_crumbs_message`. Its watchdog stamp still runs first for every
+    valid frame, a refused one included.
+
+  GET_CAPS advertises `DCMT_CAP_REFUSES`. The serial console's `M1PWM=` and
+  `M2PWM=` still clamp to ±255; they are not the I2C contract.
+
 ### Changed
 
+- Requires bread-crumbs-contracts `^0.9.0` (`firmware/platformio.ini` and
+  `slice.yaml`), for `bread_refuse.h`, `DCMT_CAP_REFUSES` and
+  `DCMT_PWM_MAX`.
 - **Migrated to CRUMBS 0.16.0 and bread-crumbs-contracts 0.8.0** (was CRUMBS
   0.14.0 / contracts 0.6.0 in `firmware/platformio.ini`; `slice.yaml`
   `lib_deps` were stale at 0.12.4 / 0.4.3 and now match). The version reply's
