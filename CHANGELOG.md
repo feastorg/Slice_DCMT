@@ -11,9 +11,7 @@ This project did not use formal release tags through most of its history, so thi
 - **Migrated to CRUMBS 0.16.0 and bread-crumbs-contracts 0.8.0** (was CRUMBS
   0.14.0 / contracts 0.6.0 in `firmware/platformio.ini`; `slice.yaml`
   `lib_deps` were stale at 0.12.4 / 0.4.3 and now match). The version reply's
-  CRUMBS field reports 1600. CRUMBS 0.16.0 is on the PlatformIO registry;
-  contracts 0.8.0 is not yet, so the firmware build does not resolve its
-  dependencies until it is published.
+  CRUMBS field reports 1600.
 - **SET_PID adopts the contracts 0.7.0 layout (module major 2).** The payload
   is 13 bytes, `[loop:u8][kp1..kd2 u16 x1000]`: `dcmt_parse_set_pid_payload`
   rejects any other length, and `loop` (`DCMT_PID_LOOP_POSITION` or
