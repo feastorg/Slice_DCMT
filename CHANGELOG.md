@@ -6,6 +6,33 @@ This project did not use formal release tags through most of its history, so thi
 
 ## [Unreleased]
 
+### Fixed
+
+- **GET_ACK now reports a dropped SET as refused** (#43). Before this, no
+  handler called `crumbs_refuse()`, and `on_crumbs_message`, registered as
+  `on_message`, made CRUMBS count every decoded frame as applied. On
+  dcmt0, a SPEED SET_PID with the speed loop not built, a SET_PID with
+  loop `0x07`, a 12-byte SET_PID and opcode `0x3F` all read applied. Each
+  early return now refuses with a `BREAD_REFUSE_*` reason
+  (bread-crumbs-contracts `bread_refuse.h`):
+  - `MALFORMED`: a payload that does not unpack, a SET_PID that is not 13
+    bytes, a SET_WATCHDOG without its u16, a CLEAR_WATCHDOG_TRIP with a
+    payload;
+  - `WATCHDOG_TRIP`: SET_OPEN_LOOP, SET_MODE and SET_SETPOINT while a trip
+    is held, and a SET_BRAKE that asks for a release then. That SET_BRAKE
+    still engages any brake it names before it refuses;
+  - `UNDEFINED_VALUE`: a SET_MODE or SET_PID loop the contract does not
+    define;
+  - `NOT_BUILT`: SET_MODE closed-loop speed or SET_PID loop SPEED with
+    `DCMT_ENABLE_SPEED_LOOP=0`;
+  - `WRONG_MODE`: SET_OPEN_LOOP outside open loop;
+  - `UNKNOWN_OP`: an opcode neither DCMT nor bread-common defines, refused
+    in `on_crumbs_message`. Its watchdog stamp still runs first for every
+    valid frame, a refused one included.
+
+  GET_CAPS advertises `DCMT_CAP_REFUSES`. Clamped values (PWM to ±255)
+  are still applied, as before.
+
 ### Changed
 
 - **Migrated to CRUMBS 0.16.0 and bread-crumbs-contracts 0.8.0** (was CRUMBS

@@ -56,8 +56,27 @@ Speed commands/capability are only available when `DCMT_ENABLE_SPEED_LOOP=1`.
 
 Controllers should gate behavior by capability flags, not by generation labels.
 
-All levels also advertise `DCMT_CAP_CMD_WATCHDOG` and
-`DCMT_CAP_CLEAR_WATCHDOG_TRIP`.
+All levels also advertise `DCMT_CAP_CMD_WATCHDOG`,
+`DCMT_CAP_CLEAR_WATCHDOG_TRIP` and `DCMT_CAP_REFUSES`.
+
+## Refused Commands
+
+A SET the firmware does not act on in full is refused with
+`crumbs_refuse()`, so CRUMBS's GET_ACK reports it refused, with a reason from
+bread-crumbs-contracts `bread_refuse.h`:
+
+| Reason | When |
+| --- | --- |
+| `BREAD_REFUSE_MALFORMED` | the payload does not unpack; SET_PID is not 13 bytes; SET_WATCHDOG lacks its u16; CLEAR_WATCHDOG_TRIP carries a payload |
+| `BREAD_REFUSE_WATCHDOG_TRIP` | SET_OPEN_LOOP, SET_MODE or SET_SETPOINT while a trip is held, or a SET_BRAKE that asks for a release then |
+| `BREAD_REFUSE_UNDEFINED_VALUE` | a SET_MODE or SET_PID loop the contract does not define |
+| `BREAD_REFUSE_NOT_BUILT` | closed-loop speed (SET_MODE or SET_PID loop SPEED) when the speed loop is not built |
+| `BREAD_REFUSE_WRONG_MODE` | SET_OPEN_LOOP outside open loop |
+| `BREAD_REFUSE_UNKNOWN_OP` | an opcode neither DCMT nor bread-common defines |
+
+A SET_BRAKE that asks for a release while tripped still engages any brake it
+names, then refuses. GET_STATE shows what took effect. Every valid frame
+refreshes the watchdog, a refused one included.
 
 ## Command Watchdog
 
@@ -87,8 +106,9 @@ While a trip is held, commands that could make a motor move are ignored,
 not stored: `SET_OPEN_LOOP`, `SET_SETPOINT`, `SET_MODE` and a `SET_BRAKE`
 that would release a brake, and over serial `MODE=`, `M1PWM=`/`M2PWM=`,
 `M1POS=`/`M2POS=`, `M1SPEED=`/`M2SPEED=`, `BRAKE1=0` and `BRAKE2=0`.
-Engaging a brake, PID tuning (`SET_PID`, `PIDPOS=`, `PIDSPEED=`),
-`SET_WATCHDOG`/`WDOG=` and `READ` still work.
+The I2C ones are refused with `BREAD_REFUSE_WATCHDOG_TRIP`, so GET_ACK says
+so (see Refused Commands). Engaging a brake, PID tuning (`SET_PID`,
+`PIDPOS=`, `PIDSPEED=`), `SET_WATCHDOG`/`WDOG=` and `READ` still work.
 
 Clearing a trip resumes nothing; the brakes stay engaged and no motor
 moves. To resume:

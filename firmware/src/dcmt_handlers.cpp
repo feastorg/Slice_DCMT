@@ -11,32 +11,48 @@
 // nothing, and the operator re-commands afterwards. wdTripped is set in the
 // same masked window that zeroes the outputs (watchdogLogic), so these
 // ISR-side checks cannot let a command in after the reset.
+//
+// Every SET this firmware does not act on in full is refused with a
+// BREAD_REFUSE_* reason (bread_refuse.h), so GET_ACK reports it refused
+// rather than applied; GET_CAPS advertises DCMT_CAP_REFUSES. A frame acted on
+// in part applies what it can before refusing.
 
-static bool is_valid_mode(uint8_t mode)
+// 0 if this build runs mode, else the reason to refuse it with.
+static uint8_t mode_refuse_reason(uint8_t mode)
 {
     if (mode == OPEN_LOOP || mode == CLOSED_LOOP_POSITION)
-        return true;
-#if DCMT_ENABLE_SPEED_LOOP
+        return 0;
     if (mode == CLOSED_LOOP_SPEED)
-        return true;
+#if DCMT_ENABLE_SPEED_LOOP
+        return 0;
+#else
+        return BREAD_REFUSE_NOT_BUILT;
 #endif
-    return false;
+    return BREAD_REFUSE_UNDEFINED_VALUE;
 }
 
 void handler_set_open_loop(crumbs_context_t *ctx, uint8_t opcode, const uint8_t *data, uint8_t data_len, void *user_data)
 {
     dcmt_set_open_loop_t v;
-    (void)ctx;
     (void)opcode;
     (void)user_data;
 
     if (dcmt_set_open_loop_unpack(data, data_len, &v) != 0)
+    {
+        (void)crumbs_refuse(ctx, BREAD_REFUSE_MALFORMED);
         return;
+    }
     if (wdTripped)
+    {
+        (void)crumbs_refuse(ctx, BREAD_REFUSE_WATCHDOG_TRIP);
         return;
+    }
 
     if (slice.mode != OPEN_LOOP)
+    {
+        (void)crumbs_refuse(ctx, BREAD_REFUSE_WRONG_MODE);
         return;
+    }
 
     slice.motor1PWM = constrain(v.m1_pwm, -255, 255);
     slice.motor2PWM = constrain(v.m2_pwm, -255, 255);
@@ -45,15 +61,18 @@ void handler_set_open_loop(crumbs_context_t *ctx, uint8_t opcode, const uint8_t 
 void handler_set_brake(crumbs_context_t *ctx, uint8_t opcode, const uint8_t *data, uint8_t data_len, void *user_data)
 {
     dcmt_set_brake_t v;
-    (void)ctx;
     (void)opcode;
     (void)user_data;
 
     if (dcmt_set_brake_unpack(data, data_len, &v) != 0)
+    {
+        (void)crumbs_refuse(ctx, BREAD_REFUSE_MALFORMED);
         return;
+    }
 
     // Engaging a brake is always allowed; releasing one is not while a
-    // watchdog trip is held.
+    // watchdog trip is held. A frame that asks for a release then still
+    // engages any brake it names, and is refused for the ignored release.
     const bool hold = wdTripped;
     if (v.m1_brake != 0)
         slice.motor1Brake = true;
@@ -63,22 +82,34 @@ void handler_set_brake(crumbs_context_t *ctx, uint8_t opcode, const uint8_t *dat
         slice.motor2Brake = true;
     else if (!hold)
         slice.motor2Brake = false;
+
+    if (hold && (v.m1_brake == 0 || v.m2_brake == 0))
+        (void)crumbs_refuse(ctx, BREAD_REFUSE_WATCHDOG_TRIP);
 }
 
 void handler_set_mode(crumbs_context_t *ctx, uint8_t opcode, const uint8_t *data, uint8_t data_len, void *user_data)
 {
     dcmt_set_mode_t v;
-    (void)ctx;
     (void)opcode;
     (void)user_data;
 
     if (dcmt_set_mode_unpack(data, data_len, &v) != 0)
+    {
+        (void)crumbs_refuse(ctx, BREAD_REFUSE_MALFORMED);
         return;
+    }
     if (wdTripped)
+    {
+        (void)crumbs_refuse(ctx, BREAD_REFUSE_WATCHDOG_TRIP);
         return;
+    }
 
-    if (!is_valid_mode(v.mode))
+    const uint8_t reason = mode_refuse_reason(v.mode);
+    if (reason != 0)
+    {
+        (void)crumbs_refuse(ctx, reason);
         return;
+    }
     slice.mode = static_cast<ControlModes>(v.mode);
     if (slice.mode != OPEN_LOOP)
     {
@@ -90,14 +121,19 @@ void handler_set_mode(crumbs_context_t *ctx, uint8_t opcode, const uint8_t *data
 void handler_set_setpoint(crumbs_context_t *ctx, uint8_t opcode, const uint8_t *data, uint8_t data_len, void *user_data)
 {
     dcmt_set_setpoint_t v;
-    (void)ctx;
     (void)opcode;
     (void)user_data;
 
     if (dcmt_set_setpoint_unpack(data, data_len, &v) != 0)
+    {
+        (void)crumbs_refuse(ctx, BREAD_REFUSE_MALFORMED);
         return;
+    }
     if (wdTripped)
+    {
+        (void)crumbs_refuse(ctx, BREAD_REFUSE_WATCHDOG_TRIP);
         return;
+    }
 
     // Persist setpoints independent of current mode so controllers can preload.
     slice.motor1PositionSetpoint = v.target1;
@@ -111,14 +147,16 @@ void handler_set_setpoint(crumbs_context_t *ctx, uint8_t opcode, const uint8_t *
 void handler_set_pid(crumbs_context_t *ctx, uint8_t opcode, const uint8_t *data, uint8_t data_len, void *user_data)
 {
     dcmt_set_pid_t v;
-    (void)ctx;
     (void)opcode;
     (void)user_data;
 
     // Exactly DCMT_SET_PID_PAYLOAD_LEN bytes (dcmt_set_pid_unpack alone accepts
-    // trailing bytes), or reject and apply nothing.
+    // trailing bytes), or refuse and apply nothing.
     if (dcmt_parse_set_pid_payload(data, data_len, &v) != 0)
+    {
+        (void)crumbs_refuse(ctx, BREAD_REFUSE_MALFORMED);
         return;
+    }
 
     const float kp1 = static_cast<float>(v.kp1_x1000) / 1000.0f;
     const float ki1 = static_cast<float>(v.ki1_x1000) / 1000.0f;
@@ -128,10 +166,10 @@ void handler_set_pid(crumbs_context_t *ctx, uint8_t opcode, const uint8_t *data,
     const float kd2 = static_cast<float>(v.kd2_x1000) / 1000.0f;
 
     // Contracts 0.7.0: the gains tune the loop named by v.loop on both motors;
-    // the other loop keeps its gains. A loop the firmware does not define --
-    // including DCMT_PID_LOOP_SPEED when the speed loop is not built -- is
-    // rejected and nothing is applied. Tunings persist across modes so a
-    // controller can preload them.
+    // the other loop keeps its gains. DCMT_PID_LOOP_SPEED when the speed loop
+    // is not built, and a loop the contract does not define, are refused and
+    // nothing is applied. Tunings persist across modes so a controller can
+    // preload them.
     if (v.loop == DCMT_PID_LOOP_POSITION)
     {
         slice.posPid1 = {kp1, ki1, kd1};
@@ -146,6 +184,7 @@ void handler_set_pid(crumbs_context_t *ctx, uint8_t opcode, const uint8_t *data,
 #endif
     else
     {
+        (void)crumbs_refuse(ctx, v.loop == DCMT_PID_LOOP_SPEED ? BREAD_REFUSE_NOT_BUILT : BREAD_REFUSE_UNDEFINED_VALUE);
         return;
     }
 }
@@ -153,12 +192,14 @@ void handler_set_pid(crumbs_context_t *ctx, uint8_t opcode, const uint8_t *data,
 void handler_set_watchdog(crumbs_context_t *ctx, uint8_t opcode, const uint8_t *data, uint8_t data_len, void *user_data)
 {
     uint16_t timeout_ms = 0;
-    (void)ctx;
     (void)opcode;
     (void)user_data;
 
     if (crumbs_msg_read_u16(data, data_len, 0, &timeout_ms) != 0)
+    {
+        (void)crumbs_refuse(ctx, BREAD_REFUSE_MALFORMED);
         return;
+    }
 
     // Arms, re-arms or disarms (0) and stamps liveness. It does not clear a
     // latched trip: re-arming is safe to send while tripped, and releasing
@@ -169,7 +210,6 @@ void handler_set_watchdog(crumbs_context_t *ctx, uint8_t opcode, const uint8_t *
 
 void handler_clear_watchdog_trip(crumbs_context_t *ctx, uint8_t opcode, const uint8_t *data, uint8_t data_len, void *user_data)
 {
-    (void)ctx;
     (void)opcode;
     (void)data;
     (void)user_data;
@@ -179,10 +219,13 @@ void handler_clear_watchdog_trip(crumbs_context_t *ctx, uint8_t opcode, const ui
     // timeout, armed state and trip count are left as they are (liveness is
     // stamped by on_crumbs_message, as for any valid frame).
     //
-    // The payload is empty by contract. A non-empty one is rejected and the
+    // The payload is empty by contract. A non-empty one is refused and the
     // trip stays set, so a future payload form is never taken for a clear.
     if (data_len != BREAD_WATCHDOG_CLEAR_TRIP_PAYLOAD_LEN)
+    {
+        (void)crumbs_refuse(ctx, BREAD_REFUSE_MALFORMED);
         return;
+    }
     wdTripped = false;
 }
 
@@ -261,7 +304,7 @@ void reply_get_caps(crumbs_context_t *ctx, crumbs_message_t *reply, void *user_d
 {
     uint8_t level = DCMT_CAP_LEVEL_2;
     uint32_t flags = DCMT_CAP_BASELINE_FLAGS | DCMT_CAP_CLOSED_LOOP_POSITION | DCMT_CAP_PID_TUNING |
-                     DCMT_CAP_CMD_WATCHDOG | DCMT_CAP_CLEAR_WATCHDOG_TRIP;
+                     DCMT_CAP_CMD_WATCHDOG | DCMT_CAP_CLEAR_WATCHDOG_TRIP | DCMT_CAP_REFUSES;
     (void)ctx;
     (void)user_data;
 
