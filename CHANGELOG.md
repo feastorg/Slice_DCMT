@@ -38,6 +38,9 @@ This project did not use formal release tags through most of its history, so thi
 
 ### Changed
 
+- Requires bread-crumbs-contracts `^0.9.0` (`firmware/platformio.ini` and
+  `slice.yaml`), for `bread_refuse.h`, `DCMT_CAP_REFUSES` and
+  `DCMT_PWM_MAX`.
 - **Migrated to CRUMBS 0.16.0 and bread-crumbs-contracts 0.8.0** (was CRUMBS
   0.14.0 / contracts 0.6.0 in `firmware/platformio.ini`; `slice.yaml`
   `lib_deps` were stale at 0.12.4 / 0.4.3 and now match). The version reply's
