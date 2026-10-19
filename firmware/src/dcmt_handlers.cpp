@@ -54,8 +54,17 @@ void handler_set_open_loop(crumbs_context_t *ctx, uint8_t opcode, const uint8_t 
         return;
     }
 
-    slice.motor1PWM = constrain(v.m1_pwm, -255, 255);
-    slice.motor2PWM = constrain(v.m2_pwm, -255, 255);
+    // A PWM outside -DCMT_PWM_MAX..DCMT_PWM_MAX is not one the contract
+    // defines: that motor keeps its PWM, the other still takes its own, and
+    // the frame is refused.
+    const bool m1_ok = (v.m1_pwm >= -DCMT_PWM_MAX && v.m1_pwm <= DCMT_PWM_MAX);
+    const bool m2_ok = (v.m2_pwm >= -DCMT_PWM_MAX && v.m2_pwm <= DCMT_PWM_MAX);
+    if (m1_ok)
+        slice.motor1PWM = v.m1_pwm;
+    if (m2_ok)
+        slice.motor2PWM = v.m2_pwm;
+    if (!m1_ok || !m2_ok)
+        (void)crumbs_refuse(ctx, BREAD_REFUSE_UNDEFINED_VALUE);
 }
 
 void handler_set_brake(crumbs_context_t *ctx, uint8_t opcode, const uint8_t *data, uint8_t data_len, void *user_data)

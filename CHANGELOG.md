@@ -22,7 +22,10 @@ This project did not use formal release tags through most of its history, so thi
     is held, and a SET_BRAKE that asks for a release then. That SET_BRAKE
     still engages any brake it names before it refuses;
   - `UNDEFINED_VALUE`: a SET_MODE or SET_PID loop the contract does not
-    define;
+    define, and a SET_OPEN_LOOP PWM outside `-DCMT_PWM_MAX` to
+    `DCMT_PWM_MAX` (255). That PWM was clamped to ±255 before; now its
+    motor keeps its PWM, the other motor still takes its own, and the
+    frame is refused;
   - `NOT_BUILT`: SET_MODE closed-loop speed or SET_PID loop SPEED with
     `DCMT_ENABLE_SPEED_LOOP=0`;
   - `WRONG_MODE`: SET_OPEN_LOOP outside open loop;
@@ -30,8 +33,8 @@ This project did not use formal release tags through most of its history, so thi
     in `on_crumbs_message`. Its watchdog stamp still runs first for every
     valid frame, a refused one included.
 
-  GET_CAPS advertises `DCMT_CAP_REFUSES`. Clamped values (PWM to ±255)
-  are still applied, as before.
+  GET_CAPS advertises `DCMT_CAP_REFUSES`. The serial console's `M1PWM=` and
+  `M2PWM=` still clamp to ±255; they are not the I2C contract.
 
 ### Changed
 
