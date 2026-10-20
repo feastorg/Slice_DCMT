@@ -40,6 +40,7 @@ volatile unsigned long wdLastRxMs = 0;
 volatile bool wdTripped = false;
 volatile uint8_t wdTripCount = 0;
 volatile uint8_t estopCount = 0;
+volatile uint8_t holdResyncMask = 0;
 
 static const unsigned long ESTOP_DEBOUNCE_MS = 25;
 static bool estopReleasePending = false;
@@ -466,6 +467,17 @@ void processEStop(bool pressed)
         motor1Driver.brake();
         motor2Driver.brake();
 
+        // The press holds like a watchdog trip (DCMT_CAP_ESTOP_HOLD): both
+        // brake flags set and the position setpoints at the encoders, so the
+        // release moves nothing and a later brake release holds position.
+        // Read the encoders outside the masked window (Encoder::read()
+        // re-enables interrupts).
+        const int16_t pos1 = clamp_i16(servo1.getActualPosition());
+        const int16_t pos2 = clamp_i16(servo2.getActualPosition());
+
+        // eStop is set in the same masked window, so the I2C handlers, which
+        // refuse actuating commands while it is set, can never store one
+        // after these fields are reset.
         noInterrupts();
         // Count a new press only (released -> pressed). A line held at
         // power-up counts as one press. Wraps at 255.
@@ -478,6 +490,13 @@ void processEStop(bool pressed)
         slice.motor2Speed = 0;
         slice.motor1SpeedSetpoint = 0;
         slice.motor2SpeedSetpoint = 0;
+        slice.motor1Brake = true;
+        slice.motor2Brake = true;
+        slice.motor1PositionSetpoint = pos1;
+        slice.motor2PositionSetpoint = pos2;
+        slice.motor1Position = pos1;
+        slice.motor2Position = pos2;
+        holdResyncMask = HOLD_RESYNC_M1 | HOLD_RESYNC_M2;
         interrupts();
         SLICE_DEBUG_PRINTLN(F("ESTOP PRESSED!"));
     }
@@ -552,8 +571,25 @@ void watchdogLogic()
     slice.motor2Brake = true;
     slice.motor1PositionSetpoint = pos1;
     slice.motor2PositionSetpoint = pos2;
+    holdResyncMask = HOLD_RESYNC_M1 | HOLD_RESYNC_M2;
     interrupts();
     SLICE_DEBUG_PRINTLN(F("WATCHDOG TRIPPED: bus silent, motors braked"));
+}
+
+// Call inside the commit window with this pass's positions. After a hold
+// ends, a motor whose hold-engaged brake is still on keeps its position
+// setpoint on its encoder, so SET_BRAKE(0,0) holds where the shaft crept
+// to rather than driving it back (DCMT_CAP_ESTOP_HOLD). Releasing that
+// brake, or a new setpoint for that motor, clears its holdResyncMask bit,
+// so a setpoint the controller sends is never overwritten. The speed
+// setpoints need no follow: the hold zeroed them, and only a new setpoint,
+// which ends the follow, sets them again.
+static void follow_held_setpoints(int16_t pos1, int16_t pos2)
+{
+    if (slice.motor1Brake && (holdResyncMask & HOLD_RESYNC_M1))
+        slice.motor1PositionSetpoint = pos1;
+    if (slice.motor2Brake && (holdResyncMask & HOLD_RESYNC_M2))
+        slice.motor2PositionSetpoint = pos2;
 }
 
 void motorControlLogic()
@@ -597,32 +633,32 @@ void motorControlLogic()
         motor1Driver.brake();
         motor2Driver.brake();
 
-        if (wdTrippedNow)
+        // The LMD18200 brake is dynamic, so a shaft keeps coasting after the
+        // trip or press synced the setpoints. Re-sync them to the encoders
+        // every loop of the hold, so a brake release after the clear or
+        // release holds where the shaft stopped instead of driving it back
+        // by the coast distance, and publish the positions, which the mode
+        // branches below would otherwise leave frozen for GET_STATE. This
+        // runs here, not in watchdogLogic(), which returns early once WDOG=0
+        // disarms during a trip. Read before the masked window:
+        // Encoder::read() re-enables interrupts.
+        //
+        // The release then starts the PID cleanly only because
+        // stop_control_loops() -> DCMotorServo::stop()/haltMotor() zeroes
+        // _PID_output (DCMotorServo 1.0.1 and 1.1.0). Without that, the
+        // first run() after a release lunges on the stale output. Check it
+        // again on a DCMotorServo bump.
+        const int16_t h1 = clamp_i16(servo1.getActualPosition());
+        const int16_t h2 = clamp_i16(servo2.getActualPosition());
+        noInterrupts();
+        if (wdTripped || slice.eStop)
         {
-            // The LMD18200 brake is dynamic, so a shaft keeps coasting after
-            // watchdogLogic() synced the setpoints at the trip. Re-sync them
-            // to the encoders every loop of the hold, so a brake release
-            // after the clear holds where the shaft stopped instead of
-            // driving it back by the coast distance. This runs here, not in
-            // watchdogLogic(), which returns early once WDOG=0 disarms
-            // during a trip. Read before the masked window: Encoder::read()
-            // re-enables interrupts.
-            //
-            // The release then starts the PID cleanly only because
-            // stop_control_loops() -> DCMotorServo::stop()/haltMotor() zeroes
-            // _PID_output (DCMotorServo 1.0.1 and 1.1.0). Without that, the
-            // first run() after a release lunges on the stale output. Check
-            // it again on a DCMotorServo bump.
-            const int16_t h1 = clamp_i16(servo1.getActualPosition());
-            const int16_t h2 = clamp_i16(servo2.getActualPosition());
-            noInterrupts();
-            if (wdTripped)
-            {
-                slice.motor1PositionSetpoint = h1;
-                slice.motor2PositionSetpoint = h2;
-            }
-            interrupts();
+            slice.motor1PositionSetpoint = h1;
+            slice.motor2PositionSetpoint = h2;
         }
+        slice.motor1Position = h1;
+        slice.motor2Position = h2;
+        interrupts();
         return;
     }
 
@@ -658,6 +694,7 @@ void motorControlLogic()
         noInterrupts();
         if (local.motor1Brake) slice.motor1PWM = 0;
         if (local.motor2Brake) slice.motor2PWM = 0;
+        follow_held_setpoints(local.motor1Position, local.motor2Position);
         slice.motor1Position = local.motor1Position;
         slice.motor2Position = local.motor2Position;
         slice.motor1Speed = local.motor1Speed;
@@ -705,6 +742,7 @@ void motorControlLogic()
         noInterrupts();
         if (local.motor1Brake) slice.motor1PWM = 0;
         if (local.motor2Brake) slice.motor2PWM = 0;
+        follow_held_setpoints(local.motor1Position, local.motor2Position);
         slice.motor1Position = local.motor1Position;
         slice.motor2Position = local.motor2Position;
         slice.motor1Speed = local.motor1Speed;
@@ -754,6 +792,7 @@ void motorControlLogic()
         noInterrupts();
         if (local.motor1Brake) slice.motor1PWM = 0;
         if (local.motor2Brake) slice.motor2PWM = 0;
+        follow_held_setpoints(local.motor1Position, local.motor2Position);
         slice.motor1Position = local.motor1Position;
         slice.motor2Position = local.motor2Position;
         slice.motor1Speed = local.motor1Speed;

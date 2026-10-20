@@ -62,18 +62,21 @@ static void processCommand(char *cmd)
     wdLastRxMs = millis();
     interrupts();
 
-    // While a watchdog trip is held, commands that could make a motor move
-    // are refused, as over I2C (dcmt_handlers.cpp): clearing the trip
-    // resumes nothing. Engaging a brake, PID tuning, WDOG=, WDCLEAR and READ
-    // stay available.
-    if (wdTripped &&
+    // While an e-stop or a watchdog trip is held, commands that could make a
+    // motor move are refused, as over I2C (dcmt_handlers.cpp): releasing the
+    // e-stop or clearing the trip resumes nothing. Engaging a brake, PID
+    // tuning, WDOG=, WDCLEAR and READ stay available.
+    if ((slice.eStop || wdTripped) &&
         (starts_with_P(cmd, PSTR("MODE=")) ||
          starts_with_P(cmd, PSTR("M1PWM=")) || starts_with_P(cmd, PSTR("M2PWM=")) ||
          starts_with_P(cmd, PSTR("M1POS=")) || starts_with_P(cmd, PSTR("M2POS=")) ||
          starts_with_P(cmd, PSTR("M1SPEED=")) || starts_with_P(cmd, PSTR("M2SPEED=")) ||
          strcmp_P(cmd, PSTR("BRAKE1=0")) == 0 || strcmp_P(cmd, PSTR("BRAKE2=0")) == 0))
     {
-        Serial.println(F("Ignored: watchdog trip held; send WDCLEAR, then release the brakes"));
+        if (slice.eStop)
+            Serial.println(F("Ignored: e-stop held; release it, then release the brakes"));
+        else
+            Serial.println(F("Ignored: watchdog trip held; send WDCLEAR, then release the brakes"));
         return;
     }
 
@@ -148,13 +151,23 @@ static void processCommand(char *cmd)
     }
     else if (starts_with_P(cmd, PSTR("M1POS=")))
     {
-        slice.motor1PositionSetpoint = (int16_t)atol(after_prefix_P(cmd, PSTR("M1POS=")));
+        const int16_t sp = (int16_t)atol(after_prefix_P(cmd, PSTR("M1POS=")));
+        // A new setpoint ends this motor's post-hold follow.
+        noInterrupts();
+        slice.motor1PositionSetpoint = sp;
+        holdResyncMask &= (uint8_t)~HOLD_RESYNC_M1;
+        interrupts();
         Serial.print(F("M1POS-> "));
         Serial.println(slice.motor1PositionSetpoint);
     }
     else if (starts_with_P(cmd, PSTR("M2POS=")))
     {
-        slice.motor2PositionSetpoint = (int16_t)atol(after_prefix_P(cmd, PSTR("M2POS=")));
+        const int16_t sp = (int16_t)atol(after_prefix_P(cmd, PSTR("M2POS=")));
+        // A new setpoint ends this motor's post-hold follow.
+        noInterrupts();
+        slice.motor2PositionSetpoint = sp;
+        holdResyncMask &= (uint8_t)~HOLD_RESYNC_M2;
+        interrupts();
         Serial.print(F("M2POS-> "));
         Serial.println(slice.motor2PositionSetpoint);
     }
@@ -175,13 +188,23 @@ static void processCommand(char *cmd)
 #if DCMT_ENABLE_SPEED_LOOP
     else if (starts_with_P(cmd, PSTR("M1SPEED=")))
     {
-        slice.motor1SpeedSetpoint = (int16_t)atol(after_prefix_P(cmd, PSTR("M1SPEED=")));
+        const int16_t sp = (int16_t)atol(after_prefix_P(cmd, PSTR("M1SPEED=")));
+        // A new setpoint ends this motor's post-hold follow.
+        noInterrupts();
+        slice.motor1SpeedSetpoint = sp;
+        holdResyncMask &= (uint8_t)~HOLD_RESYNC_M1;
+        interrupts();
         Serial.print(F("M1SPEED-> "));
         Serial.println(slice.motor1SpeedSetpoint);
     }
     else if (starts_with_P(cmd, PSTR("M2SPEED=")))
     {
-        slice.motor2SpeedSetpoint = (int16_t)atol(after_prefix_P(cmd, PSTR("M2SPEED=")));
+        const int16_t sp = (int16_t)atol(after_prefix_P(cmd, PSTR("M2SPEED=")));
+        // A new setpoint ends this motor's post-hold follow.
+        noInterrupts();
+        slice.motor2SpeedSetpoint = sp;
+        holdResyncMask &= (uint8_t)~HOLD_RESYNC_M2;
+        interrupts();
         Serial.print(F("M2SPEED-> "));
         Serial.println(slice.motor2SpeedSetpoint);
     }
@@ -207,7 +230,10 @@ static void processCommand(char *cmd)
     }
     else if (strcmp_P(cmd, PSTR("BRAKE1=0")) == 0)
     {
+        noInterrupts();
         slice.motor1Brake = false;
+        holdResyncMask &= (uint8_t)~HOLD_RESYNC_M1;
+        interrupts();
         Serial.println(F("Motor1 brake released"));
     }
     else if (strcmp_P(cmd, PSTR("BRAKE2=1")) == 0)
@@ -217,7 +243,10 @@ static void processCommand(char *cmd)
     }
     else if (strcmp_P(cmd, PSTR("BRAKE2=0")) == 0)
     {
+        noInterrupts();
         slice.motor2Brake = false;
+        holdResyncMask &= (uint8_t)~HOLD_RESYNC_M2;
+        interrupts();
         Serial.println(F("Motor2 brake released"));
     }
     else if (starts_with_P(cmd, PSTR("WDOG=")))

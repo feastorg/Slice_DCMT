@@ -71,6 +71,14 @@ extern volatile bool wdTripped;
 extern volatile uint8_t wdTripCount;
 // Hardware e-stop presses since boot, wraps at 255 (dcmt_state estop_count).
 extern volatile uint8_t estopCount;
+// One bit per motor, set when a hold (watchdog trip or e-stop press) engages
+// the brakes and cleared when that motor's brake is released or a new
+// setpoint for it arrives. While a bit is set and the brake is engaged, the
+// motor's position setpoint follows its encoder, so the brake release holds
+// where the shaft is (DCMT_CAP_ESTOP_HOLD).
+#define HOLD_RESYNC_M1 0x01
+#define HOLD_RESYNC_M2 0x02
+extern volatile uint8_t holdResyncMask;
 
 // ---- Functions implemented across translation units ----
 void setupSlice();
