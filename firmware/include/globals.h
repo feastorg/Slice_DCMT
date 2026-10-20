@@ -84,6 +84,7 @@ extern volatile uint8_t holdResyncMask;
 void setupSlice();
 void setupDCMT();
 void pollEStop();
+void updateStatusLed();
 void processEStop(bool pressed);
 void watchdogLogic();
 void motorControlLogic();
