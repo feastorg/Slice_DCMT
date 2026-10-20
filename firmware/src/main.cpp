@@ -219,6 +219,10 @@ static void apply_mode_transition(const DCMT_SLICE &s)
 void setup()
 {
     wdt_disable();
+    // e-stop: no external bias resistor on current boards, so use the internal
+    // pull-up. Enable it first, so it has the rest of setup to charge the
+    // line before the first sample below.
+    pinMode(ESTOP, INPUT_PULLUP);
     setupSlice();
     setupDCMT();
     // I2C is live from setupSlice(), so sample the e-stop through the boot
@@ -357,9 +361,6 @@ void setupSlice()
     FastLED.show();
 #endif
 
-    // e-stop: no external bias resistor on current boards, so use internal pull-up.
-    pinMode(ESTOP, INPUT_PULLUP);
-
     SLICE_DEBUG_PRINTLN(F("DCMT SLICE INITIALIZED"));
     SLICE_DEBUG_PRINT(F("VERSION: "));
     SLICE_DEBUG_PRINT(DCMT_MODULE_VER_MAJOR);
@@ -415,7 +416,7 @@ void setupDCMT()
     appliedMode = slice.mode;
 }
 
-// Poll/ISR/processing
+// Poll/processing
 // The line is sampled on every pass, not edge-triggered. The first LOW
 // sample asserts the e-stop, so bounce or an edge train cannot postpone a
 // stop (#39); release needs the line HIGH for ESTOP_DEBOUNCE_MS without a
