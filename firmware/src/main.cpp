@@ -225,7 +225,8 @@ void setup()
     setupDCMT();
     // I2C is live from setupSlice(), so sample the e-stop through the boot
     // second instead of sleeping: a line held at power-up, or pressed now,
-    // is asserted before loop() runs.
+    // is asserted before loop() runs. The status LED stays blue through it;
+    // loop() shows the e-stop state from its first pass.
     const unsigned long bootStartMs = millis();
     while (millis() - bootStartMs < 1000)
         pollEStop();
@@ -236,6 +237,7 @@ void loop()
 {
     wdt_reset();
     pollEStop();
+    updateStatusLed();
     watchdogLogic();
     motorControlLogic();
     serialCommands();
@@ -453,22 +455,26 @@ void pollEStop()
             processEStop(false);
         }
     }
+}
 
+// Red while the e-stop is held, green otherwise, written only on a change.
+// Called from loop() only. The boot wait in setup() polls the e-stop too, and
+// when pollEStop() wrote the LED, its first pass replaced the boot blue
+// within microseconds.
+void updateStatusLed()
+{
 #if DCMT_HAS_STATUS_LED
+    // 0 until the first pass, so the first pass always writes. Green is
+    // CRGB::Green (0x008000) at FastLED's old scale, as before.
+    static uint8_t lastLed = 0;
+    const uint8_t next = slice.eStop ? 1 : 2;
+    if (next != lastLed)
     {
-        // Red while the e-stop is held, green otherwise; 0 until the first
-        // pass, so the first pass always writes. Green is CRGB::Green
-        // (0x008000) at the same scale, as before.
-        static uint8_t lastLed = 0;
-        const uint8_t next = slice.eStop ? 1 : 2;
-        if (next != lastLed)
-        {
-            if (next == 1)
-                statusLedShow(50, 0, 0);
-            else
-                statusLedShow(0, 25, 0);
-            lastLed = next;
-        }
+        if (next == 1)
+            statusLedShow(50, 0, 0);
+        else
+            statusLedShow(0, 25, 0);
+        lastLed = next;
     }
 #endif
 }

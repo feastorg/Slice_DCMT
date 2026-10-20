@@ -8,6 +8,14 @@ This project did not use formal release tags through most of its history, so thi
 
 ### Fixed
 
+- **The status LED shows blue through boot again** (gen2). Since the e-stop
+  sampling change (#47), the 1 s boot wait polls the e-stop, and
+  `pollEStop()` also wrote the LED, so its first pass turned the boot blue
+  green (or red) within microseconds. The LED update is now
+  `updateStatusLed()`, called from `loop()` only: blue holds through the
+  boot wait, and the first loop pass shows the e-stop state. A press during
+  boot is still asserted at once; only its red waits for the boot wait to
+  end.
 - **A GET opcode sent as a command frame is refused** (#45). GET_STATE,
   GET_WATCHDOG and GET_CAPS are queries, answered through SET_REPLY. Sent
   as a command frame, nothing handled them, yet GET_ACK reported them
