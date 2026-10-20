@@ -57,7 +57,8 @@ Speed commands/capability are only available when `DCMT_ENABLE_SPEED_LOOP=1`.
 Controllers should gate behavior by capability flags, not by generation labels.
 
 All levels also advertise `DCMT_CAP_CMD_WATCHDOG`,
-`DCMT_CAP_CLEAR_WATCHDOG_TRIP` and `DCMT_CAP_REFUSES`.
+`DCMT_CAP_CLEAR_WATCHDOG_TRIP`, `DCMT_CAP_ESTOP_HOLD` and
+`DCMT_CAP_REFUSES`.
 
 ## Refused Commands
 
@@ -68,14 +69,15 @@ bread-crumbs-contracts `bread_refuse.h`:
 | Reason | When |
 | --- | --- |
 | `BREAD_REFUSE_MALFORMED` | the payload does not unpack; SET_PID is not 13 bytes; SET_WATCHDOG lacks its u16; CLEAR_WATCHDOG_TRIP carries a payload |
+| `BREAD_REFUSE_ESTOP` | SET_OPEN_LOOP, SET_MODE or SET_SETPOINT while the hardware e-stop is held, or a SET_BRAKE that asks for a release then; this reason wins when a watchdog trip is held too |
 | `BREAD_REFUSE_WATCHDOG_TRIP` | SET_OPEN_LOOP, SET_MODE or SET_SETPOINT while a trip is held, or a SET_BRAKE that asks for a release then |
 | `BREAD_REFUSE_UNDEFINED_VALUE` | a SET_MODE or SET_PID loop the contract does not define; a SET_OPEN_LOOP PWM outside `-DCMT_PWM_MAX` to `DCMT_PWM_MAX` (255) |
 | `BREAD_REFUSE_NOT_BUILT` | closed-loop speed (SET_MODE or SET_PID loop SPEED) when the speed loop is not built |
 | `BREAD_REFUSE_WRONG_MODE` | SET_OPEN_LOOP outside open loop |
 | `BREAD_REFUSE_UNKNOWN_OP` | an opcode neither DCMT nor bread-common defines |
 
-A SET_BRAKE that asks for a release while tripped still engages any brake it
-names, then refuses, and a SET_OPEN_LOOP with one PWM out of range still sets
+A SET_BRAKE that asks for a release while tripped or e-stopped still engages
+any brake it names, then refuses, and a SET_OPEN_LOOP with one PWM out of range still sets
 the other motor's, then refuses. GET_STATE shows what took effect. Every valid frame
 refreshes the watchdog, a refused one included.
 
@@ -85,10 +87,10 @@ The watchdog boots disarmed (unless built with `-DDCMT_WATCHDOG_BOOT_MS=<ms>`).
 Once armed, by `BREAD_OP_SET_WATCHDOG` or `WDOG=<ms>`, it trips when no I2C
 command, I2C reply or serial line has arrived within the timeout. A trip
 brakes both motors and leaves no motion pending: it zeroes the PWM commands
-and speed setpoints, sets both brake flags, and keeps both position
-setpoints at the encoder positions for as long as the trip is held, so they
-follow a shaft that coasts to a stop after the brake engages. The mode is
-kept. `GET_STATE` after a trip therefore shows both brakes engaged and, in
+and speed setpoints, sets both brake flags, and keeps each position
+setpoint at its encoder position until that motor's brake is released,
+through the clear, so it follows a shaft that coasts or creeps after the
+brake engages. The mode is kept. `GET_STATE` after a trip therefore shows both brakes engaged and, in
 closed-loop position, the setpoint at the position where the shaft stopped.
 
 A trip latches. It is cleared only by:
@@ -117,8 +119,9 @@ moves. To resume:
 1. clear the trip (`BREAD_OP_CLEAR_WATCHDOG_TRIP` or `WDCLEAR`);
 2. release the brakes (`SET_BRAKE(0, 0)`, or `BRAKE1=0` and `BRAKE2=0`).
    In closed-loop position the motors then hold the position where they
-   stopped, in open-loop they coast at PWM 0, and in closed-loop speed
-   they stay stopped;
+   are, in open-loop they coast at PWM 0, and in closed-loop speed they
+   stay stopped. A setpoint sent before this step is overwritten, since
+   the setpoints follow the encoders until the brakes are released;
 3. send new commands: setpoints first, then the mode. A mode change to
    closed-loop position drives to whatever setpoint is stored at that
    moment.
@@ -134,6 +137,33 @@ Serial commands (115200 baud, newline-terminated):
 - `WDOG=<ms>` - arm with that timeout, or disarm with `0`
 - `WDCLEAR` - clear a latched trip
 - `READ` - print state, ending `WDOG:<timeout|off>, WDTRIP:<tripped>/<trip count>`
+
+## Hardware E-stop
+
+The e-stop input is D2 with the internal pull-up; a press pulls it LOW. The
+firmware samples it on every loop pass and through the 1 s boot wait. The
+first LOW sample asserts the e-stop, and release needs the line HIGH for
+25 ms without a LOW sample in between, so a chattering line stays stopped.
+
+A press holds the way a watchdog trip does (`DCMT_CAP_ESTOP_HOLD`): both
+motors brake, the PWM commands and speed setpoints go to 0, both brake
+flags are set, and each position setpoint follows its encoder until that
+motor's brake is released. While the e-stop is held, the commands the
+watchdog section lists are refused with `BREAD_REFUSE_ESTOP`, over I2C and
+serial alike. `GET_STATE` shows `estop` 1 and the shafts' positions, and
+`estop_count` counts the press.
+
+Releasing the e-stop moves nothing. Resume as after a cleared trip: release
+the brakes, then send setpoints, then the mode.
+
+The firmware hold is the only stop on gen1 boards, which have no hardware
+cut of motor power on the e-stop line. Gen2 boards also cut motor power in
+hardware, and the firmware hold keeps the motors from running stored
+commands when that power returns. An e-stop that cuts the supply instead
+reboots the slice into open loop at PWM 0; power the Nano from the switched
+supply too, since a Nano kept alive over USB sees no stop and runs its
+stored commands when motor power returns. bread-crumbs-contracts
+`docs/controller-compatibility.md` covers both wirings.
 
 ## References
 

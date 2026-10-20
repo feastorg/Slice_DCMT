@@ -6,11 +6,13 @@
 
 #include "globals.h"
 
-// While a watchdog trip is held, SET_OPEN_LOOP, SET_SETPOINT, SET_MODE and a
-// brake release are ignored rather than stored: clearing the trip resumes
-// nothing, and the operator re-commands afterwards. wdTripped is set in the
-// same masked window that zeroes the outputs (watchdogLogic), so these
-// ISR-side checks cannot let a command in after the reset.
+// While a watchdog trip or a hardware e-stop is held, SET_OPEN_LOOP,
+// SET_SETPOINT, SET_MODE and a brake release are refused rather than stored:
+// clearing the trip or releasing the e-stop resumes nothing, and the
+// operator re-commands afterwards (DCMT_CAP_ESTOP_HOLD). wdTripped and
+// slice.eStop are each set in the same masked window that zeroes the
+// outputs (watchdogLogic, processEStop), so these ISR-side checks cannot let
+// a command in after the reset.
 //
 // Every SET this firmware does not act on in full is refused with a
 // BREAD_REFUSE_* reason (bread_refuse.h), so GET_ACK reports it refused
@@ -31,6 +33,18 @@ static uint8_t mode_refuse_reason(uint8_t mode)
     return BREAD_REFUSE_UNDEFINED_VALUE;
 }
 
+// 0 if no hold is in force, else the reason to refuse an actuating command
+// with. An e-stop wins over a watchdog trip: clearing the trip does not lift
+// the e-stop hold.
+static uint8_t hold_refuse_reason()
+{
+    if (slice.eStop)
+        return BREAD_REFUSE_ESTOP;
+    if (wdTripped)
+        return BREAD_REFUSE_WATCHDOG_TRIP;
+    return 0;
+}
+
 void handler_set_open_loop(crumbs_context_t *ctx, uint8_t opcode, const uint8_t *data, uint8_t data_len, void *user_data)
 {
     dcmt_set_open_loop_t v;
@@ -42,9 +56,10 @@ void handler_set_open_loop(crumbs_context_t *ctx, uint8_t opcode, const uint8_t 
         (void)crumbs_refuse(ctx, BREAD_REFUSE_MALFORMED);
         return;
     }
-    if (wdTripped)
+    const uint8_t hold = hold_refuse_reason();
+    if (hold != 0)
     {
-        (void)crumbs_refuse(ctx, BREAD_REFUSE_WATCHDOG_TRIP);
+        (void)crumbs_refuse(ctx, hold);
         return;
     }
 
@@ -80,20 +95,31 @@ void handler_set_brake(crumbs_context_t *ctx, uint8_t opcode, const uint8_t *dat
     }
 
     // Engaging a brake is always allowed; releasing one is not while a
-    // watchdog trip is held. A frame that asks for a release then still
-    // engages any brake it names, and is refused for the ignored release.
-    const bool hold = wdTripped;
+    // watchdog trip or an e-stop is held. A frame that asks for a release
+    // then still engages any brake it names, and is refused for the ignored
+    // release. A release that is applied ends that motor's hold re-sync.
+    const uint8_t hold = hold_refuse_reason();
     if (v.m1_brake != 0)
+    {
         slice.motor1Brake = true;
-    else if (!hold)
+    }
+    else if (hold == 0)
+    {
         slice.motor1Brake = false;
+        holdResyncMask &= (uint8_t)~HOLD_RESYNC_M1;
+    }
     if (v.m2_brake != 0)
+    {
         slice.motor2Brake = true;
-    else if (!hold)
+    }
+    else if (hold == 0)
+    {
         slice.motor2Brake = false;
+        holdResyncMask &= (uint8_t)~HOLD_RESYNC_M2;
+    }
 
-    if (hold && (v.m1_brake == 0 || v.m2_brake == 0))
-        (void)crumbs_refuse(ctx, BREAD_REFUSE_WATCHDOG_TRIP);
+    if (hold != 0 && (v.m1_brake == 0 || v.m2_brake == 0))
+        (void)crumbs_refuse(ctx, hold);
 }
 
 void handler_set_mode(crumbs_context_t *ctx, uint8_t opcode, const uint8_t *data, uint8_t data_len, void *user_data)
@@ -107,9 +133,10 @@ void handler_set_mode(crumbs_context_t *ctx, uint8_t opcode, const uint8_t *data
         (void)crumbs_refuse(ctx, BREAD_REFUSE_MALFORMED);
         return;
     }
-    if (wdTripped)
+    const uint8_t hold = hold_refuse_reason();
+    if (hold != 0)
     {
-        (void)crumbs_refuse(ctx, BREAD_REFUSE_WATCHDOG_TRIP);
+        (void)crumbs_refuse(ctx, hold);
         return;
     }
 
@@ -138,9 +165,10 @@ void handler_set_setpoint(crumbs_context_t *ctx, uint8_t opcode, const uint8_t *
         (void)crumbs_refuse(ctx, BREAD_REFUSE_MALFORMED);
         return;
     }
-    if (wdTripped)
+    const uint8_t hold = hold_refuse_reason();
+    if (hold != 0)
     {
-        (void)crumbs_refuse(ctx, BREAD_REFUSE_WATCHDOG_TRIP);
+        (void)crumbs_refuse(ctx, hold);
         return;
     }
 
@@ -313,7 +341,8 @@ void reply_get_caps(crumbs_context_t *ctx, crumbs_message_t *reply, void *user_d
 {
     uint8_t level = DCMT_CAP_LEVEL_2;
     uint32_t flags = DCMT_CAP_BASELINE_FLAGS | DCMT_CAP_CLOSED_LOOP_POSITION | DCMT_CAP_PID_TUNING |
-                     DCMT_CAP_CMD_WATCHDOG | DCMT_CAP_CLEAR_WATCHDOG_TRIP | DCMT_CAP_REFUSES;
+                     DCMT_CAP_CMD_WATCHDOG | DCMT_CAP_CLEAR_WATCHDOG_TRIP | DCMT_CAP_ESTOP_HOLD |
+                     DCMT_CAP_REFUSES;
     (void)ctx;
     (void)user_data;
 

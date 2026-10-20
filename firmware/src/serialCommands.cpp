@@ -62,18 +62,21 @@ static void processCommand(char *cmd)
     wdLastRxMs = millis();
     interrupts();
 
-    // While a watchdog trip is held, commands that could make a motor move
-    // are refused, as over I2C (dcmt_handlers.cpp): clearing the trip
-    // resumes nothing. Engaging a brake, PID tuning, WDOG=, WDCLEAR and READ
-    // stay available.
-    if (wdTripped &&
+    // While an e-stop or a watchdog trip is held, commands that could make a
+    // motor move are refused, as over I2C (dcmt_handlers.cpp): releasing the
+    // e-stop or clearing the trip resumes nothing. Engaging a brake, PID
+    // tuning, WDOG=, WDCLEAR and READ stay available.
+    if ((slice.eStop || wdTripped) &&
         (starts_with_P(cmd, PSTR("MODE=")) ||
          starts_with_P(cmd, PSTR("M1PWM=")) || starts_with_P(cmd, PSTR("M2PWM=")) ||
          starts_with_P(cmd, PSTR("M1POS=")) || starts_with_P(cmd, PSTR("M2POS=")) ||
          starts_with_P(cmd, PSTR("M1SPEED=")) || starts_with_P(cmd, PSTR("M2SPEED=")) ||
          strcmp_P(cmd, PSTR("BRAKE1=0")) == 0 || strcmp_P(cmd, PSTR("BRAKE2=0")) == 0))
     {
-        Serial.println(F("Ignored: watchdog trip held; send WDCLEAR, then release the brakes"));
+        if (slice.eStop)
+            Serial.println(F("Ignored: e-stop held; release it, then release the brakes"));
+        else
+            Serial.println(F("Ignored: watchdog trip held; send WDCLEAR, then release the brakes"));
         return;
     }
 
@@ -207,7 +210,10 @@ static void processCommand(char *cmd)
     }
     else if (strcmp_P(cmd, PSTR("BRAKE1=0")) == 0)
     {
+        noInterrupts();
         slice.motor1Brake = false;
+        holdResyncMask &= (uint8_t)~HOLD_RESYNC_M1;
+        interrupts();
         Serial.println(F("Motor1 brake released"));
     }
     else if (strcmp_P(cmd, PSTR("BRAKE2=1")) == 0)
@@ -217,7 +223,10 @@ static void processCommand(char *cmd)
     }
     else if (strcmp_P(cmd, PSTR("BRAKE2=0")) == 0)
     {
+        noInterrupts();
         slice.motor2Brake = false;
+        holdResyncMask &= (uint8_t)~HOLD_RESYNC_M2;
+        interrupts();
         Serial.println(F("Motor2 brake released"));
     }
     else if (starts_with_P(cmd, PSTR("WDOG=")))

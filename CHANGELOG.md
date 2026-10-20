@@ -8,6 +8,31 @@ This project did not use formal release tags through most of its history, so thi
 
 ### Fixed
 
+- **Commands sent while the e-stop is held no longer run at the release**
+  (#46, #30). The press braked the motors but left the brake flags and
+  position setpoints alone, and every motion command sent during the hold
+  was stored, so releasing the line ran the stored PWM, mode, setpoint or
+  brake release; in position mode the motor drove back toward its old
+  target. The e-stop now holds the way a watchdog trip does, as
+  `DCMT_CAP_ESTOP_HOLD` defines it, and GET_CAPS advertises the flag:
+  - the press sets both brake flags and moves the position setpoints to
+    the encoders, besides zeroing PWM and speed setpoints as before;
+  - while the line is held, SET_OPEN_LOOP, SET_MODE, SET_SETPOINT and a
+    brake release are refused with `BREAD_REFUSE_ESTOP`, which wins over
+    `BREAD_REFUSE_WATCHDOG_TRIP` when both holds are in force; the serial
+    `MODE=`, `M*PWM=`, `M*POS=`, `M*SPEED=` and `BRAKE*=0` are ignored the
+    same way. A SET_BRAKE that engages one brake and releases the other
+    engages it, then refuses;
+  - releasing the line moves nothing. Resume with SET_BRAKE(0,0), then
+    setpoints, then the mode.
+- **A brake release after a hold no longer drives back the creep**. After
+  an e-stop release or a cleared watchdog trip, each motor's position
+  setpoint now keeps following its encoder until that motor's brake is
+  released, instead of stopping at the release, so SET_BRAKE(0,0) holds
+  where the shaft is. A setpoint sent before the brake release is
+  overwritten.
+- **GET_STATE positions no longer freeze during a hold**: the hold
+  publishes the encoder positions every loop.
 - **An edge train on the e-stop line can no longer postpone the stop**
   (#39). The debounce restarted on every edge, so edges less than 25 ms
   apart kept the e-stop from asserting for as long as they lasted, whatever
