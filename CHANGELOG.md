@@ -90,6 +90,15 @@ This project did not use formal release tags through most of its history, so thi
 
 ### Changed
 
+- **FastLED is replaced by an in-house status-LED driver**
+  (`firmware/include/status_led.h`). FastLED cost ~3 KB of flash and
+  ~110 B of RAM on gen2 to send three bytes to one WS2812B, and gen1
+  builds compiled it with no LED to drive. The new driver is a
+  cycle-counted single-pixel bit loop for the ATmega328P and ATmega4809 at
+  16 MHz, and the build fails for any other MCU, clock or `LED_PIN`. The
+  LED shows the same colours at the same levels: blue at boot, red while
+  the e-stop is held, green otherwise. gen2_nano goes from 23816 to
+  21018 B of flash; the gen1 builds are byte-identical.
 - The PlatformIO platforms are pinned: `platformio/atmelavr @ 5.3.0` and
   `platformio/atmelmegaavr @ 1.10.0`, the versions local builds and CI
   already resolved. Before, a clean build took whatever platform release

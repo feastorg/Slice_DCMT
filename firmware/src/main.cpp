@@ -5,7 +5,6 @@
  */
 
 #include <Arduino.h>
-#include <FastLED.h>
 #include <crumbs.h>
 #include <crumbs_arduino.h>
 #include <LMD18200.h>
@@ -13,6 +12,7 @@
 #include "config.h"
 #include "config_hardware.h"
 #include "globals.h"
+#include "status_led.h"
 #include <DCMotorServo.h>
 #if DCMT_ENABLE_SPEED_LOOP
 #include <DCMotorTacho.h>
@@ -29,9 +29,6 @@
 static crumbs_context_t ctx;
 
 // ---- Global flags/objects ----
-#if DCMT_HAS_STATUS_LED
-CRGB led;
-#endif
 
 // Command watchdog state (see globals.h). ISR-written; main loop snapshots
 // under short masked windows.
@@ -368,10 +365,10 @@ void setupSlice()
 
     // Status LED -- gen2 only; see config_hardware.h
 #if DCMT_HAS_STATUS_LED
-    FastLED.addLeds<NEOPIXEL, LED_PIN>(&led, 1);
-    FastLED.setBrightness(50);
-    led = CRGB::Blue;
-    FastLED.show();
+    // Blue at boot. The levels are FastLED's at setBrightness(50), which
+    // this driver replaced: full scale 255 -> 50.
+    statusLedBegin();
+    statusLedShow(0, 0, 50);
 #endif
 
     SLICE_DEBUG_PRINTLN(F("DCMT SLICE INITIALIZED"));
@@ -459,12 +456,17 @@ void pollEStop()
 
 #if DCMT_HAS_STATUS_LED
     {
-        static CRGB lastLed = CRGB::Black;
-        CRGB next = slice.eStop ? CRGB::Red : CRGB::Green;
+        // Red while the e-stop is held, green otherwise; 0 until the first
+        // pass, so the first pass always writes. Green is CRGB::Green
+        // (0x008000) at the same scale, as before.
+        static uint8_t lastLed = 0;
+        const uint8_t next = slice.eStop ? 1 : 2;
         if (next != lastLed)
         {
-            led = next;
-            FastLED.show();
+            if (next == 1)
+                statusLedShow(50, 0, 0);
+            else
+                statusLedShow(0, 25, 0);
             lastLed = next;
         }
     }

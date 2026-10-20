@@ -12,7 +12,8 @@
 // populated or not -- Slice_RLHT carries the identical line. Gen1 DCMT boards
 // do not populate the LED, and gen1 additionally maps MOTOR1_DIR to the same
 // MCU pin (5), which is what turns an unpopulated LED from harmless into
-// harmful: FastLED bit-bangs NeoPixel timing onto motor 1's direction line.
+// harmful: the LED driver bit-bangs WS2812 timing onto motor 1's direction
+// line.
 //
 // Slice_RLHT encoded the same fact as RLHT_HAS_STATUS_LED in the gen1/gen2
 // split (97c11af, 2026-03-09); DCMT's split landed the same day without it.

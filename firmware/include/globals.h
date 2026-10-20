@@ -4,7 +4,6 @@
 
 #include <Arduino.h>
 #include <stdint.h>
-#include <FastLED.h>
 #include <crumbs.h>
 #include "config_hardware.h"
 
@@ -56,9 +55,6 @@ struct Timing
 };
 
 // ---- Extern globals (defined in main.cpp) ----
-#if DCMT_HAS_STATUS_LED
-extern CRGB led;
-#endif
 extern DCMT_SLICE slice;
 extern Timing timing;
 
