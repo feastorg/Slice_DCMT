@@ -88,9 +88,9 @@ Once armed, by `BREAD_OP_SET_WATCHDOG` or `WDOG=<ms>`, it trips when no I2C
 command, I2C reply or serial line has arrived within the timeout. A trip
 brakes both motors and leaves no motion pending: it zeroes the PWM commands
 and speed setpoints, sets both brake flags, and keeps each position
-setpoint at its encoder position until that motor's brake is released,
-through the clear, so it follows a shaft that coasts or creeps after the
-brake engages. The mode is kept. `GET_STATE` after a trip therefore shows both brakes engaged and, in
+setpoint at its encoder position until that motor's brake is released or
+a new setpoint for it arrives, through the clear, so it follows a shaft
+that coasts or creeps after the brake engages. The mode is kept. `GET_STATE` after a trip therefore shows both brakes engaged and, in
 closed-loop position, the setpoint at the position where the shaft stopped.
 
 A trip latches. It is cleared only by:
@@ -120,15 +120,16 @@ moves. To resume:
 2. release the brakes (`SET_BRAKE(0, 0)`, or `BRAKE1=0` and `BRAKE2=0`).
    In closed-loop position the motors then hold the position where they
    are, in open-loop they coast at PWM 0, and in closed-loop speed they
-   stay stopped. A setpoint sent before this step is overwritten, since
-   the setpoints follow the encoders until the brakes are released;
+   stay stopped. A setpoint sent before this step ends the follow and
+   stands as sent, so the brake release drives to it;
 3. send new commands: setpoints first, then the mode. A mode change to
    closed-loop position drives to whatever setpoint is stored at that
    moment.
 
 Positions are `int16` on the wire, so closed-loop position works only while
 the encoder count stays within ±32767. Beyond that the stored setpoint is
-clamped to ±32767, including the one a trip writes, and releasing the brakes
+clamped to ±32767, including the one a trip or an e-stop press writes, and
+releasing the brakes
 in position mode drives the motor toward the clamp value. Keep position-mode
 travel inside that range.
 
@@ -144,22 +145,26 @@ The e-stop input is D2 with the internal pull-up; a press pulls it LOW. The
 firmware samples it on every loop pass and through the 1 s boot wait. The
 first LOW sample asserts the e-stop, and release needs the line HIGH for
 25 ms without a LOW sample in between, so a chattering line stays stopped.
+A LOW glitch that a loop pass samples, such as driver noise on an
+unpressed line, asserts the e-stop too.
 
 A press holds the way a watchdog trip does (`DCMT_CAP_ESTOP_HOLD`): both
 motors brake, the PWM commands and speed setpoints go to 0, both brake
 flags are set, and each position setpoint follows its encoder until that
-motor's brake is released. While the e-stop is held, the commands the
-watchdog section lists are refused with `BREAD_REFUSE_ESTOP`, over I2C and
-serial alike. `GET_STATE` shows `estop` 1 and the shafts' positions, and
-`estop_count` counts the press.
+motor's brake is released or a new setpoint for it arrives. While the
+e-stop is held, the I2C commands the watchdog section lists are refused
+with `BREAD_REFUSE_ESTOP`, which wins when a trip is held too, and the
+serial ones are ignored with a message. `GET_STATE` shows `estop` 1 and
+the shafts' positions, and `estop_count` counts the press.
 
 Releasing the e-stop moves nothing. Resume as after a cleared trip: release
 the brakes, then send setpoints, then the mode.
 
 The firmware hold is the only stop on gen1 boards, which have no hardware
-cut of motor power on the e-stop line. Gen2 boards also cut motor power in
-hardware, and the firmware hold keeps the motors from running stored
-commands when that power returns. An e-stop that cuts the supply instead
+cut of motor power on the e-stop line. Check a later board's schematic
+before relying on a hardware cut; where one exists, the firmware hold
+keeps the motors from running stored commands when that power returns.
+An e-stop that cuts the supply instead
 reboots the slice into open loop at PWM 0; power the Nano from the switched
 supply too, since a Nano kept alive over USB sees no stop and runs its
 stored commands when motor power returns. bread-crumbs-contracts

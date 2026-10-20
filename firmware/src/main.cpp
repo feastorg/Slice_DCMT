@@ -580,7 +580,10 @@ void watchdogLogic()
 // ends, a motor whose hold-engaged brake is still on keeps its position
 // setpoint on its encoder, so SET_BRAKE(0,0) holds where the shaft crept
 // to rather than driving it back (DCMT_CAP_ESTOP_HOLD). Releasing that
-// brake clears the motor's holdResyncMask bit.
+// brake, or a new setpoint for that motor, clears its holdResyncMask bit,
+// so a setpoint the controller sends is never overwritten. The speed
+// setpoints need no follow: the hold zeroed them, and only a new setpoint,
+// which ends the follow, sets them again.
 static void follow_held_setpoints(int16_t pos1, int16_t pos2)
 {
     if (slice.motor1Brake && (holdResyncMask & HOLD_RESYNC_M1))

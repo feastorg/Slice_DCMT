@@ -28,9 +28,11 @@ This project did not use formal release tags through most of its history, so thi
 - **A brake release after a hold no longer drives back the creep**. After
   an e-stop release or a cleared watchdog trip, each motor's position
   setpoint now keeps following its encoder until that motor's brake is
-  released, instead of stopping at the release, so SET_BRAKE(0,0) holds
-  where the shaft is. A setpoint sent before the brake release is
-  overwritten.
+  released or a new setpoint for it arrives, instead of stopping at the
+  release, so SET_BRAKE(0,0) holds where the shaft is. This changes the
+  watchdog path too: before, the follow stopped at the clear. A setpoint
+  sent before the brake release ends the follow and stands as sent, so
+  the brake release drives to it.
 - **GET_STATE positions no longer freeze during a hold**: the hold
   publishes the encoder positions every loop.
 - **An edge train on the e-stop line can no longer postpone the stop**

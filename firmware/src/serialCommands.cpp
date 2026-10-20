@@ -151,13 +151,23 @@ static void processCommand(char *cmd)
     }
     else if (starts_with_P(cmd, PSTR("M1POS=")))
     {
-        slice.motor1PositionSetpoint = (int16_t)atol(after_prefix_P(cmd, PSTR("M1POS=")));
+        const int16_t sp = (int16_t)atol(after_prefix_P(cmd, PSTR("M1POS=")));
+        // A new setpoint ends this motor's post-hold follow.
+        noInterrupts();
+        slice.motor1PositionSetpoint = sp;
+        holdResyncMask &= (uint8_t)~HOLD_RESYNC_M1;
+        interrupts();
         Serial.print(F("M1POS-> "));
         Serial.println(slice.motor1PositionSetpoint);
     }
     else if (starts_with_P(cmd, PSTR("M2POS=")))
     {
-        slice.motor2PositionSetpoint = (int16_t)atol(after_prefix_P(cmd, PSTR("M2POS=")));
+        const int16_t sp = (int16_t)atol(after_prefix_P(cmd, PSTR("M2POS=")));
+        // A new setpoint ends this motor's post-hold follow.
+        noInterrupts();
+        slice.motor2PositionSetpoint = sp;
+        holdResyncMask &= (uint8_t)~HOLD_RESYNC_M2;
+        interrupts();
         Serial.print(F("M2POS-> "));
         Serial.println(slice.motor2PositionSetpoint);
     }
@@ -178,13 +188,23 @@ static void processCommand(char *cmd)
 #if DCMT_ENABLE_SPEED_LOOP
     else if (starts_with_P(cmd, PSTR("M1SPEED=")))
     {
-        slice.motor1SpeedSetpoint = (int16_t)atol(after_prefix_P(cmd, PSTR("M1SPEED=")));
+        const int16_t sp = (int16_t)atol(after_prefix_P(cmd, PSTR("M1SPEED=")));
+        // A new setpoint ends this motor's post-hold follow.
+        noInterrupts();
+        slice.motor1SpeedSetpoint = sp;
+        holdResyncMask &= (uint8_t)~HOLD_RESYNC_M1;
+        interrupts();
         Serial.print(F("M1SPEED-> "));
         Serial.println(slice.motor1SpeedSetpoint);
     }
     else if (starts_with_P(cmd, PSTR("M2SPEED=")))
     {
-        slice.motor2SpeedSetpoint = (int16_t)atol(after_prefix_P(cmd, PSTR("M2SPEED=")));
+        const int16_t sp = (int16_t)atol(after_prefix_P(cmd, PSTR("M2SPEED=")));
+        // A new setpoint ends this motor's post-hold follow.
+        noInterrupts();
+        slice.motor2SpeedSetpoint = sp;
+        holdResyncMask &= (uint8_t)~HOLD_RESYNC_M2;
+        interrupts();
         Serial.print(F("M2SPEED-> "));
         Serial.println(slice.motor2SpeedSetpoint);
     }

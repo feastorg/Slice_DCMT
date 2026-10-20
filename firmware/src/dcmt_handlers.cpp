@@ -173,12 +173,15 @@ void handler_set_setpoint(crumbs_context_t *ctx, uint8_t opcode, const uint8_t *
     }
 
     // Persist setpoints independent of current mode so controllers can preload.
+    // A new setpoint ends the post-hold follow for both motors, so the
+    // controller's target stands as sent.
     slice.motor1PositionSetpoint = v.target1;
     slice.motor2PositionSetpoint = v.target2;
 #if DCMT_ENABLE_SPEED_LOOP
     slice.motor1SpeedSetpoint = v.target1;
     slice.motor2SpeedSetpoint = v.target2;
 #endif
+    holdResyncMask = 0;
 }
 
 void handler_set_pid(crumbs_context_t *ctx, uint8_t opcode, const uint8_t *data, uint8_t data_len, void *user_data)
