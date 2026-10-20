@@ -56,7 +56,6 @@ struct Timing
 };
 
 // ---- Extern globals (defined in main.cpp) ----
-extern volatile bool estopTriggered;
 #if DCMT_HAS_STATUS_LED
 extern CRGB led;
 #endif
@@ -77,8 +76,7 @@ extern volatile uint8_t estopCount;
 void setupSlice();
 void setupDCMT();
 void pollEStop();
-void estopISR();
-void processEStop();
+void processEStop(bool pressed);
 void watchdogLogic();
 void motorControlLogic();
 void printSliceState(Print &out);

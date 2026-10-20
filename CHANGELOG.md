@@ -8,6 +8,19 @@ This project did not use formal release tags through most of its history, so thi
 
 ### Fixed
 
+- **An edge train on the e-stop line can no longer postpone the stop**
+  (#39). The debounce restarted on every edge, so edges less than 25 ms
+  apart kept the e-stop from asserting for as long as they lasted, whatever
+  the line's level. The line is now sampled on every loop pass instead of
+  edge-triggered: the first LOW sample asserts the e-stop, and release
+  needs 25 ms with no LOW sample. The edge interrupt is gone. The
+  trade-off: a LOW glitch of any length that a loop pass samples, such as
+  driver noise on an unpressed line, now asserts the e-stop, where a
+  glitch shorter than 25 ms used to be ignored; the outputs it zeroes stay
+  zeroed until the controller sends new commands. `setup()` enables the
+  pull-up first and samples the line through its 1 s boot wait instead of
+  sleeping, so a line held at power-up asserts before `loop()` acts on any
+  command; as before, it counts as one press in `estop_count`.
 - **GET_ACK now reports a dropped SET as refused** (#43). Before this, no
   handler called `crumbs_refuse()`, and `on_crumbs_message`, registered as
   `on_message`, made CRUMBS count every decoded frame as applied. On

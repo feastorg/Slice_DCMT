@@ -29,7 +29,6 @@
 static crumbs_context_t ctx;
 
 // ---- Global flags/objects ----
-volatile bool estopTriggered = false;
 #if DCMT_HAS_STATUS_LED
 CRGB led;
 #endif
@@ -43,8 +42,8 @@ volatile uint8_t wdTripCount = 0;
 volatile uint8_t estopCount = 0;
 
 static const unsigned long ESTOP_DEBOUNCE_MS = 25;
-static bool estopDebouncePending = false;
-static unsigned long estopDebounceStartMs = 0;
+static bool estopReleasePending = false;
+static unsigned long estopReleaseStartMs = 0;
 
 // Motor drivers
 LMD18200 motor1Driver(MOTOR1_PWM_PIN, MOTOR1_DIR_PIN, MOTOR1_BRAKE_PIN, MOTOR1_CSENSE_PIN);
@@ -220,9 +219,18 @@ static void apply_mode_transition(const DCMT_SLICE &s)
 void setup()
 {
     wdt_disable();
+    // e-stop: no external bias resistor on current boards, so use the internal
+    // pull-up. Enable it first, so it has the rest of setup to charge the
+    // line before the first sample below.
+    pinMode(ESTOP, INPUT_PULLUP);
     setupSlice();
     setupDCMT();
-    delay(1000);
+    // I2C is live from setupSlice(), so sample the e-stop through the boot
+    // second instead of sleeping: a line held at power-up, or pressed now,
+    // is asserted before loop() runs.
+    const unsigned long bootStartMs = millis();
+    while (millis() - bootStartMs < 1000)
+        pollEStop();
     wdt_enable(WDTO_1S);
 }
 
@@ -353,11 +361,6 @@ void setupSlice()
     FastLED.show();
 #endif
 
-    // e-stop: no external bias resistor on current boards, so use internal pull-up.
-    pinMode(ESTOP, INPUT_PULLUP);
-    attachInterrupt(digitalPinToInterrupt(ESTOP), estopISR, CHANGE);
-    estopTriggered = true; // Force initial debounced state sync after boot.
-
     SLICE_DEBUG_PRINTLN(F("DCMT SLICE INITIALIZED"));
     SLICE_DEBUG_PRINT(F("VERSION: "));
     SLICE_DEBUG_PRINT(DCMT_MODULE_VER_MAJOR);
@@ -413,20 +416,32 @@ void setupDCMT()
     appliedMode = slice.mode;
 }
 
-// Poll/ISR/processing
+// Poll/processing
+// The line is sampled on every pass, not edge-triggered. The first LOW
+// sample asserts the e-stop, so bounce or an edge train cannot postpone a
+// stop (#39); release needs the line HIGH for ESTOP_DEBOUNCE_MS without a
+// single LOW sample.
 void pollEStop()
 {
-    if (estopTriggered)
+    // Internal pull-up means asserted e-stop pulls the line LOW.
+    if (digitalRead(ESTOP) == LOW)
     {
-        estopTriggered = false;
-        estopDebouncePending = true;
-        estopDebounceStartMs = millis();
+        estopReleasePending = false;
+        if (!slice.eStop)
+            processEStop(true);
     }
-
-    if (estopDebouncePending && (millis() - estopDebounceStartMs >= ESTOP_DEBOUNCE_MS))
+    else if (slice.eStop)
     {
-        processEStop();
-        estopDebouncePending = false;
+        if (!estopReleasePending)
+        {
+            estopReleasePending = true;
+            estopReleaseStartMs = millis();
+        }
+        else if (millis() - estopReleaseStartMs >= ESTOP_DEBOUNCE_MS)
+        {
+            estopReleasePending = false;
+            processEStop(false);
+        }
     }
 
 #if DCMT_HAS_STATUS_LED
@@ -443,23 +458,17 @@ void pollEStop()
 #endif
 }
 
-void estopISR()
+void processEStop(bool pressed)
 {
-    estopTriggered = true;
-}
-
-void processEStop()
-{
-    // Internal pull-up means asserted e-stop pulls the line LOW.
-    if (digitalRead(ESTOP) == LOW)
+    if (pressed)
     {
         stop_control_loops();
         motor1Driver.brake();
         motor2Driver.brake();
 
         noInterrupts();
-        // Count a new press only (released -> pressed), so a held press that
-        // re-syncs, or the boot sync, is not recounted. Wraps at 255.
+        // Count a new press only (released -> pressed). A line held at
+        // power-up counts as one press. Wraps at 255.
         if (!slice.eStop)
             estopCount++;
         slice.eStop = true;
