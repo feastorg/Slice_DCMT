@@ -268,27 +268,35 @@ void loop()
 //
 // Every valid frame stamps liveness, a refused one included: the watchdog
 // watches for a live master, not for commands it accepts. on_message runs
-// before the opcode's handler, so a frame whose opcode neither DCMT nor
-// bread-common defines is refused here; CRUMBS cannot reject it itself,
-// since on_message takes every frame.
-#define DCMT_DEFINED_OP_CASE_(name, value) case (value):
-static bool is_defined_op(uint8_t opcode)
+// before the opcode's handler, so a frame whose opcode is not a command is
+// refused here; CRUMBS cannot reject it itself, since on_message takes every
+// frame.
+//
+// The commands are the opcodes setupSlice() registers a handler for, listed
+// by hand: the contract's opcode tables also hold the GET opcodes, which are
+// queries answered through SET_REPLY. A GET opcode sent as a command frame
+// has nothing behind it, and read APPLIED before (feastorg/Slice_DCMT#45).
+static bool is_command_op(uint8_t opcode)
 {
     switch (opcode)
     {
-        DCMT_OPS(DCMT_DEFINED_OP_CASE_)
-        BREAD_COMMON_OPS(DCMT_DEFINED_OP_CASE_)
+    case DCMT_OP_SET_OPEN_LOOP:
+    case DCMT_OP_SET_BRAKE:
+    case DCMT_OP_SET_MODE:
+    case DCMT_OP_SET_SETPOINT:
+    case DCMT_OP_SET_PID:
+    case BREAD_OP_SET_WATCHDOG:
+    case BREAD_OP_CLEAR_WATCHDOG_TRIP:
         return true;
     default:
         return false;
     }
 }
-#undef DCMT_DEFINED_OP_CASE_
 
 static void on_crumbs_message(crumbs_context_t *c, const crumbs_message_t *msg)
 {
     wdLastRxMs = millis();
-    if (!is_defined_op(msg->opcode))
+    if (!is_command_op(msg->opcode))
         (void)crumbs_refuse(c, BREAD_REFUSE_UNKNOWN_OP);
 }
 
@@ -301,6 +309,10 @@ void setupSlice()
 
     // CRUMBS
     crumbs_arduino_init_peripheral(&ctx, I2C_ADR);
+    // CRUMBS rejects a frame typed for another family before any handler
+    // runs: the families' opcodes overlap, so one misaddressed would
+    // otherwise be acted on as a DCMT command. Type 0x00 still matches.
+    crumbs_set_type_id(&ctx, DCMT_TYPE_ID);
     crumbs_set_callbacks(&ctx, on_crumbs_message, nullptr, nullptr);
 
     rc = crumbs_register_handler(&ctx, DCMT_OP_SET_OPEN_LOOP, handler_set_open_loop, nullptr);
