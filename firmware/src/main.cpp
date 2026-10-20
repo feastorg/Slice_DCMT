@@ -309,6 +309,10 @@ void setupSlice()
 
     // CRUMBS
     crumbs_arduino_init_peripheral(&ctx, I2C_ADR);
+    // CRUMBS rejects a frame typed for another family before any handler
+    // runs: the families' opcodes overlap, so one misaddressed would
+    // otherwise be acted on as a DCMT command. Type 0x00 still matches.
+    crumbs_set_type_id(&ctx, DCMT_TYPE_ID);
     crumbs_set_callbacks(&ctx, on_crumbs_message, nullptr, nullptr);
 
     rc = crumbs_register_handler(&ctx, DCMT_OP_SET_OPEN_LOOP, handler_set_open_loop, nullptr);

@@ -81,6 +81,12 @@ any brake it names, then refuses, and a SET_OPEN_LOOP with one PWM out of range 
 the other motor's, then refuses. GET_STATE shows what took effect. Every valid frame
 refreshes the watchdog, a refused one included.
 
+The firmware declares its type (`DCMT_TYPE_ID`) to CRUMBS, so a frame typed
+for another family is rejected before any handler runs: GET_ACK reports it
+rejected with `CRUMBS_ACK_REJECT_TYPE`, and it does not refresh the
+watchdog. Frames of type `0x00` are accepted. GET_ACK replies carry type
+`0x02`.
+
 ## Command Watchdog
 
 The watchdog boots disarmed (unless built with `-DDCMT_WATCHDOG_BOOT_MS=<ms>`).

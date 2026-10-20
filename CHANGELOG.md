@@ -13,6 +13,13 @@ This project did not use formal release tags through most of its history, so thi
   as a command frame, nothing handled them, yet GET_ACK reported them
   applied. They are now refused with `BREAD_REFUSE_UNKNOWN_OP`, like any
   other opcode with no command behind it.
+- **A frame typed for another family is rejected** (#45). The firmware
+  never declared its type to CRUMBS, so a frame carrying RLHT's type was
+  dispatched as a DCMT command, and the families' opcodes overlap. It now
+  calls `crumbs_set_type_id(DCMT_TYPE_ID)`: such a frame is rejected with
+  `CRUMBS_ACK_REJECT_TYPE` before any handler runs, and does not refresh
+  the watchdog. Type `0x00` is still accepted. GET_ACK replies now carry
+  type `0x02` instead of `0x00`.
 - **Commands sent while the e-stop is held no longer run at the release**
   (#46, #30). The press braked the motors but left the brake flags and
   position setpoints alone, and every motion command sent during the hold
