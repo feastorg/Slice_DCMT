@@ -8,6 +8,11 @@ This project did not use formal release tags through most of its history, so thi
 
 ### Fixed
 
+- **A GET opcode sent as a command frame is refused** (#45). GET_STATE,
+  GET_WATCHDOG and GET_CAPS are queries, answered through SET_REPLY. Sent
+  as a command frame, nothing handled them, yet GET_ACK reported them
+  applied. They are now refused with `BREAD_REFUSE_UNKNOWN_OP`, like any
+  other opcode with no command behind it.
 - **Commands sent while the e-stop is held no longer run at the release**
   (#46, #30). The press braked the motors but left the brake flags and
   position setpoints alone, and every motion command sent during the hold

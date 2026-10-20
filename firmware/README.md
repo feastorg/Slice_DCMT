@@ -74,7 +74,7 @@ bread-crumbs-contracts `bread_refuse.h`:
 | `BREAD_REFUSE_UNDEFINED_VALUE` | a SET_MODE or SET_PID loop the contract does not define; a SET_OPEN_LOOP PWM outside `-DCMT_PWM_MAX` to `DCMT_PWM_MAX` (255) |
 | `BREAD_REFUSE_NOT_BUILT` | closed-loop speed (SET_MODE or SET_PID loop SPEED) when the speed loop is not built |
 | `BREAD_REFUSE_WRONG_MODE` | SET_OPEN_LOOP outside open loop |
-| `BREAD_REFUSE_UNKNOWN_OP` | an opcode neither DCMT nor bread-common defines |
+| `BREAD_REFUSE_UNKNOWN_OP` | an opcode that is not a DCMT or bread-common command, including a GET opcode sent as a command frame instead of through SET_REPLY |
 
 A SET_BRAKE that asks for a release while tripped or e-stopped still engages
 any brake it names, then refuses, and a SET_OPEN_LOOP with one PWM out of range still sets
