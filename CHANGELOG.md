@@ -16,6 +16,13 @@ This project did not use formal release tags through most of its history, so thi
 
 ### Fixed
 
+- **Serial `M1PWM=`/`M2PWM=`, `PIDPOS=` and `PIDSPEED=` write under a
+  masked window** (#37). The I2C handlers write the same fields from the
+  TWI interrupt, so a `SET_OPEN_LOOP` or `SET_PID` landing mid-write could
+  leave a PWM with one byte from each command, or a motor with gains from
+  two commands. The PWM commands also check the mode inside that window,
+  so a `SET_MODE` between the check and the write can no longer leave an
+  open-loop PWM stored in closed loop.
 - **GET_STATE `m1_pwm`/`m2_pwm` report the PWM the motors are driven at**
   (#61), as the contract describes them. They reported the open-loop
   request, so in position and speed mode they read 0 while the servo drove

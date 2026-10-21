@@ -129,37 +129,48 @@ static void processCommand(char *cmd)
     }
     else if (starts_with_P(cmd, PSTR("M1PWM=")))
     {
-        if (slice.mode != OPEN_LOOP)
-        {
-            Serial.println(F("M1PWM only valid in OPEN mode"));
-            return;
-        }
-
         long v = atol(after_prefix_P(cmd, PSTR("M1PWM=")));
         if (v < -255)
             v = -255;
         if (v > 255)
             v = 255;
-        slice.motor1PWM = (int16_t)v;
+
+        // The mode check and the write share one masked window: an I2C
+        // SET_MODE between them would zero the PWM, then this would store
+        // one in closed loop. The I2C handlers write the same field.
+        noInterrupts();
+        const bool open = slice.mode == OPEN_LOOP;
+        if (open)
+            slice.motor1PWM = (int16_t)v;
+        interrupts();
+        if (!open)
+        {
+            Serial.println(F("M1PWM only valid in OPEN mode"));
+            return;
+        }
         Serial.print(F("M1PWM-> "));
-        Serial.println(slice.motor1PWM);
+        Serial.println((int16_t)v);
     }
     else if (starts_with_P(cmd, PSTR("M2PWM=")))
     {
-        if (slice.mode != OPEN_LOOP)
-        {
-            Serial.println(F("M2PWM only valid in OPEN mode"));
-            return;
-        }
-
         long v = atol(after_prefix_P(cmd, PSTR("M2PWM=")));
         if (v < -255)
             v = -255;
         if (v > 255)
             v = 255;
-        slice.motor2PWM = (int16_t)v;
+
+        noInterrupts();
+        const bool open = slice.mode == OPEN_LOOP;
+        if (open)
+            slice.motor2PWM = (int16_t)v;
+        interrupts();
+        if (!open)
+        {
+            Serial.println(F("M2PWM only valid in OPEN mode"));
+            return;
+        }
         Serial.print(F("M2PWM-> "));
-        Serial.println(slice.motor2PWM);
+        Serial.println((int16_t)v);
     }
     else if (starts_with_P(cmd, PSTR("M1POS=")))
     {
@@ -193,8 +204,12 @@ static void processCommand(char *cmd)
             Serial.println(F("PIDPOS format: PIDPOS=kp,ki,kd"));
             return;
         }
+        // SET_PID writes these from the I2C interrupt too; mask so neither
+        // motor ends up with gains from two different commands.
+        noInterrupts();
         slice.posPid1 = {kp, ki, kd};
         slice.posPid2 = {kp, ki, kd};
+        interrupts();
         Serial.println(F("Position PID updated"));
     }
 #if DCMT_ENABLE_SPEED_LOOP
@@ -230,8 +245,10 @@ static void processCommand(char *cmd)
             Serial.println(F("PIDSPEED format: PIDSPEED=kp,ki,kd"));
             return;
         }
+        noInterrupts();
         slice.speedPid1 = {kp, ki, kd};
         slice.speedPid2 = {kp, ki, kd};
+        interrupts();
         Serial.println(F("Speed PID updated"));
     }
 #endif
