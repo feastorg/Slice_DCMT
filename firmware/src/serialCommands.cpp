@@ -321,6 +321,10 @@ static void processCommand(char *cmd)
     }
 }
 
+// Handles at most one complete line per call (#49). Each reply blocks once
+// the transmit buffer fills, and the e-stop is sampled once per loop pass,
+// so draining a burst here would hold the e-stop sample for as long as the
+// burst takes to answer. The rest of the input waits for the next pass.
 void serialCommands()
 {
     while (Serial.available())
@@ -331,6 +335,7 @@ void serialCommands()
             cmdBuf[cmdIdx] = '\0';
             processCommand(cmdBuf);
             cmdIdx = 0;
+            return;
         }
         else if (cmdIdx < sizeof(cmdBuf) - 1)
         {
