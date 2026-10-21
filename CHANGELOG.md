@@ -16,6 +16,12 @@ This project did not use formal release tags through most of its history, so thi
 
 ### Fixed
 
+- **A burst of serial input no longer holds the loop** (#49). The serial
+  reader handled every buffered line in one call, and each reply blocks
+  once the transmit buffer fills, so the e-stop went unsampled until the
+  whole burst was answered. A continuous stream could hold it until the
+  1 s hardware watchdog reset the board. It now handles one line per loop
+  pass, and the e-stop is sampled between lines.
 - **Serial `M1PWM=`/`M2PWM=`, `PIDPOS=` and `PIDSPEED=` write under a
   masked window** (#37). The I2C handlers write the same fields from the
   TWI interrupt, so a `SET_OPEN_LOOP` or `SET_PID` landing mid-write could
