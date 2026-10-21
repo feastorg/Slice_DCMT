@@ -87,13 +87,14 @@ static void processCommand(char *cmd)
             ++mode;
         strupper(mode);
 
+        ControlModes next;
         if (strcmp_P(mode, PSTR("OPEN")) == 0)
-            slice.mode = OPEN_LOOP;
+            next = OPEN_LOOP;
         else if (strcmp_P(mode, PSTR("POS")) == 0)
-            slice.mode = CLOSED_LOOP_POSITION;
+            next = CLOSED_LOOP_POSITION;
 #if DCMT_ENABLE_SPEED_LOOP
         else if (strcmp_P(mode, PSTR("SPEED")) == 0)
-            slice.mode = CLOSED_LOOP_SPEED;
+            next = CLOSED_LOOP_SPEED;
 #endif
         else
         {
@@ -104,6 +105,17 @@ static void processCommand(char *cmd)
 #endif
             return;
         }
+
+        // As SET_MODE does (dcmt_handlers.cpp): leaving open loop clears the
+        // open-loop PWM, so a later return to open loop starts from 0.
+        noInterrupts();
+        slice.mode = next;
+        if (next != OPEN_LOOP)
+        {
+            slice.motor1PWM = 0;
+            slice.motor2PWM = 0;
+        }
+        interrupts();
 
         Serial.print(F("Mode-> "));
         if (slice.mode == OPEN_LOOP)
