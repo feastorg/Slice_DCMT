@@ -9,7 +9,9 @@ and run on the host. Nothing is reimplemented:
 - **Stubbed** (`stubs/`): the Arduino core, the AVR watchdog, FastLED, the
   LMD18200 driver, Encoder, DCMotorServo and DCMotorTacho. The driver stub
   records what the firmware last asked of each motor, and the FastLED stub
-  records every colour shown.
+  records every colour shown. The servo stub's `run()` writes
+  `host_servo_output[n]` through the firmware's motor callback, as the real
+  library's output does, and `stop()` brakes through it.
 
 Frames go in through `crumbs_peripheral_handle_receive()` and replies come
 back through `crumbs_peripheral_build_reply()`, the two calls the I2C
@@ -34,6 +36,7 @@ paths as on the board. `make` exits non-zero if any check fails.
 | File | Covers |
 | --- | --- |
 | `test_dispatch.cpp` | Which frames are taken as commands: every opcode is swept, GET opcodes sent as commands are refused, queries answer through SET_REPLY, and another family's type is rejected (#45, #50) |
+| `test_applied_pwm.cpp` | GET_STATE `m1_pwm`/`m2_pwm` report the PWM each motor is driven at: open loop, braked, position and speed (the servo stub's output), and e-stop (#61) |
 | `test_mode_pwm.cpp` | Leaving open loop clears the open-loop PWM through serial `MODE=` and through `SET_MODE`, so GET_STATE reads 0 and a return to open loop doesn't resume the old PWM (#36) |
 | `test_status_led.cpp` | Blue through the boot wait, then green or red on the first `loop()` pass, with the e-stop released or held from power-up; no LED driven on gen1 (#56) |
 

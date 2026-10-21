@@ -41,6 +41,8 @@ volatile bool wdTripped = false;
 volatile uint8_t wdTripCount = 0;
 volatile uint8_t estopCount = 0;
 volatile uint8_t holdResyncMask = 0;
+volatile int16_t motor1AppliedPWM = 0;
+volatile int16_t motor2AppliedPWM = 0;
 
 static const unsigned long ESTOP_DEBOUNCE_MS = 25;
 static bool estopReleasePending = false;
@@ -96,15 +98,28 @@ static bool pid_tunings_equal(const PIDTunings &a, const PIDTunings &b)
            fabsf(a.kd - b.kd) < eps;
 }
 
-// ---- Hardware adapter wrappers for DCMotorServo ----
+// ---- Motor output ----
+// Every write and brake goes through these, so motorNAppliedPWM is the PWM
+// each motor is driven at (GET_STATE m1_pwm/m2_pwm, #61): the clamped write,
+// or 0 when braked. DCMotorServo calls them too. None is called inside a
+// masked window, so the record masks its own.
+static void record_applied(volatile int16_t &applied, int16_t pwm)
+{
+    noInterrupts();
+    applied = pwm;
+    interrupts();
+}
+
 static void motor1_write(int16_t speed)
 {
     motor1Driver.write(speed);
+    record_applied(motor1AppliedPWM, clamp_pwm(speed));
 }
 
 static void motor1_brake(void)
 {
     motor1Driver.brake();
+    record_applied(motor1AppliedPWM, 0);
 }
 
 static long motor1_read_encoder(void)
@@ -120,11 +135,13 @@ static void motor1_write_encoder(long newPosition)
 static void motor2_write(int16_t speed)
 {
     motor2Driver.write(speed);
+    record_applied(motor2AppliedPWM, clamp_pwm(speed));
 }
 
 static void motor2_brake(void)
 {
     motor2Driver.brake();
+    record_applied(motor2AppliedPWM, 0);
 }
 
 static long motor2_read_encoder(void)
@@ -404,8 +421,8 @@ void setupDCMT()
 {
     motor1Driver.begin();
     motor2Driver.begin();
-    motor1Driver.write(0);
-    motor2Driver.write(0);
+    motor1_write(0);
+    motor2_write(0);
 
     apply_position_pid_if_needed(slice);
     servo1.setPWMSkip(DCMT_SERVO_PWM_SKIP);
@@ -483,8 +500,8 @@ void processEStop(bool pressed)
     if (pressed)
     {
         stop_control_loops();
-        motor1Driver.brake();
-        motor2Driver.brake();
+        motor1_brake();
+        motor2_brake();
 
         // The press holds like a watchdog trip (DCMT_CAP_ESTOP_HOLD): both
         // brake flags set and the position setpoints at the encoders, so the
@@ -551,8 +568,8 @@ void watchdogLogic()
         // so alternating them every iteration toggles the driver at loop
         // frequency — audible squeal (found live at first watchdog trip).
         stop_control_loops();
-        motor1Driver.brake();
-        motor2Driver.brake();
+        motor1_brake();
+        motor2_brake();
         return;
     }
 
@@ -560,8 +577,8 @@ void watchdogLogic()
         return;
 
     stop_control_loops();
-    motor1Driver.brake();
-    motor2Driver.brake();
+    motor1_brake();
+    motor2_brake();
 
     // Clearing a trip resumes nothing: the operator re-commands afterwards.
     // So the trip leaves no motion pending: PWM and speed setpoints zeroed,
@@ -649,8 +666,8 @@ void motorControlLogic()
         // brake() only — see the watchdog hold note; this branch also runs
         // every iteration while a signal-wired e-stop or watchdog trip is held.
         stop_control_loops();
-        motor1Driver.brake();
-        motor2Driver.brake();
+        motor1_brake();
+        motor2_brake();
 
         // The LMD18200 brake is dynamic, so a shaft keeps coasting after the
         // trip or press synced the setpoints. Re-sync them to the encoders
@@ -687,20 +704,20 @@ void motorControlLogic()
     {
         if (local.motor1Brake)
         {
-            motor1Driver.brake();
+            motor1_brake();
         }
         else
         {
-            motor1Driver.write(clamp_pwm(local.motor1PWM));
+            motor1_write(clamp_pwm(local.motor1PWM));
         }
 
         if (local.motor2Brake)
         {
-            motor2Driver.brake();
+            motor2_brake();
         }
         else
         {
-            motor2Driver.write(clamp_pwm(local.motor2PWM));
+            motor2_write(clamp_pwm(local.motor2PWM));
         }
 
         local.motor1Position = clamp_i16(servo1.getActualPosition());
@@ -733,7 +750,7 @@ void motorControlLogic()
         if (local.motor1Brake)
         {
             servo1.stop();
-            motor1Driver.brake();
+            motor1_brake();
         }
         else
         {
@@ -745,7 +762,7 @@ void motorControlLogic()
         if (local.motor2Brake)
         {
             servo2.stop();
-            motor2Driver.brake();
+            motor2_brake();
         }
         else
         {
@@ -782,7 +799,7 @@ void motorControlLogic()
         if (local.motor1Brake)
         {
             tacho1.stop();
-            motor1Driver.brake();
+            motor1_brake();
             local.motor1Speed = 0;
         }
         else
@@ -795,7 +812,7 @@ void motorControlLogic()
         if (local.motor2Brake)
         {
             tacho2.stop();
-            motor2Driver.brake();
+            motor2_brake();
             local.motor2Speed = 0;
         }
         else

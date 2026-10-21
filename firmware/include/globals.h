@@ -80,6 +80,12 @@ extern volatile uint8_t estopCount;
 #define HOLD_RESYNC_M2 0x02
 extern volatile uint8_t holdResyncMask;
 
+// The PWM each motor is driven at: the last motorN_write() value, clamped to
+// +/-255, or 0 after motorN_brake(). Written by the main loop, read by the
+// GET_STATE reply. slice.motorNPWM is the open-loop request, not the output.
+extern volatile int16_t motor1AppliedPWM;
+extern volatile int16_t motor2AppliedPWM;
+
 // ---- Functions implemented across translation units ----
 void setupSlice();
 void setupDCMT();

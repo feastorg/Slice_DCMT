@@ -40,8 +40,10 @@ int main()
     serial("M2PWM=-150");
     loop();
     host_check("serial: open-loop PWM drives motor 1", motor1Driver.lastWrite == 200);
+    // GET_STATE reports the output (#61), which the next pass sets.
     serial("MODE=POS");
-    host_check("serial MODE=POS: GET_STATE reads m1_pwm 0 and m2_pwm 0",
+    loop();
+    host_check("serial MODE=POS: the next pass drives neither motor at the old PWM",
                state(&s) && s.m1_pwm == 0 && s.m2_pwm == 0);
     serial("MODE=OPEN");
     loop();
@@ -53,8 +55,8 @@ int main()
     loop();
     set_mode(DCMT_MODE_CLOSED_POSITION);
     host_check("SET_MODE(POS) is applied", host_read_ack().status == CRUMBS_ACK_APPLIED);
-    host_check("SET_MODE(POS): GET_STATE reads m1_pwm 0", state(&s) && s.m1_pwm == 0);
     loop();
+    host_check("SET_MODE(POS): the next pass drives motor 1 at 0", state(&s) && s.m1_pwm == 0);
     set_mode(DCMT_MODE_OPEN_LOOP);
     loop();
     host_check("SET_MODE(OPEN) after POS: motor 1 is not driven at the old PWM", motor1Driver.lastWrite == 0);
