@@ -16,6 +16,14 @@ This project did not use formal release tags through most of its history, so thi
 
 ### Fixed
 
+- **GET_STATE `m1_pwm`/`m2_pwm` report the PWM the motors are driven at**
+  (#61), as the contract describes them. They reported the open-loop
+  request, so in position and speed mode they read 0 while the servo drove
+  up to ±150. Every driver write and brake now goes through
+  `motor1_write`/`motor1_brake` (and motor 2's), which record the clamped
+  output or 0. The open-loop request stays in `slice.motorNPWM`. Right
+  after a mode change, GET_STATE shows the old output until the next loop
+  pass applies the new mode.
 - **Serial `MODE=` clears the open-loop PWM when it leaves open loop**
   (#36), as I2C `SET_MODE` already did. Before, `M1PWM=200` then
   `MODE=POS` left GET_STATE reporting `m1_pwm=200` in position mode, and

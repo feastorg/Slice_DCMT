@@ -324,8 +324,8 @@ void reply_get_state(crumbs_context_t *ctx, crumbs_message_t *reply, void *user_
     // [brakes][estop][estop_count].
     dcmt_state_t st;
     st.mode = static_cast<uint8_t>(slice.mode);
-    st.m1_pwm = slice.motor1PWM;
-    st.m2_pwm = slice.motor2PWM;
+    st.m1_pwm = motor1AppliedPWM;
+    st.m2_pwm = motor2AppliedPWM;
     st.sp1 = sp1;
     st.sp2 = sp2;
     st.pos1 = slice.motor1Position;
