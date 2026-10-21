@@ -32,7 +32,10 @@ INCLUDES := -Istubs -I. -I$(FW)/include -I$(CRUMBS) -I$(CRUMBS)/crc -I$(CONTRACT
 FW_SRC   := $(wildcard $(FW)/src/*.cpp)
 CRUMBS_SRC := $(CRUMBS)/core/crumbs_core.c $(CRUMBS)/crc/crumbs_crc.c $(CRUMBS)/crc/crc8_nibble.c
 CRUMBS_OBJ := $(OUT)/crumbs_core.o $(OUT)/crumbs_crc.o $(OUT)/crc8_nibble.o
-TESTS    := test_dispatch test_status_led
+# test_status_led runs once per e-stop case (the test target); the others
+# run once.
+SINGLE   := test_dispatch test_mode_pwm
+TESTS    := $(SINGLE) test_status_led
 
 .PHONY: all test clean check-libdeps
 all: test
@@ -62,7 +65,9 @@ BINS := $(foreach e,$(ENVS),$(foreach t,$(TESTS),$(OUT)/$(e)/$(t)))
 test: $(BINS)
 	@status=0; \
 	for e in $(ENVS); do \
-	  echo "== $$e: test_dispatch"; $(OUT)/$$e/test_dispatch || status=1; \
+	  for t in $(SINGLE); do \
+	    echo "== $$e: $$t"; $(OUT)/$$e/$$t || status=1; \
+	  done; \
 	  for line in released held; do \
 	    echo "== $$e: test_status_led $$line"; $(OUT)/$$e/test_status_led $$line || status=1; \
 	  done; \

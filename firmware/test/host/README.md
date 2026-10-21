@@ -34,6 +34,7 @@ paths as on the board. `make` exits non-zero if any check fails.
 | File | Covers |
 | --- | --- |
 | `test_dispatch.cpp` | Which frames are taken as commands: every opcode is swept, GET opcodes sent as commands are refused, queries answer through SET_REPLY, and another family's type is rejected (#45, #50) |
+| `test_mode_pwm.cpp` | Leaving open loop clears the open-loop PWM through serial `MODE=` and through `SET_MODE`, so GET_STATE reads 0 and a return to open loop doesn't resume the old PWM (#36) |
 | `test_status_led.cpp` | Blue through the boot wait, then green or red on the first `loop()` pass, with the e-stop released or held from power-up; no LED driven on gen1 (#56) |
 
 ## Writing a test
@@ -44,7 +45,7 @@ paths as on the board. `make` exits non-zero if any check fails.
   boot wait ends after about 1000 reads. Set `host_now` to jump ahead.
 - `setup()` and `loop()` keep state in file statics. Each case that needs a
   cold boot runs as its own process: see the `test` target in the Makefile.
-- Add the file to `TESTS` in the Makefile and a row to the table above.
+- Add the file to `SINGLE` in the Makefile and a row to the table above.
 
 Not covered here: the closed-loop control itself, which belongs to the
 DCMotorServo library (CameronBrooks11/DCMotorServo#12 and #13 add its first

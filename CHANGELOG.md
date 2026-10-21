@@ -16,6 +16,11 @@ This project did not use formal release tags through most of its history, so thi
 
 ### Fixed
 
+- **Serial `MODE=` clears the open-loop PWM when it leaves open loop**
+  (#36), as I2C `SET_MODE` already did. Before, `M1PWM=200` then
+  `MODE=POS` left GET_STATE reporting `m1_pwm=200` in position mode, and
+  a later `MODE=OPEN` or `SET_MODE(0)` drove motor 1 at 200 with no new
+  PWM command.
 - **The status LED shows blue through boot again** (gen2). Since the e-stop
   sampling change (#47), the 1 s boot wait polls the e-stop, and
   `pollEStop()` also wrote the LED, so its first pass turned the boot blue
