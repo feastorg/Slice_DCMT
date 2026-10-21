@@ -6,6 +6,14 @@ This project did not use formal release tags through most of its history, so thi
 
 ## [Unreleased]
 
+### Added
+
+- **Host tests** (#58). `firmware/test/host` builds the firmware's own
+  sources against the real CRUMBS core and the contracts headers, with the
+  Arduino core and motor libraries stubbed, once per PlatformIO env. The
+  first tests cover command dispatch (#45) and the boot status LED. CI runs
+  them beside the four builds.
+
 ### Fixed
 
 - **The status LED shows blue through boot again** (gen2). Since the e-stop

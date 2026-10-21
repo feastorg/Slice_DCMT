@@ -49,3 +49,31 @@ jobs:
       - name: Build
         working-directory: firmware
         run: pio run -e ${{ matrix.env }}
+
+  host-tests:
+    name: host tests
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Cache PlatformIO
+        uses: actions/cache@v4
+        with:
+          path: ~/.platformio
+          key: pio-${{ runner.os }}-gen2_nano-${{ hashFiles('firmware/platformio.ini') }}
+
+      - name: Install PlatformIO
+        run: pip install platformio
+
+      # CRUMBS and the contracts at the versions the firmware builds with.
+      - name: Install firmware dependencies
+        working-directory: firmware
+        run: pio pkg install -e gen2_nano
+
+      - name: Run host tests
+        working-directory: firmware
+        run: make -C test/host

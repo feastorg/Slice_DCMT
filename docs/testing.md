@@ -25,10 +25,16 @@ Testing procedures for this Slice. Covers manual validation and optional automat
 | Input test  | Drive digital/PWM input           | MCU registers or reacts accordingly |
 | Output test | Scope or multimeter at output pin | Output toggles or changes as coded  |
 
-## 🔁 Firmware Regression (if present)
+## 🔁 Firmware Regression
+
+Host tests build the firmware's sources against the real CRUMBS core and run
+them on the host. CI runs them on every firmware change. See
+[`firmware/test/host/README.md`](../firmware/test/host/README.md).
 
 ```bash
-pio run -t test
+cd firmware
+pio pkg install -e gen2_nano
+make -C test/host
 ```
 
 ## 📷 Test Setup
