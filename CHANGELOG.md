@@ -8,6 +8,10 @@ This project did not use formal release tags through most of its history, so thi
 
 ### Added
 
+- **Bench records** in `docs/bench/`: one file per session on real
+  hardware, indexed in `docs/bench/README.md`, following bread-infra's
+  `spec/slice/bench-records.md`. The first is a backfill of the 2026-10-20
+  results posted on #45 and #55.
 - **Host tests** (#58). `firmware/test/host` builds the firmware's own
   sources against the real CRUMBS core and the contracts headers, with the
   Arduino core and motor libraries stubbed, once per PlatformIO env. The

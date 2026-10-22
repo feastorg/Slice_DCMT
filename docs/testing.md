@@ -37,6 +37,11 @@ pio pkg install -e gen2_nano
 make -C test/host
 ```
 
+## 🧾 Bench Records
+
+Each bench session on real hardware is written up in [`bench/`](bench/README.md),
+with a table of all records there.
+
 ## 📷 Test Setup
 
 <!-- insert annotated image of bench setup under docs/assets/ and insert here -->
