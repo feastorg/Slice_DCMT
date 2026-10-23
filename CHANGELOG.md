@@ -157,8 +157,10 @@ This project did not use formal release tags through most of its history, so thi
   - the timeout comparison runs inside the window that sets the latch.
 
   FastLED is gone from `lib_deps`; this replaces #55. Gen2 flash drops by
-  2410 to 2422 B and RAM by 76 to 108 B. Gen1, which never drove the LED,
-  grows by 310 to 366 B of flash and 4 B of RAM. New host tests cover the
+  2410 to 2422 B and RAM by 76 to 108 B. Gen1 has no LED; it grows by 310
+  to 366 B of flash and 4 B of RAM for the core's e-stop and watchdog, which
+  keep the pin, polarity and debounce as members where the old code had
+  constants. New host tests cover the
   e-stop hold and the watchdog trip end to end.
 - Requires DCMotorServo `^1.2.0`, LMD18200 `^0.1.5` and
   bread-crumbs-contracts `^0.10.0` (`firmware/platformio.ini` and
