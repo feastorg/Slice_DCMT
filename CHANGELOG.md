@@ -143,6 +143,23 @@ This project did not use formal release tags through most of its history, so thi
 
 ### Changed
 
+- **The e-stop input, command watchdog and status LED come from
+  bread-slice-core 0.1** (feastorg/.github#4). `bsc::EStop`,
+  `bsc::bootWait()`, `bsc::CommandWatchdog` and `bsc::StatusLed` replace
+  `pollEStop()`, the `wd*` globals, `slice.eStop`, `estopCount` and FastLED.
+  The sampling, debounce, latch and colours are unchanged; what a press or a
+  trip does stays here. Three differences:
+  - the boot wait restamps the watchdog when it ends, so a
+    `DCMT_WATCHDOG_BOOT_MS` under a second no longer trips on the first
+    loop pass;
+  - the press and the trip are latched, with interrupts off, before the
+    motors are braked; they were latched after;
+  - the timeout comparison runs inside the window that sets the latch.
+
+  FastLED is gone from `lib_deps`; this replaces #55. Gen2 flash drops by
+  2410 to 2422 B and RAM by 76 to 108 B. Gen1, which never drove the LED,
+  grows by 310 to 366 B of flash and 4 B of RAM. New host tests cover the
+  e-stop hold and the watchdog trip end to end.
 - Requires DCMotorServo `^1.2.0`, LMD18200 `^0.1.5` and
   bread-crumbs-contracts `^0.10.0` (`firmware/platformio.ini` and
   `slice.yaml`; #63). `^1.0.1` let a tree with a cached 1.0.1 keep it,

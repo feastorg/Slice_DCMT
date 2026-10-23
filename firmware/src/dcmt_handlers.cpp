@@ -9,10 +9,10 @@
 // While a watchdog trip or a hardware e-stop is held, SET_OPEN_LOOP,
 // SET_SETPOINT, SET_MODE and a brake release are refused rather than stored:
 // clearing the trip or releasing the e-stop resumes nothing, and the
-// operator re-commands afterwards (DCMT_CAP_ESTOP_HOLD). wdTripped and
-// slice.eStop are each set in the same masked window that zeroes the
-// outputs (watchdogLogic, processEStop), so these ISR-side checks cannot let
-// a command in after the reset.
+// operator re-commands afterwards (DCMT_CAP_ESTOP_HOLD). bread-slice-core
+// latches the trip and asserts the e-stop with interrupts off before
+// watchdogLogic() and processEStop() zero the outputs, so these ISR-side
+// checks cannot let a command in after the reset.
 //
 // Every SET this firmware does not act on in full is refused with a
 // BREAD_REFUSE_* reason (bread_refuse.h), so GET_ACK reports it refused
@@ -38,9 +38,9 @@ static uint8_t mode_refuse_reason(uint8_t mode)
 // the e-stop hold.
 static uint8_t hold_refuse_reason()
 {
-    if (slice.eStop)
+    if (estopInput.asserted())
         return BREAD_REFUSE_ESTOP;
-    if (wdTripped)
+    if (commandWatchdog.tripped())
         return BREAD_REFUSE_WATCHDOG_TRIP;
     return 0;
 }
@@ -244,8 +244,7 @@ void handler_set_watchdog(crumbs_context_t *ctx, uint8_t opcode, const uint8_t *
     // Arms, re-arms or disarms (0) and stamps liveness. It does not clear a
     // latched trip: re-arming is safe to send while tripped, and releasing
     // the hold is a separate, explicit act (handler_clear_watchdog_trip).
-    wdTimeoutMs = timeout_ms;
-    wdLastRxMs = millis();
+    commandWatchdog.arm(timeout_ms, millis());
 }
 
 void handler_clear_watchdog_trip(crumbs_context_t *ctx, uint8_t opcode, const uint8_t *data, uint8_t data_len, void *user_data)
@@ -266,7 +265,7 @@ void handler_clear_watchdog_trip(crumbs_context_t *ctx, uint8_t opcode, const ui
         (void)crumbs_refuse(ctx, BREAD_REFUSE_MALFORMED);
         return;
     }
-    wdTripped = false;
+    commandWatchdog.clear();
 }
 
 void reply_version(crumbs_context_t *ctx, crumbs_message_t *reply, void *user_data)
@@ -275,7 +274,7 @@ void reply_version(crumbs_context_t *ctx, crumbs_message_t *reply, void *user_da
     (void)user_data;
     // Every reply build proves a live master (SET_REPLY staging frames are
     // not dispatched to on_message, so this is where poll traffic stamps).
-    wdLastRxMs = millis();
+    commandWatchdog.stamp(millis());
     crumbs_build_version_reply(reply, DCMT_TYPE_ID, DCMT_MODULE_VER_MAJOR, DCMT_MODULE_VER_MINOR, DCMT_MODULE_VER_PATCH);
 }
 
@@ -286,7 +285,7 @@ void reply_get_state(crumbs_context_t *ctx, crumbs_message_t *reply, void *user_
     (void)user_data;
 
     // The controller's periodic state poll is the primary liveness signal.
-    wdLastRxMs = millis();
+    commandWatchdog.stamp(millis());
 
     if (slice.motor1Brake)
         brakes |= 0x01;
@@ -333,8 +332,8 @@ void reply_get_state(crumbs_context_t *ctx, crumbs_message_t *reply, void *user_
     st.spd1 = spd1;
     st.spd2 = spd2;
     st.brakes = brakes;
-    st.estop = slice.eStop ? 1 : 0;
-    st.estop_count = estopCount;
+    st.estop = estopInput.asserted() ? 1 : 0;
+    st.estop_count = estopInput.count();
 
     crumbs_msg_init(reply, DCMT_TYPE_ID, DCMT_OP_GET_STATE);
     (void)dcmt_state_pack(reply, &st);
@@ -349,7 +348,7 @@ void reply_get_caps(crumbs_context_t *ctx, crumbs_message_t *reply, void *user_d
     (void)ctx;
     (void)user_data;
 
-    wdLastRxMs = millis();
+    commandWatchdog.stamp(millis());
 
 #if DCMT_ENABLE_SPEED_LOOP
     level = DCMT_CAP_LEVEL_3;
@@ -361,13 +360,13 @@ void reply_get_caps(crumbs_context_t *ctx, crumbs_message_t *reply, void *user_d
 
 void reply_get_watchdog(crumbs_context_t *ctx, crumbs_message_t *reply, void *user_data)
 {
-    uint16_t timeout_ms = wdTimeoutMs;
+    uint16_t timeout_ms = commandWatchdog.timeoutMs();
     (void)ctx;
     (void)user_data;
 
     (void)bread_watchdog_build_reply(reply, DCMT_TYPE_ID,
                                      timeout_ms != 0 ? 1 : 0, timeout_ms,
-                                     wdTripped ? 1 : 0, wdTripCount);
+                                     commandWatchdog.tripped() ? 1 : 0, commandWatchdog.tripCount());
     // A reply build proves a live master too.
-    wdLastRxMs = millis();
+    commandWatchdog.stamp(millis());
 }

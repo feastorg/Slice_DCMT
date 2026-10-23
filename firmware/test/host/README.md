@@ -4,12 +4,13 @@ The firmware's own sources (`firmware/src`), built with the host C++ compiler
 and run on the host. Nothing is reimplemented:
 
 - **Real:** `main.cpp`, `dcmt_handlers.cpp`, `serialCommands.cpp`, the CRUMBS
-  core, and the contracts headers. CRUMBS and the contracts come from
+  core, the contracts headers and bread-slice-core. These come from
   PlatformIO's libdeps, so they are the versions the firmware builds with.
-- **Stubbed** (`stubs/`): the Arduino core, the AVR watchdog, FastLED, the
-  LMD18200 driver, Encoder, DCMotorServo and DCMotorTacho. The driver stub
-  records what the firmware last asked of each motor, and the FastLED stub
-  records every colour shown. The servo stub's `run()` writes
+  bread-slice-core is built with `BSC_HOST_TEST`, so its status LED records
+  the last frame (`bsc_host_led_frame`) instead of sending it.
+- **Stubbed** (`stubs/`): the Arduino core, the AVR watchdog, the LMD18200
+  driver, Encoder, DCMotorServo and DCMotorTacho. The driver stub records
+  what the firmware last asked of each motor. The servo stub's `run()` writes
   `host_servo_output[n]` through the firmware's motor callback, as the real
   library's output does, and `stop()` brakes through it.
 
@@ -40,6 +41,8 @@ paths as on the board. `make` exits non-zero if any check fails.
 | `test_mode_pwm.cpp` | Leaving open loop clears the open-loop PWM through serial `MODE=` and through `SET_MODE`, so GET_STATE reads 0 and a return to open loop doesn't resume the old PWM (#36) |
 | `test_serial_burst.cpp` | A burst of serial lines is answered one line per `loop()` pass, so an e-stop pressed mid-burst is asserted before the next line and the lines after it are refused (#49) |
 | `test_max_lead.cpp` | `setup()` caps both speed loops' lead at `DCMT_TACHO_MAX_LEAD` where the speed loop is built, and sets no cap where it isn't (#63) |
+| `test_estop_hold.cpp` | An e-stop press during open-loop drive: GET_STATE reports it and its count, both motors brake, a SET is refused `ESTOP`, the release is debounced and resumes nothing, and a second press counts (`DCMT_CAP_ESTOP_HOLD`) |
+| `test_watchdog_trip.cpp` | A command-watchdog trip: GET_WATCHDOG reports it, both motors brake, a SET is refused `WATCHDOG_TRIP`, a re-arm leaves it latched, and `CLEAR_WATCHDOG_TRIP` lifts it, keeps the count and resumes nothing |
 | `test_status_led.cpp` | Blue through the boot wait, then green or red on the first `loop()` pass, with the e-stop released or held from power-up; no LED driven on gen1 (#56) |
 
 ## Writing a test

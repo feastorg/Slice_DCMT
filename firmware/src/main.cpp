@@ -5,7 +5,6 @@
  */
 
 #include <Arduino.h>
-#include <FastLED.h>
 #include <crumbs.h>
 #include <crumbs_arduino.h>
 #include <LMD18200.h>
@@ -19,6 +18,9 @@
 #endif
 #include <bread/dcmt_ops.h>
 #include <math.h>
+#if DCMT_HAS_STATUS_LED
+#include <bsc_status_led.h>
+#endif
 
 // Watchdog
 #if defined(__AVR__) || defined(ARDUINO_ARCH_MEGAAVR)
@@ -30,23 +32,18 @@ static crumbs_context_t ctx;
 
 // ---- Global flags/objects ----
 #if DCMT_HAS_STATUS_LED
-CRGB led;
+#if LED_PIN != 5
+#error "bread-slice-core's status LED driver writes D5"
+#endif
+static bsc::StatusLed statusLed;
 #endif
 
-// Command watchdog state (see globals.h). ISR-written; main loop snapshots
-// under short masked windows.
-volatile uint16_t wdTimeoutMs = 0;
-volatile unsigned long wdLastRxMs = 0;
-volatile bool wdTripped = false;
-volatile uint8_t wdTripCount = 0;
-volatile uint8_t estopCount = 0;
+// Active LOW with the internal pull-up; release after 25 ms high.
+bsc::EStop estopInput(ESTOP);
+bsc::CommandWatchdog commandWatchdog;
 volatile uint8_t holdResyncMask = 0;
 volatile int16_t motor1AppliedPWM = 0;
 volatile int16_t motor2AppliedPWM = 0;
-
-static const unsigned long ESTOP_DEBOUNCE_MS = 25;
-static bool estopReleasePending = false;
-static unsigned long estopReleaseStartMs = 0;
 
 // Motor drivers
 LMD18200 motor1Driver(MOTOR1_PWM_PIN, MOTOR1_DIR_PIN, MOTOR1_BRAKE_PIN, MOTOR1_CSENSE_PIN);
@@ -240,23 +237,23 @@ void setup()
     // e-stop: no external bias resistor on current boards, so use the internal
     // pull-up. Enable it first, so it has the rest of setup to charge the
     // line before the first sample below.
-    pinMode(ESTOP, INPUT_PULLUP);
+    estopInput.begin();
     setupSlice();
     setupDCMT();
     // I2C is live from setupSlice(), so sample the e-stop through the boot
     // second instead of sleeping: a line held at power-up, or pressed now,
     // is asserted before loop() runs. The status LED stays blue through it;
-    // loop() shows the e-stop state from its first pass.
-    const unsigned long bootStartMs = millis();
-    while (millis() - bootStartMs < 1000)
-        pollEStop();
+    // loop() shows the e-stop state from its first pass. The wait restamps
+    // the command watchdog when it ends, so a DCMT_WATCHDOG_BOOT_MS under a
+    // second does not trip on the first pass.
+    bsc::bootWait(estopInput, 1000, processEStop, &commandWatchdog);
     wdt_enable(WDTO_1S);
 }
 
 void loop()
 {
     wdt_reset();
-    pollEStop();
+    processEStop(estopInput.poll(millis()));
     updateStatusLed();
     watchdogLogic();
     motorControlLogic();
@@ -314,7 +311,7 @@ static bool is_command_op(uint8_t opcode)
 
 static void on_crumbs_message(crumbs_context_t *c, const crumbs_message_t *msg)
 {
-    wdLastRxMs = millis();
+    commandWatchdog.stamp(millis());
     if (!is_command_op(msg->opcode))
         (void)crumbs_refuse(c, BREAD_REFUSE_UNKNOWN_OP);
 }
@@ -381,16 +378,13 @@ void setupSlice()
 #ifdef DCMT_WATCHDOG_BOOT_MS
     // Integration opt-in: come up armed (e.g. e-stop wirings that power-cycle
     // the board). Default builds boot disarmed.
-    wdTimeoutMs = (uint16_t)DCMT_WATCHDOG_BOOT_MS;
-    wdLastRxMs = millis();
+    commandWatchdog.arm((uint16_t)DCMT_WATCHDOG_BOOT_MS, millis());
 #endif
 
     // Status LED -- gen2 only; see config_hardware.h
 #if DCMT_HAS_STATUS_LED
-    FastLED.addLeds<NEOPIXEL, LED_PIN>(&led, 1);
-    FastLED.setBrightness(50);
-    led = CRGB::Blue;
-    FastLED.show();
+    statusLed.begin();
+    statusLed.set(bsc::StatusLed::Boot);
 #endif
 
     SLICE_DEBUG_PRINTLN(F("DCMT SLICE INITIALIZED"));
@@ -450,56 +444,26 @@ void setupDCMT()
     appliedMode = slice.mode;
 }
 
-// Poll/processing
-// The line is sampled on every pass, not edge-triggered. The first LOW
-// sample asserts the e-stop, so bounce or an edge train cannot postpone a
-// stop (#39); release needs the line HIGH for ESTOP_DEBOUNCE_MS without a
-// single LOW sample.
-void pollEStop()
-{
-    // Internal pull-up means asserted e-stop pulls the line LOW.
-    if (digitalRead(ESTOP) == LOW)
-    {
-        estopReleasePending = false;
-        if (!slice.eStop)
-            processEStop(true);
-    }
-    else if (slice.eStop)
-    {
-        if (!estopReleasePending)
-        {
-            estopReleasePending = true;
-            estopReleaseStartMs = millis();
-        }
-        else if (millis() - estopReleaseStartMs >= ESTOP_DEBOUNCE_MS)
-        {
-            estopReleasePending = false;
-            processEStop(false);
-        }
-    }
-}
-
-// Red while the e-stop is held, green otherwise, written only on a change.
-// Called from loop() only. The boot wait in setup() polls the e-stop too, and
-// when pollEStop() wrote the LED, its first pass replaced the boot blue
+// Red while the e-stop is held, green otherwise; StatusLed writes only on a
+// change. Called from loop() only. The boot wait in setup() polls the e-stop
+// too, and when that wrote the LED, its first pass replaced the boot blue
 // within microseconds.
 void updateStatusLed()
 {
 #if DCMT_HAS_STATUS_LED
-    static CRGB lastLed = CRGB::Black;
-    CRGB next = slice.eStop ? CRGB::Red : CRGB::Green;
-    if (next != lastLed)
-    {
-        led = next;
-        FastLED.show();
-        lastLed = next;
-    }
+    statusLed.set(estopInput.asserted() ? bsc::StatusLed::EStop : bsc::StatusLed::Running);
 #endif
 }
 
-void processEStop(bool pressed)
+// The line is sampled every pass by estopInput.poll(), not edge-triggered.
+// The first LOW sample asserts the e-stop, so bounce or an edge train cannot
+// postpone a stop (#39); release needs the line HIGH for 25 ms without a
+// single LOW sample. By the time Pressed arrives here, estopInput has set
+// asserted() and counted the press with interrupts off, so the I2C handlers
+// already refuse actuating commands.
+void processEStop(bsc::EStop::Event e)
 {
-    if (pressed)
+    if (e == bsc::EStop::Pressed)
     {
         stop_control_loops();
         motor1_brake();
@@ -513,15 +477,9 @@ void processEStop(bool pressed)
         const int16_t pos1 = clamp_i16(servo1.getActualPosition());
         const int16_t pos2 = clamp_i16(servo2.getActualPosition());
 
-        // eStop is set in the same masked window, so the I2C handlers, which
-        // refuse actuating commands while it is set, can never store one
-        // after these fields are reset.
+        // The handlers have refused actuating commands since the press was
+        // asserted, so none can be stored after these fields are reset.
         noInterrupts();
-        // Count a new press only (released -> pressed). A line held at
-        // power-up counts as one press. Wraps at 255.
-        if (!slice.eStop)
-            estopCount++;
-        slice.eStop = true;
         slice.motor1PWM = 0;
         slice.motor2PWM = 0;
         slice.motor1Speed = 0;
@@ -538,31 +496,19 @@ void processEStop(bool pressed)
         interrupts();
         SLICE_DEBUG_PRINTLN(F("ESTOP PRESSED!"));
     }
-    else
+    else if (e == bsc::EStop::Released)
     {
-        noInterrupts();
-        slice.eStop = false;
-        interrupts();
+        // Nothing resumes: the controller re-commands after a release.
         SLICE_DEBUG_PRINTLN(F("ESTOP RELEASED!"));
     }
 }
 
 void watchdogLogic()
 {
-    uint16_t timeout;
-    unsigned long lastRx;
-    bool tripped;
-
-    noInterrupts();
-    timeout = wdTimeoutMs;
-    lastRx = wdLastRxMs;
-    tripped = wdTripped;
-    interrupts();
-
-    if (timeout == 0)
+    if (!commandWatchdog.armed())
         return;
 
-    if (tripped)
+    if (commandWatchdog.tripped())
     {
         // Hold safe state until an explicit clear (CLEAR_WATCHDOG_TRIP or
         // serial WDCLEAR) releases the trip.
@@ -575,7 +521,10 @@ void watchdogLogic()
         return;
     }
 
-    if (millis() - lastRx < timeout)
+    // True once, on the pass that trips. commandWatchdog has latched the trip
+    // with interrupts off before it returns, so the I2C handlers already
+    // refuse actuating commands.
+    if (!commandWatchdog.check(millis()))
         return;
 
     stop_control_loops();
@@ -593,12 +542,9 @@ void watchdogLogic()
     const int16_t pos1 = clamp_i16(servo1.getActualPosition());
     const int16_t pos2 = clamp_i16(servo2.getActualPosition());
 
-    // wdTripped is set in the same masked window, so the I2C handlers, which
-    // refuse actuating commands while it is set, can never store one after
-    // these fields are reset.
+    // The handlers have refused actuating commands since the trip latched,
+    // so none can be stored after these fields are reset.
     noInterrupts();
-    wdTripped = true;
-    wdTripCount++;
     slice.motor1PWM = 0;
     slice.motor2PWM = 0;
     slice.motor1Speed = 0;
@@ -641,10 +587,9 @@ void motorControlLogic()
     // window only when a closed-loop mode needs them; a torn view across the
     // two windows self-corrects next iteration.
     DCMT_SLICE local;
-    bool wdTrippedNow;
+    const bool held = estopInput.asserted() || commandWatchdog.tripped();
     noInterrupts();
     local.mode = slice.mode;
-    local.eStop = slice.eStop;
     local.motor1Brake = slice.motor1Brake;
     local.motor2Brake = slice.motor2Brake;
     local.motor1PWM = slice.motor1PWM;
@@ -653,17 +598,16 @@ void motorControlLogic()
     local.motor2PositionSetpoint = slice.motor2PositionSetpoint;
     local.motor1SpeedSetpoint = slice.motor1SpeedSetpoint;
     local.motor2SpeedSetpoint = slice.motor2SpeedSetpoint;
-    wdTrippedNow = wdTripped;
     interrupts();
 
     // A tripped command watchdog holds the same safe state as a signal-wired
     // e-stop until an explicit clear releases the trip — mirrors RLHT's
-    // relayControlLogic, which guards `slice.eStop || wdTripped`. Without the
-    // wdTripped half, the OPEN_LOOP write(0) / CLOSED_LOOP servo.run() below
+    // relayControlLogic, which guards the e-stop and the trip together. Without the
+    // trip half, the OPEN_LOOP write(0) / CLOSED_LOOP servo.run() below
     // release the brake that watchdogLogic() engaged, so brake+PWM toggle every
     // loop: an audible driver whine and a soft oscillating brake instead of a
     // clean hard-brake on a driven motor (feastorg/Slice_DCMT#11).
-    if (local.eStop || wdTrippedNow)
+    if (held)
     {
         // brake() only — see the watchdog hold note; this branch also runs
         // every iteration while a signal-wired e-stop or watchdog trip is held.
@@ -689,7 +633,7 @@ void motorControlLogic()
         const int16_t h1 = clamp_i16(servo1.getActualPosition());
         const int16_t h2 = clamp_i16(servo2.getActualPosition());
         noInterrupts();
-        if (wdTripped || slice.eStop)
+        if (commandWatchdog.tripped() || estopInput.asserted())
         {
             slice.motor1PositionSetpoint = h1;
             slice.motor2PositionSetpoint = h2;

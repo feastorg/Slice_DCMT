@@ -4,12 +4,9 @@
 #include <cstdio>
 
 HardwareSerial Serial;
-FastLEDStub FastLED;
 
 unsigned long host_now = 0;
 int host_estop_level = HIGH;
-int host_led_shown[64];
-int host_led_shows = 0;
 crumbs_context_t *host_ctx = nullptr;
 
 unsigned long millis() { return host_now; }
@@ -22,15 +19,6 @@ int digitalRead(uint8_t pin)
 {
     host_now++;
     return pin == ESTOP ? host_estop_level : LOW;
-}
-
-void FastLEDStub::show()
-{
-#if DCMT_HAS_STATUS_LED
-    if (host_led_shows < 64)
-        host_led_shown[host_led_shows] = led.c;
-#endif
-    host_led_shows++;
 }
 
 extern "C" void crumbs_arduino_init_peripheral(crumbs_context_t *ctx, uint8_t address)

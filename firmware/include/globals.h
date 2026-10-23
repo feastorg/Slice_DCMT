@@ -4,7 +4,7 @@
 
 #include <Arduino.h>
 #include <stdint.h>
-#include <FastLED.h>
+#include <bread_slice_core.h>
 #include <crumbs.h>
 #include "config_hardware.h"
 
@@ -33,7 +33,6 @@ struct DCMT_SLICE
     int16_t motor2PWM = 0;
     bool motor1Brake = false;
     bool motor2Brake = false;
-    bool eStop = false;
 
     int16_t motor1PositionSetpoint = 0;
     int16_t motor2PositionSetpoint = 0;
@@ -56,21 +55,16 @@ struct Timing
 };
 
 // ---- Extern globals (defined in main.cpp) ----
-#if DCMT_HAS_STATUS_LED
-extern CRGB led;
-#endif
 extern DCMT_SLICE slice;
 extern Timing timing;
 
-// Command watchdog (BREAD_OP_SET/GET_WATCHDOG): boots disarmed (timeout 0)
-// unless DCMT_WATCHDOG_BOOT_MS is defined. ISR handlers write these; main-loop
-// access goes through short masked windows (multi-byte volatiles on AVR).
-extern volatile uint16_t wdTimeoutMs;
-extern volatile unsigned long wdLastRxMs;
-extern volatile bool wdTripped;
-extern volatile uint8_t wdTripCount;
-// Hardware e-stop presses since boot, wraps at 255 (dcmt_state estop_count).
-extern volatile uint8_t estopCount;
+// The e-stop input (pin ESTOP) and the command watchdog
+// (BREAD_OP_SET/GET_WATCHDOG), from bread-slice-core. Their state is what
+// the I2C handlers read: asserted() and count() (dcmt_state estop and
+// estop_count), tripped(), timeoutMs() and tripCount(). The watchdog boots
+// disarmed unless DCMT_WATCHDOG_BOOT_MS is defined.
+extern bsc::EStop estopInput;
+extern bsc::CommandWatchdog commandWatchdog;
 // One bit per motor, set when a hold (watchdog trip or e-stop press) engages
 // the brakes and cleared when that motor's brake is released or a new
 // setpoint for it arrives. While a bit is set and the brake is engaged, the
@@ -89,9 +83,8 @@ extern volatile int16_t motor2AppliedPWM;
 // ---- Functions implemented across translation units ----
 void setupSlice();
 void setupDCMT();
-void pollEStop();
 void updateStatusLed();
-void processEStop(bool pressed);
+void processEStop(bsc::EStop::Event e);
 void watchdogLogic();
 void motorControlLogic();
 void printSliceState(Print &out);

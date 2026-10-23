@@ -103,7 +103,7 @@ firmware:
     - "cameronbrooks11/LMD18200 @ ^0.1.5"
     - "cameronbrooks11/DCMotorServo @ ^1.2.0"
     - "paulstoffregen/Encoder @ ^1.4.4"
-    - "fastled/FastLED @ ^3.6.0"
+    - "cameronbrooks11/bread-slice-core @ ^0.1.0"
 
 # ── Protocol ──────────────────────────────────────────────────────────────────
 protocol:
