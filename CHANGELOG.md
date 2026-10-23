@@ -20,6 +20,13 @@ This project did not use formal release tags through most of its history, so thi
 
 ### Fixed
 
+- **A held shaft no longer lunges on release in speed mode** (#63). The
+  speed loop drove its position target ahead of the encoder without
+  limit, so on the 2026-10-22 bench a shaft held for ~10 s at 60 RPM ran
+  at 240 to 285 RPM on release. Both speed loops now cap that lead at
+  `DCMT_TACHO_MAX_LEAD` (300 counts), DCMotorServo's `setMaxLead()`. With
+  that cap a 4 s hold showed no lunge. Nothing yet stops the drive into a
+  stall (#64).
 - **A burst of serial input no longer holds the loop** (#49). The serial
   reader handled every buffered line in one call, and each reply blocks
   once the transmit buffer fills, so the e-stop went unsampled until the

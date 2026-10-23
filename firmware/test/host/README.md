@@ -39,6 +39,7 @@ paths as on the board. `make` exits non-zero if any check fails.
 | `test_applied_pwm.cpp` | GET_STATE `m1_pwm`/`m2_pwm` report the PWM each motor is driven at: open loop, braked, position and speed (the servo stub's output), and e-stop (#61) |
 | `test_mode_pwm.cpp` | Leaving open loop clears the open-loop PWM through serial `MODE=` and through `SET_MODE`, so GET_STATE reads 0 and a return to open loop doesn't resume the old PWM (#36) |
 | `test_serial_burst.cpp` | A burst of serial lines is answered one line per `loop()` pass, so an e-stop pressed mid-burst is asserted before the next line and the lines after it are refused (#49) |
+| `test_max_lead.cpp` | `setup()` caps both speed loops' lead at `DCMT_TACHO_MAX_LEAD` where the speed loop is built, and sets no cap where it isn't (#63) |
 | `test_status_led.cpp` | Blue through the boot wait, then green or red on the first `loop()` pass, with the e-stop released or held from power-up; no LED driven on gen1 (#56) |
 
 ## Writing a test

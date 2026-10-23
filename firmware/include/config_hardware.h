@@ -53,6 +53,11 @@
 // Speed-loop update interval in milliseconds.
 #define DCMT_TACHO_INTERVAL_MS 5
 
+// How far, in encoder counts, the speed loop may drive the position target
+// ahead of the encoder. Without a cap a held shaft banks travel and lunges
+// on release; 300 removed that on the 2026-10-22 bench (#63).
+#define DCMT_TACHO_MAX_LEAD 300
+
 // ----- Motor1 Definitions -----
 #if (DCMT_HW_GEN == 1)
 #define MOTOR1_PWM_PIN 6

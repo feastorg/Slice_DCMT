@@ -439,6 +439,8 @@ void setupDCMT()
     apply_speed_pid_if_needed(slice);
     tacho1.setSpeedRPM(0);
     tacho2.setSpeedRPM(0);
+    tacho1.setMaxLead(DCMT_TACHO_MAX_LEAD);
+    tacho2.setMaxLead(DCMT_TACHO_MAX_LEAD);
 #endif
 
     slice.motor1Position = clamp_i16(servo1.getActualPosition());
