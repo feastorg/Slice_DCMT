@@ -136,6 +136,14 @@ This project did not use formal release tags through most of its history, so thi
 
 ### Changed
 
+- Requires DCMotorServo `^1.2.0`, LMD18200 `^0.1.5` and
+  bread-crumbs-contracts `^0.10.0` (`firmware/platformio.ini` and
+  `slice.yaml`; #63). `^1.0.1` let a tree with a cached 1.0.1 keep it,
+  which drives forward at skip PWM for one cycle on every `run()` after
+  `stop()`. 1.2.0 carries the speed-loop fixes behind #62
+  (CameronBrooks11/DCMotorServo#12, CameronBrooks11/DCMotorServo#13) and
+  `setMaxLead()`; 0.1.5 sets PWM low before releasing the brake.
+  Contracts 0.10.0 only adds flags DCMT does not advertise.
 - The PlatformIO platforms are pinned: `platformio/atmelavr @ 5.3.0` and
   `platformio/atmelmegaavr @ 1.10.0`, the versions local builds and CI
   already resolved. Before, a clean build took whatever platform release

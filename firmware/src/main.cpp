@@ -681,7 +681,7 @@ void motorControlLogic()
         //
         // The release then starts the PID cleanly only because
         // stop_control_loops() -> DCMotorServo::stop()/haltMotor() zeroes
-        // _PID_output (DCMotorServo 1.0.1 and 1.1.0). Without that, the
+        // _PID_output (DCMotorServo 1.0.1 to 1.2.0). Without that, the
         // first run() after a release lunges on the stale output. Check it
         // again on a DCMotorServo bump.
         const int16_t h1 = clamp_i16(servo1.getActualPosition());
