@@ -1,0 +1,60 @@
+--- a/firmware/platformio.ini
++++ b/firmware/platformio.ini
+@@ -13,8 +13,8 @@
+     fastled/FastLED @ ^3.6.0
+     cameronbrooks11/CRUMBS @ ^0.16.0
+     cameronbrooks11/bread-crumbs-contracts @ ^0.9.0
+-    cameronbrooks11/LMD18200 @ ^0.1.4
+-    cameronbrooks11/DCMotorServo @ ^1.0.1
++    https://github.com/CameronBrooks11/lmd18200.git#b11192a20a25cb2521fbc652f51a2ffc4b977d9c
++    https://github.com/CameronBrooks11/DCMotorServo.git#cc8bad6c9c605249a916d74a17a1adffacab0143
+     paulstoffregen/Encoder @ ^1.4.4
+ build_flags =
+     -DCRUMBS_MAX_HANDLERS=12
+@@ -59,3 +59,19 @@
+ build_flags =
+     ${env.build_flags}
+     -DDCMT_HW_GEN=2
++
++; ----- Bench image B: unreleased library main branches, bench-only flags -----
++[env:bench_b]
++extends = env:gen2_nanoevery
++
++[env:bench_b_lead300]
++extends = env:gen2_nanoevery
++build_flags = ${env:gen2_nanoevery.build_flags} -DBENCH_MAX_LEAD=300
++
++[env:bench_b_lead900]
++extends = env:gen2_nanoevery
++build_flags = ${env:gen2_nanoevery.build_flags} -DBENCH_MAX_LEAD=900
++
++[env:bench_b_acc300]
++extends = env:gen2_nanoevery
++build_flags = ${env:gen2_nanoevery.build_flags} -DBENCH_ACCURACY=300
+--- a/firmware/include/config_hardware.h
++++ b/firmware/include/config_hardware.h
+@@ -48,7 +48,11 @@
+ 
+ #define DCMT_SERVO_PWM_SKIP 15
+ #define DCMT_SERVO_MAX_PWM 150
++#ifdef BENCH_ACCURACY
++#define DCMT_SERVO_ACCURACY BENCH_ACCURACY
++#else
+ #define DCMT_SERVO_ACCURACY 10
++#endif
+ 
+ // Speed-loop update interval in milliseconds.
+ #define DCMT_TACHO_INTERVAL_MS 5
+--- a/firmware/src/main.cpp
++++ b/firmware/src/main.cpp
+@@ -439,6 +439,10 @@
+     apply_speed_pid_if_needed(slice);
+     tacho1.setSpeedRPM(0);
+     tacho2.setSpeedRPM(0);
++#ifdef BENCH_MAX_LEAD
++    tacho1.setMaxLead(BENCH_MAX_LEAD);
++    tacho2.setMaxLead(BENCH_MAX_LEAD);
++#endif
+ #endif
+ 
+     slice.motor1Position = clamp_i16(servo1.getActualPosition());
