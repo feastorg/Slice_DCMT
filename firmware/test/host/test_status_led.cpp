@@ -4,18 +4,24 @@
 // their firmware must never drive one.
 #include "host.h"
 #include "globals.h"
+#include <bsc_status_led.h>
 #include <cstdio>
 #include <cstring>
 
 void setup();
 void loop();
 
-static int last_shown()
+// The last frame the core's StatusLed sent, in GRB order (BSC_HOST_TEST
+// records it instead of sending it).
+static bool shown(uint8_t g, uint8_t r, uint8_t b)
 {
-    if (host_led_shows == 0)
-        return -1;
-    return host_led_shown[(host_led_shows > 64 ? 64 : host_led_shows) - 1];
+    return bsc_host_led_writes > 0 && bsc_host_led_frame[0] == g && bsc_host_led_frame[1] == r &&
+           bsc_host_led_frame[2] == b;
 }
+
+static bool blue() { return shown(0, 0, 50); }
+static bool green() { return shown(25, 0, 0); }
+static bool red() { return shown(0, 50, 0); }
 
 int main(int argc, char **argv)
 {
@@ -27,14 +33,14 @@ int main(int argc, char **argv)
     setup();
 #if DCMT_HAS_STATUS_LED
     snprintf(what, sizeof what, "e-stop %s: the boot wait ends on blue", line);
-    host_check(what, last_shown() == CRGB::Blue);
+    host_check(what, blue());
     loop();
     snprintf(what, sizeof what, "e-stop %s: the first loop() pass shows %s", line, held ? "red" : "green");
-    host_check(what, last_shown() == (held ? CRGB::Red : CRGB::Green));
+    host_check(what, held ? red() : green());
 #else
     loop();
     snprintf(what, sizeof what, "e-stop %s: no LED is driven on a board without one", line);
-    host_check(what, host_led_shows == 0);
+    host_check(what, bsc_host_led_writes == 0);
 #endif
     return host_finish();
 }

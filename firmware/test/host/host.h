@@ -15,10 +15,6 @@ extern unsigned long host_now;
 // the internal pull-up and asserts on LOW.
 extern int host_estop_level;
 
-// Every colour the status LED was shown, in order (CRGB::Col values).
-extern int host_led_shown[64];
-extern int host_led_shows;
-
 // The context setup() passed to crumbs_arduino_init_peripheral(), or null.
 extern crumbs_context_t *host_ctx;
 

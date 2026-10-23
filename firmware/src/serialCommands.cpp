@@ -58,22 +58,20 @@ static void processCommand(char *cmd)
     // A serial operator is a live master too: feed the command watchdog.
     // Ordinary input (READ included) does not clear a latched trip, so a
     // logger polling READ cannot release a hold; only WDCLEAR does.
-    noInterrupts();
-    wdLastRxMs = millis();
-    interrupts();
+    commandWatchdog.stamp(millis());
 
     // While an e-stop or a watchdog trip is held, commands that could make a
     // motor move are refused, as over I2C (dcmt_handlers.cpp): releasing the
     // e-stop or clearing the trip resumes nothing. Engaging a brake, PID
     // tuning, WDOG=, WDCLEAR and READ stay available.
-    if ((slice.eStop || wdTripped) &&
+    if ((estopInput.asserted() || commandWatchdog.tripped()) &&
         (starts_with_P(cmd, PSTR("MODE=")) ||
          starts_with_P(cmd, PSTR("M1PWM=")) || starts_with_P(cmd, PSTR("M2PWM=")) ||
          starts_with_P(cmd, PSTR("M1POS=")) || starts_with_P(cmd, PSTR("M2POS=")) ||
          starts_with_P(cmd, PSTR("M1SPEED=")) || starts_with_P(cmd, PSTR("M2SPEED=")) ||
          strcmp_P(cmd, PSTR("BRAKE1=0")) == 0 || strcmp_P(cmd, PSTR("BRAKE2=0")) == 0))
     {
-        if (slice.eStop)
+        if (estopInput.asserted())
             Serial.println(F("Ignored: e-stop held; release it, then release the brakes"));
         else
             Serial.println(F("Ignored: watchdog trip held; send WDCLEAR, then release the brakes"));
@@ -285,10 +283,7 @@ static void processCommand(char *cmd)
             v = 0;
         if (v > 65535)
             v = 65535;
-        noInterrupts();
-        wdTimeoutMs = (uint16_t)v;
-        wdLastRxMs = millis();
-        interrupts();
+        commandWatchdog.arm((uint16_t)v, millis());
         Serial.print(F("WDOG-> "));
         if (v == 0)
             Serial.println(F("disarmed"));
@@ -302,9 +297,7 @@ static void processCommand(char *cmd)
     {
         // Serial counterpart of BREAD_OP_CLEAR_WATCHDOG_TRIP: clears the trip
         // and nothing else (timeout, armed state and trip count unchanged).
-        noInterrupts();
-        wdTripped = false;
-        interrupts();
+        commandWatchdog.clear();
         Serial.println(F("WDOG trip cleared"));
     }
     else if (strcmp_P(cmd, PSTR("READ")) == 0)

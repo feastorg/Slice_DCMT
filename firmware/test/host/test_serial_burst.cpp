@@ -44,7 +44,7 @@ int main()
     loop();
     host_estop_level = LOW;
     loop();
-    host_check("a press during a burst is asserted on the next pass", slice.eStop);
+    host_check("a press during a burst is asserted on the next pass", estopInput.asserted());
     host_check("the line after the press is refused, not applied",
                count(Serial.out, "M1PWM->") == 1 && count(Serial.out, "Ignored: e-stop held") == 1);
 

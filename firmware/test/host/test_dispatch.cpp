@@ -82,16 +82,20 @@ int main()
     host_check("a command of type 0x00 is applied", host_read_ack().status == CRUMBS_ACK_APPLIED);
 
     // Another family's frame is rejected before any handler runs: it neither
-    // arms the watchdog nor counts as bus liveness.
+    // arms the watchdog nor counts as bus liveness. With a 1000 ms timeout
+    // armed, the frame arrives 900 ms in; the trip still comes at 1000 ms,
+    // where a refresh would have moved it to 1900 ms.
     const uint8_t arm500[2] = {0xF4, 0x01};
     host_now += 1000;
-    const unsigned long stamp = wdLastRxMs;
+    commandWatchdog.arm(1000, host_now);
+    host_now += 900;
     host_send(RLHT_TYPE, BREAD_OP_SET_WATCHDOG, arm500, 2);
-    host_check("another family's frame does not refresh the watchdog", wdLastRxMs == stamp);
     const crumbs_ack_t a = host_read_ack();
     host_check("another family's frame is rejected REJECT_TYPE",
                a.status == CRUMBS_ACK_REJECTED && a.reason == CRUMBS_ACK_REJECT_TYPE);
-    host_check("another family's frame does not arm the watchdog", wdTimeoutMs == 0);
+    host_check("another family's frame does not arm the watchdog", commandWatchdog.timeoutMs() == 1000);
+    host_now += 100;
+    host_check("another family's frame does not refresh the watchdog", commandWatchdog.check(host_now));
 
     return host_finish();
 }
