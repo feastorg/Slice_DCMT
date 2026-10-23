@@ -32,3 +32,4 @@ in bread-infra.
 | Date | Record | Firmware | Boards | Result |
 | --- | --- | --- | --- | --- |
 | 2026-10-20 | [GET opcodes, type check and status LED](2026-10-20-get-opcodes-and-status-led.md) (backfill) | `cbb8313`, `8a0604b` | gen1 Nano ×2, gen2 Nano, gen2 Nano Every | pass; D5 timing not scoped |
+| 2026-10-22 | [Applied PWM, watchdog, e-stop and library fixes](2026-10-22-applied-pwm-and-library-fixes.md) | `4254ea5`; `4254ea5` + DCMotorServo `cc8bad6`, lmd18200 `b11192a` | gen2 Nano, gen2 Nano Every | pass; serial blocks not run; current-sense zero offset |
