@@ -20,6 +20,16 @@ This project did not use formal release tags through most of its history, so thi
 
 ### Fixed
 
+- **Serial numbers are parsed strictly** (#60), with bread-slice-core's
+  `parseLong()` and `parseFloat()`. The whole token must parse and be in
+  range for its field, or the command is refused with no change and an
+  `Ignored:` line. `M1POS=abc` used to command position 0, `M1POS=40000`
+  wrapped to -25536, `WDOG=abc` disarmed the watchdog, and `PIDPOS=` took
+  trailing junk, NaN, inf and negative gains. The ranges: PWM -255 to 255,
+  refused where it used to clamp, as SET_OPEN_LOOP refuses it; positions
+  and speeds -32767 to 32767, since -32768 is GET_STATE's invalid sentinel;
+  `WDOG=` 0 to 65535; each PID gain 0 to 65.535, SET_PID's range. Flash
+  grows by about 1 KB, mostly `strtol`.
 - **A held shaft no longer lunges on release in speed mode** (#63). The
   speed loop drove its position target ahead of the encoder without
   limit, so on the 2026-10-22 bench a shaft held for ~10 s at 60 RPM ran

@@ -37,7 +37,7 @@ CRUMBS_SRC := $(CRUMBS)/core/crumbs_core.c $(CRUMBS)/crc/crumbs_crc.c $(CRUMBS)/
 CRUMBS_OBJ := $(OUT)/crumbs_core.o $(OUT)/crumbs_crc.o $(OUT)/crc8_nibble.o
 # test_status_led runs once per e-stop case (the test target); the others
 # run once.
-SINGLE   := test_dispatch test_mode_pwm test_applied_pwm test_serial_burst test_max_lead test_estop_hold test_watchdog_trip
+SINGLE   := test_dispatch test_mode_pwm test_applied_pwm test_serial_burst test_max_lead test_estop_hold test_watchdog_trip test_serial_numbers
 TESTS    := $(SINGLE) test_status_led
 
 .PHONY: all test clean check-libdeps

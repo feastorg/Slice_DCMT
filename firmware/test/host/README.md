@@ -43,6 +43,7 @@ paths as on the board. `make` exits non-zero if any check fails.
 | `test_max_lead.cpp` | `setup()` caps both speed loops' lead at `DCMT_TACHO_MAX_LEAD` where the speed loop is built, and sets no cap where it isn't (#63) |
 | `test_estop_hold.cpp` | An e-stop press during open-loop drive: GET_STATE reports it and its count, both motors brake, a SET is refused `ESTOP`, the release is debounced and resumes nothing, and a second press counts (`DCMT_CAP_ESTOP_HOLD`) |
 | `test_watchdog_trip.cpp` | A command-watchdog trip: GET_WATCHDOG reports it, both motors brake, a SET is refused `WATCHDOG_TRIP`, a re-arm leaves it latched, and `CLEAR_WATCHDOG_TRIP` lifts it, keeps the count and resumes nothing |
+| `test_serial_numbers.cpp` | Serial numbers are parsed strictly: each row of #60 (trailing junk, empty, NaN, inf, out of range, wrong field count) is refused with no change, and in-range values still apply (#60) |
 | `test_status_led.cpp` | Blue through the boot wait, then green or red on the first `loop()` pass, with the e-stop released or held from power-up; no LED driven on gen1 (#56) |
 
 ## Writing a test

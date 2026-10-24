@@ -18,20 +18,51 @@ static const char *after_prefix_P(const char *s, PGM_P prefix)
     return s + strlen_P(prefix);
 }
 
+// Numbers are parsed strictly (#60, bread-infra spec/slice/firmware.md):
+// the whole token must parse and be in range for its field, or the command
+// is refused with no change.
+static bool parse_arg(const char *s, long lo, long hi, long &out)
+{
+    if (bsc::parseLong(s, lo, hi, &out))
+        return true;
+    Serial.print(F("Ignored: expected a whole number from "));
+    Serial.print(lo);
+    Serial.print(F(" to "));
+    Serial.println(hi);
+    return false;
+}
+
+// Exactly three gains, kp,ki,kd, each finite and in SET_PID's range (u16
+// x1000 on the wire: 0 to 65.535).
 static bool parse_pid_triplet(const char *s, float &kp, float &ki, float &kd)
 {
-    char *end1;
-    char *end2;
-    char *end3;
-    kp = strtod(s, &end1);
-    if (*end1 != ',')
+    char buf[sizeof cmdBuf];
+    if (strlen(s) >= sizeof buf)
         return false;
-    ki = strtod(end1 + 1, &end2);
-    if (*end2 != ',')
+    strcpy(buf, s);
+    char *field[3];
+    uint8_t n = 0;
+    char *p = buf;
+    for (;;)
+    {
+        if (n == 3)
+            return false;
+        field[n++] = p;
+        char *comma = strchr(p, ',');
+        if (comma == nullptr)
+            break;
+        *comma = '\0';
+        p = comma + 1;
+    }
+    if (n != 3)
         return false;
-    kd = strtod(end2 + 1, &end3);
-    if (end3 == end2 + 1)
-        return false;
+    float v[3];
+    for (uint8_t i = 0; i < 3; i++)
+        if (!bsc::parseFloat(field[i], 0.0f, 65.535f, &v[i]))
+            return false;
+    kp = v[0];
+    ki = v[1];
+    kd = v[2];
     return true;
 }
 
@@ -127,11 +158,9 @@ static void processCommand(char *cmd)
     }
     else if (starts_with_P(cmd, PSTR("M1PWM=")))
     {
-        long v = atol(after_prefix_P(cmd, PSTR("M1PWM=")));
-        if (v < -255)
-            v = -255;
-        if (v > 255)
-            v = 255;
+        long v;
+        if (!parse_arg(after_prefix_P(cmd, PSTR("M1PWM=")), -255, 255, v))
+            return;
 
         // The mode check and the write share one masked window: an I2C
         // SET_MODE between them would zero the PWM, then this would store
@@ -151,11 +180,9 @@ static void processCommand(char *cmd)
     }
     else if (starts_with_P(cmd, PSTR("M2PWM=")))
     {
-        long v = atol(after_prefix_P(cmd, PSTR("M2PWM=")));
-        if (v < -255)
-            v = -255;
-        if (v > 255)
-            v = 255;
+        long v;
+        if (!parse_arg(after_prefix_P(cmd, PSTR("M2PWM=")), -255, 255, v))
+            return;
 
         noInterrupts();
         const bool open = slice.mode == OPEN_LOOP;
@@ -172,7 +199,11 @@ static void processCommand(char *cmd)
     }
     else if (starts_with_P(cmd, PSTR("M1POS=")))
     {
-        const int16_t sp = (int16_t)atol(after_prefix_P(cmd, PSTR("M1POS=")));
+        // -32768 is GET_STATE's invalid sentinel.
+        long v;
+        if (!parse_arg(after_prefix_P(cmd, PSTR("M1POS=")), -32767, 32767, v))
+            return;
+        const int16_t sp = (int16_t)v;
         // A new setpoint ends this motor's post-hold follow.
         noInterrupts();
         slice.motor1PositionSetpoint = sp;
@@ -183,7 +214,11 @@ static void processCommand(char *cmd)
     }
     else if (starts_with_P(cmd, PSTR("M2POS=")))
     {
-        const int16_t sp = (int16_t)atol(after_prefix_P(cmd, PSTR("M2POS=")));
+        // -32768 is GET_STATE's invalid sentinel.
+        long v;
+        if (!parse_arg(after_prefix_P(cmd, PSTR("M2POS=")), -32767, 32767, v))
+            return;
+        const int16_t sp = (int16_t)v;
         // A new setpoint ends this motor's post-hold follow.
         noInterrupts();
         slice.motor2PositionSetpoint = sp;
@@ -199,7 +234,7 @@ static void processCommand(char *cmd)
         float kd = 0.0f;
         if (!parse_pid_triplet(after_prefix_P(cmd, PSTR("PIDPOS=")), kp, ki, kd))
         {
-            Serial.println(F("PIDPOS format: PIDPOS=kp,ki,kd"));
+            Serial.println(F("PIDPOS format: PIDPOS=kp,ki,kd, each 0 to 65.535"));
             return;
         }
         // SET_PID writes these from the I2C interrupt too; mask so neither
@@ -213,7 +248,11 @@ static void processCommand(char *cmd)
 #if DCMT_ENABLE_SPEED_LOOP
     else if (starts_with_P(cmd, PSTR("M1SPEED=")))
     {
-        const int16_t sp = (int16_t)atol(after_prefix_P(cmd, PSTR("M1SPEED=")));
+        // -32768 is GET_STATE's invalid sentinel.
+        long v;
+        if (!parse_arg(after_prefix_P(cmd, PSTR("M1SPEED=")), -32767, 32767, v))
+            return;
+        const int16_t sp = (int16_t)v;
         // A new setpoint ends this motor's post-hold follow.
         noInterrupts();
         slice.motor1SpeedSetpoint = sp;
@@ -224,7 +263,11 @@ static void processCommand(char *cmd)
     }
     else if (starts_with_P(cmd, PSTR("M2SPEED=")))
     {
-        const int16_t sp = (int16_t)atol(after_prefix_P(cmd, PSTR("M2SPEED=")));
+        // -32768 is GET_STATE's invalid sentinel.
+        long v;
+        if (!parse_arg(after_prefix_P(cmd, PSTR("M2SPEED=")), -32767, 32767, v))
+            return;
+        const int16_t sp = (int16_t)v;
         // A new setpoint ends this motor's post-hold follow.
         noInterrupts();
         slice.motor2SpeedSetpoint = sp;
@@ -240,7 +283,7 @@ static void processCommand(char *cmd)
         float kd = 0.0f;
         if (!parse_pid_triplet(after_prefix_P(cmd, PSTR("PIDSPEED=")), kp, ki, kd))
         {
-            Serial.println(F("PIDSPEED format: PIDSPEED=kp,ki,kd"));
+            Serial.println(F("PIDSPEED format: PIDSPEED=kp,ki,kd, each 0 to 65.535"));
             return;
         }
         noInterrupts();
@@ -278,11 +321,9 @@ static void processCommand(char *cmd)
     }
     else if (starts_with_P(cmd, PSTR("WDOG=")))
     {
-        long v = atol(after_prefix_P(cmd, PSTR("WDOG=")));
-        if (v < 0)
-            v = 0;
-        if (v > 65535)
-            v = 65535;
+        long v;
+        if (!parse_arg(after_prefix_P(cmd, PSTR("WDOG=")), 0, 65535, v))
+            return;
         commandWatchdog.arm((uint16_t)v, millis());
         Serial.print(F("WDOG-> "));
         if (v == 0)
