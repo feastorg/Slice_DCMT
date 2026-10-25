@@ -153,6 +153,11 @@ This project did not use formal release tags through most of its history, so thi
 
 ### Changed
 
+- Requires bread-crumbs-contracts `^0.11.0` (`firmware/platformio.ini` and
+  `slice.yaml`), the release that defines the setpoint-loop form of
+  SET_SETPOINT (#57), the watchdog lease and the stall faults (#64). It is
+  additive: DCMT advertises none of the new flags yet, and the gen1 Nano
+  image is the same size as on 0.10.0 (22344 B of flash).
 - **The e-stop input, command watchdog and status LED come from
   bread-slice-core 0.1** (feastorg/.github#4). `bsc::EStop`,
   `bsc::bootWait()`, `bsc::CommandWatchdog` and `bsc::StatusLed` replace
