@@ -1,0 +1,298 @@
+## gen2 Nano Every, 2026-10-24
+
+$ ssh <controller> 'cd dcmt-bench && for c in version caps state wdog; do venv/bin/python dcmt_bench.py $c; done'
+23:27:27.149 Version(crumbs_version=1602, major=2, minor=0, patch=0)
+23:27:27.462 caps 0103ff010000
+23:27:27.759 state mode=0 m1_pwm=0 m2_pwm=0 sp=-32768,-32768 pos=0,0 spd=-32768,-32768 brakes=0b11 estop=0 estop_count=1
+23:27:28.055 wdog [armed][timeout_ms][tripped][trips] 0000000000
+
+$ ssh <controller> 'cd dcmt-bench && venv/bin/python dcmt_bench.py brake 0 0 && venv/bin/python dcmt_bench.py open 60 0 && sleep 0.5 && venv/bin/python dcmt_bench.py state'
+23:28:17.886 sent 0x02 0000 -> ack Ack(counter=1, opcode=2, status=1, reason=0)
+23:28:18.194 sent 0x01 3c000000 -> ack Ack(counter=2, opcode=1, status=1, reason=0)
+23:28:18.992 state mode=0 m1_pwm=60 m2_pwm=0 sp=-32768,-32768 pos=1002,0 spd=-32768,-32768 brakes=0b00 estop=0 estop_count=1
+
+$ ssh <controller> 'cd dcmt-bench && venv/bin/python dcmt_bench.py state && venv/bin/python dcmt_bench.py open 60 0 && venv/bin/python dcmt_bench.py state'
+23:28:47.451 state mode=0 m1_pwm=0 m2_pwm=0 sp=-32768,-32768 pos=19129,0 spd=-32768,-32768 brakes=0b11 estop=1 estop_count=2
+23:28:47.760 sent 0x01 3c000000 -> ack Ack(counter=3, opcode=1, status=2, reason=3)
+23:28:48.056 state mode=0 m1_pwm=0 m2_pwm=0 sp=-32768,-32768 pos=19129,0 spd=-32768,-32768 brakes=0b11 estop=1 estop_count=2
+
+$ ssh <controller> 'cd dcmt-bench && venv/bin/python dcmt_bench.py state && sleep 1 && venv/bin/python dcmt_bench.py state'
+23:29:10.208 state mode=0 m1_pwm=0 m2_pwm=0 sp=-32768,-32768 pos=19129,0 spd=-32768,-32768 brakes=0b11 estop=0 estop_count=2
+23:29:11.508 state mode=0 m1_pwm=0 m2_pwm=0 sp=-32768,-32768 pos=19129,0 spd=-32768,-32768 brakes=0b11 estop=0 estop_count=2
+
+$ ssh <controller> 'cd dcmt-bench && B="venv/bin/python dcmt_bench.py" && $B brake 0 0 && $B open 60 0 && $B wd 500 && sleep 1.2 && $B wdog && $B state && $B open 60 0 && $B wd 1000 && $B wdog && $B clear && $B wdog && $B state && sleep 1 && $B state && $B wd 0 && $B wdog'
+23:29:43.728 sent 0x02 0000 -> ack Ack(counter=4, opcode=2, status=1, reason=0)
+23:29:44.037 sent 0x01 3c000000 -> ack Ack(counter=5, opcode=1, status=1, reason=0)
+23:29:44.343 sent 0x7E f401 -> ack Ack(counter=6, opcode=126, status=1, reason=0)
+23:29:45.843 wdog [armed][timeout_ms][tripped][trips] 01f4010101
+23:29:46.138 state mode=0 m1_pwm=0 m2_pwm=0 sp=-32768,-32768 pos=20197,0 spd=-32768,-32768 brakes=0b11 estop=0 estop_count=2
+23:29:46.448 sent 0x01 3c000000 -> ack Ack(counter=7, opcode=1, status=2, reason=2)
+23:29:46.759 sent 0x7E e803 -> ack Ack(counter=8, opcode=126, status=1, reason=0)
+23:29:47.058 wdog [armed][timeout_ms][tripped][trips] 01e8030101
+23:29:47.368 sent 0x7C  -> ack Ack(counter=9, opcode=124, status=1, reason=0)
+23:29:47.666 wdog [armed][timeout_ms][tripped][trips] 01e8030001
+23:29:47.964 state mode=0 m1_pwm=0 m2_pwm=0 sp=-32768,-32768 pos=20197,0 spd=-32768,-32768 brakes=0b11 estop=0 estop_count=2
+23:29:49.329 state mode=0 m1_pwm=0 m2_pwm=0 sp=-32768,-32768 pos=20197,0 spd=-32768,-32768 brakes=0b11 estop=0 estop_count=2
+23:29:49.639 sent 0x7E 0000 -> ack Ack(counter=10, opcode=126, status=1, reason=0)
+23:29:49.938 wdog [armed][timeout_ms][tripped][trips] 0000000102
+
+$ ssh <controller> 'cd dcmt-bench && B="venv/bin/python dcmt_bench.py" && $B wdog && $B wd 1000 && sleep 1.5 && $B wdog && $B wdog && $B wd 0 && $B wdog && $B wd 1000 && $B wdog && $B wd 0'
+23:30:25.075 wdog [armed][timeout_ms][tripped][trips] 0000000102
+23:30:25.384 sent 0x7E e803 -> ack Ack(counter=11, opcode=126, status=1, reason=0)
+23:30:27.185 wdog [armed][timeout_ms][tripped][trips] 01e8030102
+23:30:27.483 wdog [armed][timeout_ms][tripped][trips] 01e8030102
+23:30:27.793 sent 0x7E 0000 -> ack Ack(counter=12, opcode=126, status=1, reason=0)
+23:30:28.095 wdog [armed][timeout_ms][tripped][trips] 0000000102
+23:30:28.405 sent 0x7E e803 -> ack Ack(counter=13, opcode=126, status=1, reason=0)
+23:30:28.704 wdog [armed][timeout_ms][tripped][trips] 01e8030102
+23:30:29.014 sent 0x7E 0000 -> ack Ack(counter=14, opcode=126, status=1, reason=0)
+
+$ ssh <controller> 'cd dcmt-bench && venv/bin/python dcmt_bench.py clear && venv/bin/python dcmt_bench.py wdog && venv/bin/python dcmt_bench.py state'
+23:30:42.409 sent 0x7C  -> ack Ack(counter=15, opcode=124, status=1, reason=0)
+23:30:42.708 wdog [armed][timeout_ms][tripped][trips] 0000000002
+23:30:43.008 state mode=0 m1_pwm=0 m2_pwm=0 sp=-32768,-32768 pos=20197,0 spd=-32768,-32768 brakes=0b11 estop=0 estop_count=2
+
+$ ssh <controller> 'cd dcmt-bench && B="venv/bin/python dcmt_bench.py" && $B prep && $B brake 0 0 && $B ser "M1SPEED=60" && $B mode 2 && sleep 2 && $B state && $B state'
+23:35:02.710 /dev/ttyACM0: hupcl off
+23:35:03.022 sent 0x02 0000 -> ack Ack(counter=1, opcode=2, status=1, reason=0)
+23:35:03.461 > M1SPEED=60
+23:35:03.977 sent 0x03 02 -> ack Ack(counter=1, opcode=3, status=1, reason=0)
+23:35:06.279 state mode=2 m1_pwm=0 m2_pwm=0 sp=0,0 pos=0,0 spd=0,0 brakes=0b00 estop=0 estop_count=0
+23:35:06.577 state mode=2 m1_pwm=0 m2_pwm=0 sp=0,0 pos=0,0 spd=0,0 brakes=0b00 estop=0 estop_count=0
+
+$ ssh <controller> 'cd dcmt-bench && B="venv/bin/python dcmt_bench.py" && $B ser "M1SPEED=60" && sleep 2 && $B state && $B state'
+23:35:19.614 > M1SPEED=60
+23:35:19.815 < M1SPEED-> 60
+23:35:22.121 state mode=2 m1_pwm=31 m2_pwm=0 sp=60,0 pos=1402,0 spd=60,0 brakes=0b00 estop=0 estop_count=0
+23:35:22.420 state mode=2 m1_pwm=31 m2_pwm=0 sp=60,0 pos=1571,0 spd=45,0 brakes=0b00 estop=0 estop_count=0
+
+$ ssh <controller> 'cd dcmt-bench && for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 43 44 45 46 47 48 49 50 51 52 53 54 55 56 57 58 59 60 61 62 63 64 65 66 67 68 69 70 71 72 73 74 75 76 77 78 79 80; do venv/bin/python dcmt_bench.py state; done'
+23:35:29.468 state mode=2 m1_pwm=30 m2_pwm=0 sp=60,0 pos=5847,0 spd=60,0 brakes=0b00 estop=0 estop_count=0
+23:35:29.768 state mode=2 m1_pwm=29 m2_pwm=0 sp=60,0 pos=6036,0 spd=60,0 brakes=0b00 estop=0 estop_count=0
+23:35:30.066 state mode=2 m1_pwm=35 m2_pwm=0 sp=60,0 pos=6222,0 spd=45,0 brakes=0b00 estop=0 estop_count=0
+23:35:30.366 state mode=2 m1_pwm=36 m2_pwm=0 sp=60,0 pos=6412,0 spd=45,0 brakes=0b00 estop=0 estop_count=0
+23:35:30.667 state mode=2 m1_pwm=34 m2_pwm=0 sp=60,0 pos=6605,0 spd=45,0 brakes=0b00 estop=0 estop_count=0
+23:35:30.966 state mode=2 m1_pwm=37 m2_pwm=0 sp=60,0 pos=6796,0 spd=45,0 brakes=0b00 estop=0 estop_count=0
+23:35:31.265 state mode=2 m1_pwm=36 m2_pwm=0 sp=60,0 pos=6996,0 spd=45,0 brakes=0b00 estop=0 estop_count=0
+23:35:31.564 state mode=2 m1_pwm=37 m2_pwm=0 sp=60,0 pos=7196,0 spd=45,0 brakes=0b00 estop=0 estop_count=0
+23:35:31.862 state mode=2 m1_pwm=30 m2_pwm=0 sp=60,0 pos=7396,0 spd=45,0 brakes=0b00 estop=0 estop_count=0
+23:35:32.162 state mode=2 m1_pwm=30 m2_pwm=0 sp=60,0 pos=7595,0 spd=45,0 brakes=0b00 estop=0 estop_count=0
+23:35:32.461 state mode=2 m1_pwm=36 m2_pwm=0 sp=60,0 pos=7796,0 spd=45,0 brakes=0b00 estop=0 estop_count=0
+23:35:32.760 state mode=2 m1_pwm=38 m2_pwm=0 sp=60,0 pos=7989,0 spd=37,0 brakes=0b00 estop=0 estop_count=0
+23:35:33.060 state mode=2 m1_pwm=34 m2_pwm=0 sp=60,0 pos=8192,0 spd=30,0 brakes=0b00 estop=0 estop_count=0
+23:35:33.359 state mode=2 m1_pwm=36 m2_pwm=0 sp=60,0 pos=8391,0 spd=45,0 brakes=0b00 estop=0 estop_count=0
+23:35:33.657 state mode=2 m1_pwm=33 m2_pwm=0 sp=60,0 pos=8584,0 spd=60,0 brakes=0b00 estop=0 estop_count=0
+23:35:33.958 state mode=2 m1_pwm=34 m2_pwm=0 sp=60,0 pos=8786,0 spd=45,0 brakes=0b00 estop=0 estop_count=0
+23:35:34.257 state mode=2 m1_pwm=38 m2_pwm=0 sp=60,0 pos=8991,0 spd=60,0 brakes=0b00 estop=0 estop_count=0
+23:35:34.574 state mode=2 m1_pwm=33 m2_pwm=0 sp=60,0 pos=9208,0 spd=60,0 brakes=0b00 estop=0 estop_count=0
+23:35:34.874 state mode=2 m1_pwm=39 m2_pwm=0 sp=60,0 pos=9413,0 spd=45,0 brakes=0b00 estop=0 estop_count=0
+23:35:35.175 state mode=2 m1_pwm=32 m2_pwm=0 sp=60,0 pos=9624,0 spd=45,0 brakes=0b00 estop=0 estop_count=0
+23:35:35.474 state mode=2 m1_pwm=37 m2_pwm=0 sp=60,0 pos=9830,0 spd=45,0 brakes=0b00 estop=0 estop_count=0
+23:35:35.774 state mode=2 m1_pwm=32 m2_pwm=0 sp=60,0 pos=10038,0 spd=60,0 brakes=0b00 estop=0 estop_count=0
+23:35:36.073 state mode=2 m1_pwm=33 m2_pwm=0 sp=60,0 pos=10243,0 spd=45,0 brakes=0b00 estop=0 estop_count=0
+23:35:36.373 state mode=2 m1_pwm=36 m2_pwm=0 sp=60,0 pos=10451,0 spd=45,0 brakes=0b00 estop=0 estop_count=0
+23:35:36.672 state mode=2 m1_pwm=33 m2_pwm=0 sp=60,0 pos=10656,0 spd=45,0 brakes=0b00 estop=0 estop_count=0
+23:35:36.972 state mode=2 m1_pwm=34 m2_pwm=0 sp=60,0 pos=10861,0 spd=60,0 brakes=0b00 estop=0 estop_count=0
+23:35:37.270 state mode=2 m1_pwm=36 m2_pwm=0 sp=60,0 pos=11070,0 spd=45,0 brakes=0b00 estop=0 estop_count=0
+23:35:37.569 state mode=2 m1_pwm=38 m2_pwm=0 sp=60,0 pos=11275,0 spd=60,0 brakes=0b00 estop=0 estop_count=0
+23:35:37.870 state mode=2 m1_pwm=39 m2_pwm=0 sp=60,0 pos=11481,0 spd=50,0 brakes=0b00 estop=0 estop_count=0
+23:35:38.169 state mode=2 m1_pwm=38 m2_pwm=0 sp=60,0 pos=11688,0 spd=45,0 brakes=0b00 estop=0 estop_count=0
+23:35:38.469 state mode=2 m1_pwm=38 m2_pwm=0 sp=60,0 pos=11894,0 spd=45,0 brakes=0b00 estop=0 estop_count=0
+23:35:38.768 state mode=2 m1_pwm=38 m2_pwm=0 sp=60,0 pos=12102,0 spd=60,0 brakes=0b00 estop=0 estop_count=0
+23:35:39.069 state mode=2 m1_pwm=38 m2_pwm=0 sp=60,0 pos=12309,0 spd=60,0 brakes=0b00 estop=0 estop_count=0
+23:35:39.370 state mode=2 m1_pwm=34 m2_pwm=0 sp=60,0 pos=12517,0 spd=60,0 brakes=0b00 estop=0 estop_count=0
+23:35:39.683 state mode=2 m1_pwm=39 m2_pwm=0 sp=60,0 pos=12730,0 spd=60,0 brakes=0b00 estop=0 estop_count=0
+23:35:39.980 state mode=2 m1_pwm=33 m2_pwm=0 sp=60,0 pos=12944,0 spd=60,0 brakes=0b00 estop=0 estop_count=0
+23:35:40.280 state mode=2 m1_pwm=32 m2_pwm=0 sp=60,0 pos=13148,0 spd=60,0 brakes=0b00 estop=0 estop_count=0
+23:35:40.579 state mode=2 m1_pwm=44 m2_pwm=0 sp=60,0 pos=13352,0 spd=60,0 brakes=0b00 estop=0 estop_count=0
+23:35:40.879 state mode=2 m1_pwm=31 m2_pwm=0 sp=60,0 pos=13526,0 spd=45,0 brakes=0b00 estop=0 estop_count=0
+23:35:41.179 state mode=2 m1_pwm=32 m2_pwm=0 sp=60,0 pos=13735,0 spd=60,0 brakes=0b00 estop=0 estop_count=0
+23:35:41.478 state mode=2 m1_pwm=36 m2_pwm=0 sp=60,0 pos=13946,0 spd=60,0 brakes=0b00 estop=0 estop_count=0
+23:35:41.777 state mode=2 m1_pwm=30 m2_pwm=0 sp=60,0 pos=14152,0 spd=60,0 brakes=0b00 estop=0 estop_count=0
+23:35:42.076 state mode=2 m1_pwm=32 m2_pwm=0 sp=60,0 pos=14370,0 spd=45,0 brakes=0b00 estop=0 estop_count=0
+23:35:42.376 state mode=2 m1_pwm=39 m2_pwm=0 sp=60,0 pos=14582,0 spd=60,0 brakes=0b00 estop=0 estop_count=0
+23:35:42.674 state mode=2 m1_pwm=33 m2_pwm=0 sp=60,0 pos=14797,0 spd=45,0 brakes=0b00 estop=0 estop_count=0
+23:35:42.973 state mode=2 m1_pwm=35 m2_pwm=0 sp=60,0 pos=15009,0 spd=60,0 brakes=0b00 estop=0 estop_count=0
+23:35:43.271 state mode=2 m1_pwm=38 m2_pwm=0 sp=60,0 pos=15224,0 spd=45,0 brakes=0b00 estop=0 estop_count=0
+23:35:43.570 state mode=2 m1_pwm=33 m2_pwm=0 sp=60,0 pos=15437,0 spd=45,0 brakes=0b00 estop=0 estop_count=0
+23:35:43.870 state mode=2 m1_pwm=34 m2_pwm=0 sp=60,0 pos=15652,0 spd=60,0 brakes=0b00 estop=0 estop_count=0
+23:35:44.169 state mode=2 m1_pwm=33 m2_pwm=0 sp=60,0 pos=15868,0 spd=45,0 brakes=0b00 estop=0 estop_count=0
+23:35:44.468 state mode=2 m1_pwm=39 m2_pwm=0 sp=60,0 pos=16083,0 spd=45,0 brakes=0b00 estop=0 estop_count=0
+23:35:44.782 state mode=2 m1_pwm=38 m2_pwm=0 sp=60,0 pos=16308,0 spd=60,0 brakes=0b00 estop=0 estop_count=0
+23:35:45.080 state mode=2 m1_pwm=66 m2_pwm=0 sp=60,0 pos=16440,0 spd=15,0 brakes=0b00 estop=0 estop_count=0
+23:35:45.380 state mode=2 m1_pwm=67 m2_pwm=0 sp=60,0 pos=16455,0 spd=0,0 brakes=0b00 estop=0 estop_count=0
+23:35:45.679 state mode=2 m1_pwm=69 m2_pwm=0 sp=60,0 pos=16456,0 spd=0,0 brakes=0b00 estop=0 estop_count=0
+23:35:45.977 state mode=2 m1_pwm=70 m2_pwm=0 sp=60,0 pos=16459,0 spd=0,0 brakes=0b00 estop=0 estop_count=0
+23:35:46.276 state mode=2 m1_pwm=70 m2_pwm=0 sp=60,0 pos=16462,0 spd=0,0 brakes=0b00 estop=0 estop_count=0
+23:35:46.575 state mode=2 m1_pwm=72 m2_pwm=0 sp=60,0 pos=16463,0 spd=15,0 brakes=0b00 estop=0 estop_count=0
+23:35:46.875 state mode=2 m1_pwm=72 m2_pwm=0 sp=60,0 pos=16464,0 spd=0,0 brakes=0b00 estop=0 estop_count=0
+23:35:47.172 state mode=2 m1_pwm=73 m2_pwm=0 sp=60,0 pos=16464,0 spd=0,0 brakes=0b00 estop=0 estop_count=0
+23:35:47.471 state mode=2 m1_pwm=74 m2_pwm=0 sp=60,0 pos=16464,0 spd=0,0 brakes=0b00 estop=0 estop_count=0
+23:35:47.770 state mode=2 m1_pwm=75 m2_pwm=0 sp=60,0 pos=16464,0 spd=0,0 brakes=0b00 estop=0 estop_count=0
+23:35:48.070 state mode=2 m1_pwm=76 m2_pwm=0 sp=60,0 pos=16465,0 spd=0,0 brakes=0b00 estop=0 estop_count=0
+23:35:48.370 state mode=2 m1_pwm=77 m2_pwm=0 sp=60,0 pos=16465,0 spd=0,0 brakes=0b00 estop=0 estop_count=0
+23:35:48.668 state mode=2 m1_pwm=78 m2_pwm=0 sp=60,0 pos=16465,0 spd=0,0 brakes=0b00 estop=0 estop_count=0
+23:35:48.967 state mode=2 m1_pwm=79 m2_pwm=0 sp=60,0 pos=16465,0 spd=0,0 brakes=0b00 estop=0 estop_count=0
+23:35:49.266 state mode=2 m1_pwm=80 m2_pwm=0 sp=60,0 pos=16466,0 spd=0,0 brakes=0b00 estop=0 estop_count=0
+23:35:49.564 state mode=2 m1_pwm=81 m2_pwm=0 sp=60,0 pos=16467,0 spd=0,0 brakes=0b00 estop=0 estop_count=0
+23:35:49.880 state mode=2 m1_pwm=81 m2_pwm=0 sp=60,0 pos=16468,0 spd=0,0 brakes=0b00 estop=0 estop_count=0
+23:35:50.179 state mode=2 m1_pwm=82 m2_pwm=0 sp=60,0 pos=16468,0 spd=0,0 brakes=0b00 estop=0 estop_count=0
+23:35:50.477 state mode=2 m1_pwm=40 m2_pwm=0 sp=60,0 pos=16680,0 spd=75,0 brakes=0b00 estop=0 estop_count=0
+23:35:50.776 state mode=2 m1_pwm=41 m2_pwm=0 sp=60,0 pos=16963,0 spd=60,0 brakes=0b00 estop=0 estop_count=0
+23:35:51.075 state mode=2 m1_pwm=41 m2_pwm=0 sp=60,0 pos=17230,0 spd=60,0 brakes=0b00 estop=0 estop_count=0
+23:35:51.374 state mode=2 m1_pwm=45 m2_pwm=0 sp=60,0 pos=17505,0 spd=60,0 brakes=0b00 estop=0 estop_count=0
+23:35:51.673 state mode=2 m1_pwm=41 m2_pwm=0 sp=60,0 pos=17775,0 spd=60,0 brakes=0b00 estop=0 estop_count=0
+23:35:51.974 state mode=2 m1_pwm=41 m2_pwm=0 sp=60,0 pos=18043,0 spd=75,0 brakes=0b00 estop=0 estop_count=0
+23:35:52.273 state mode=2 m1_pwm=45 m2_pwm=0 sp=60,0 pos=18312,0 spd=60,0 brakes=0b00 estop=0 estop_count=0
+23:35:52.572 state mode=2 m1_pwm=45 m2_pwm=0 sp=60,0 pos=18578,0 spd=75,0 brakes=0b00 estop=0 estop_count=0
+23:35:52.871 state mode=2 m1_pwm=48 m2_pwm=0 sp=60,0 pos=18843,0 spd=60,0 brakes=0b00 estop=0 estop_count=0
+23:35:53.169 state mode=2 m1_pwm=48 m2_pwm=0 sp=60,0 pos=19110,0 spd=75,0 brakes=0b00 estop=0 estop_count=0
+
+[exited with code 0]
+
+$ ssh <controller> 'cd dcmt-bench && B="venv/bin/python dcmt_bench.py" && $B state && sleep 3 && $B state && sleep 3 && $B state'
+23:36:24.221 state mode=2 m1_pwm=39 m2_pwm=0 sp=60,0 pos=32767,0 spd=60,0 brakes=0b00 estop=0 estop_count=0
+23:36:27.521 state mode=2 m1_pwm=37 m2_pwm=0 sp=60,0 pos=32767,0 spd=60,0 brakes=0b00 estop=0 estop_count=0
+23:36:30.883 state mode=2 m1_pwm=41 m2_pwm=0 sp=60,0 pos=32767,0 spd=60,0 brakes=0b00 estop=0 estop_count=0
+
+$ ssh <controller> 'cd dcmt-bench && B="venv/bin/python dcmt_bench.py" && $B brake 1 1 && $B mode 0 && $B state'
+23:36:41.572 sent 0x02 0101 -> ack Ack(counter=2, opcode=2, status=1, reason=0)
+23:36:41.883 sent 0x03 00 -> ack Ack(counter=3, opcode=3, status=1, reason=0)
+23:36:42.181 state mode=0 m1_pwm=0 m2_pwm=0 sp=-32768,-32768 pos=32767,0 spd=-32768,-32768 brakes=0b11 estop=0 estop_count=0
+
+$ ssh <controller> 'cd dcmt-bench && venv/bin/python dcmt_bench.py flood 15'
+23:36:52.545 estop=0 estop_count=0
+23:37:07.536 done: 3208 lines sent, 401 polls, 0 failed
+
+[exited with code 0]
+
+$ ssh <controller> 'cd dcmt-bench && venv/bin/python dcmt_bench.py flood 30'
+23:37:38.991 estop=0 estop_count=0
+23:37:51.495 estop=1 estop_count=1
+23:37:55.912 estop=0 estop_count=1
+23:38:08.999 done: 6416 lines sent, 802 polls, 0 failed
+
+[exited with code 0]
+
+$ ssh <controller> 'cd dcmt-bench && stty -F /dev/ttyACM0 hupcl && venv/bin/python -c "import serial; serial.Serial(\"/dev/ttyACM0\", 115200).close()" && sleep 2 && venv/bin/python dcmt_bench.py prep && venv/bin/python dcmt_bench.py state'
+23:38:46.955 /dev/ttyACM0: hupcl off
+23:38:47.254 state mode=0 m1_pwm=0 m2_pwm=0 sp=-32768,-32768 pos=0,0 spd=-32768,-32768 brakes=0b00 estop=0 estop_count=0
+
+$ ssh <controller> 'cd dcmt-bench && B="venv/bin/python dcmt_bench.py" && $B brake 0 0 && $B ser "MODE=OPEN" "M1PWM=80" && sleep 1 && $B state && $B ser "M1PWM=0" && sleep 0.5 && $B state'
+23:38:55.445 sent 0x02 0000 -> ack Ack(counter=1, opcode=2, status=1, reason=0)
+23:38:55.883 > MODE=OPEN
+23:38:56.084 < Mode-> OPEN_LOOP
+23:38:56.234 > M1PWM=80
+23:38:56.434 < M1PWM-> 80
+23:38:57.740 state mode=0 m1_pwm=80 m2_pwm=0 sp=-32768,-32768 pos=3067,0 spd=-32768,-32768 brakes=0b00 estop=0 estop_count=0
+23:38:58.178 > M1PWM=0
+23:38:58.378 < M1PWM-> 0
+23:38:59.185 state mode=0 m1_pwm=0 m2_pwm=0 sp=-32768,-32768 pos=3687,0 spd=-32768,-32768 brakes=0b00 estop=0 estop_count=0
+
+$ ssh <controller> 'cd dcmt-bench && B="venv/bin/python dcmt_bench.py" && $B ser "M1SPEED=0" "M1PWM=80" && sleep 1 && $B state && $B ser "MODE=SPEED" && sleep 1 && $B state && $B ser "MODE=OPEN" && sleep 1 && $B state && sleep 1 && $B state && $B brake 1 1 && $B state'
+23:39:17.771 > M1SPEED=0
+23:39:17.972 < M1SPEED-> 0
+23:39:18.122 > M1PWM=80
+23:39:18.322 < M1PWM-> 80
+23:39:19.629 state mode=0 m1_pwm=80 m2_pwm=0 sp=-32768,-32768 pos=6754,0 spd=-32768,-32768 brakes=0b00 estop=0 estop_count=0
+23:39:20.068 > MODE=SPEED
+23:39:20.269 < Mode-> CLOSED_LOOP_SPEED
+23:39:21.574 state mode=2 m1_pwm=0 m2_pwm=0 sp=0,0 pos=7376,0 spd=0,0 brakes=0b00 estop=0 estop_count=0
+23:39:22.013 > MODE=OPEN
+23:39:22.213 < Mode-> OPEN_LOOP
+23:39:23.570 state mode=0 m1_pwm=0 m2_pwm=0 sp=-32768,-32768 pos=7376,0 spd=-32768,-32768 brakes=0b00 estop=0 estop_count=0
+23:39:24.871 state mode=0 m1_pwm=0 m2_pwm=0 sp=-32768,-32768 pos=7376,0 spd=-32768,-32768 brakes=0b00 estop=0 estop_count=0
+23:39:25.183 sent 0x02 0101 -> ack Ack(counter=2, opcode=2, status=1, reason=0)
+23:39:25.483 state mode=0 m1_pwm=0 m2_pwm=0 sp=-32768,-32768 pos=7376,0 spd=-32768,-32768 brakes=0b11 estop=0 estop_count=0
+
+$ ssh <controller> 'cd dcmt-bench && venv/bin/python dcmt_bench.py ser "M1POS=1234" "M1POS=abc" "M1SPEED=30" "M1SPEED=40000" "WDOG=60000" "WDOG=abc" "PIDPOS=0.15,0.01,0.01" "PIDPOS=1,2,3garbage" "READ" "WDOG=0"'
+23:39:34.209 > M1POS=1234
+23:39:34.410 < M1POS-> 1234
+23:39:34.560 > M1POS=abc
+23:39:34.760 < Ignored: expected a whole number from -32767 to 32767
+23:39:34.910 > M1SPEED=30
+23:39:35.111 < M1SPEED-> 30
+23:39:35.261 > M1SPEED=40000
+23:39:35.461 < Ignored: expected a whole number from -32767 to 32767
+23:39:35.611 > WDOG=60000
+23:39:35.811 < WDOG-> 60000 ms
+23:39:35.962 > WDOG=abc
+23:39:36.162 < Ignored: expected a whole number from 0 to 65535
+23:39:36.312 > PIDPOS=0.15,0.01,0.01
+23:39:36.512 < Position PID updated
+23:39:36.663 > PIDPOS=1,2,3garbage
+23:39:36.863 < PIDPOS format: PIDPOS=kp,ki,kd, each 0 to 65.535
+23:39:37.013 > READ
+23:39:37.213 < Mode:OPEN, M1PWM:0, M2PWM:0, M1POS_SP:1234, M2POS_SP:0, M1POS:7376, M2POS:0, M1SPD_SP:30, M2SPD_SP:0, M1SPD:0, M2SPD:0, B1:1, B2:1, ESTOP:0, WDOG:60000, WDTRIP:0/0
+23:39:37.364 > WDOG=0
+23:39:37.564 < WDOG-> disarmed
+
+## gen1 Nano, 2026-10-25
+
+$ ssh <controller> 'cd dcmt-bench && for c in version caps state wdog; do venv/bin/python dcmt_bench.py $c; done'
+16:19:58.249 Version(crumbs_version=1602, major=2, minor=0, patch=0)
+16:19:58.563 caps 0102f7010000
+16:19:58.863 state mode=0 m1_pwm=0 m2_pwm=0 sp=-32768,-32768 pos=0,0 spd=-32768,-32768 brakes=0b00 estop=0 estop_count=0
+16:19:59.161 wdog [armed][timeout_ms][tripped][trips] 0000000000
+
+$ ssh <controller> 'cd dcmt-bench && venv/bin/python dcmt_bench.py brake 0 0 && venv/bin/python dcmt_bench.py open 60 0 && sleep 0.5 && venv/bin/python dcmt_bench.py state'
+16:20:19.029 sent 0x02 0000 -> ack Ack(counter=1, opcode=2, status=1, reason=0)
+16:20:19.338 sent 0x01 3c000000 -> ack Ack(counter=2, opcode=1, status=1, reason=0)
+16:20:20.135 state mode=0 m1_pwm=60 m2_pwm=0 sp=-32768,-32768 pos=0,0 spd=-32768,-32768 brakes=0b00 estop=0 estop_count=0
+
+$ ssh <controller> 'cd dcmt-bench && venv/bin/python dcmt_bench.py open 0 0 && venv/bin/python dcmt_bench.py brake 1 1 && venv/bin/python dcmt_bench.py state'
+16:21:18.271 sent 0x01 00000000 -> ack Ack(counter=3, opcode=1, status=1, reason=0)
+16:21:18.580 sent 0x02 0101 -> ack Ack(counter=4, opcode=2, status=1, reason=0)
+16:21:18.877 state mode=0 m1_pwm=0 m2_pwm=0 sp=-32768,-32768 pos=0,0 spd=-32768,-32768 brakes=0b11 estop=0 estop_count=0
+
+(motor wiring corrected; the board rebooted)
+
+$ ssh <controller> 'cd dcmt-bench && venv/bin/python dcmt_bench.py brake 0 0 && venv/bin/python dcmt_bench.py open 60 0 && sleep 0.5 && venv/bin/python dcmt_bench.py state'
+16:31:55.081 sent 0x02 0000 -> ack Ack(counter=1, opcode=2, status=1, reason=0)
+16:31:55.389 sent 0x01 3c000000 -> ack Ack(counter=2, opcode=1, status=1, reason=0)
+16:31:56.186 state mode=0 m1_pwm=60 m2_pwm=0 sp=-32768,-32768 pos=-1104,0 spd=-32768,-32768 brakes=0b00 estop=0 estop_count=0
+
+(D2 to GND, then open)
+
+$ ssh <controller> 'cd dcmt-bench && venv/bin/python dcmt_bench.py state && sleep 1 && venv/bin/python dcmt_bench.py state'
+16:32:38.836 state mode=0 m1_pwm=0 m2_pwm=0 sp=-32768,-32768 pos=-24794,0 spd=-32768,-32768 brakes=0b11 estop=0 estop_count=1
+16:32:40.135 state mode=0 m1_pwm=0 m2_pwm=0 sp=-32768,-32768 pos=-24794,0 spd=-32768,-32768 brakes=0b11 estop=0 estop_count=1
+
+(D2 to GND, held)
+
+$ ssh <controller> 'cd dcmt-bench && venv/bin/python dcmt_bench.py state && venv/bin/python dcmt_bench.py open 60 0 && venv/bin/python dcmt_bench.py state'
+16:33:05.548 state mode=0 m1_pwm=0 m2_pwm=0 sp=-32768,-32768 pos=-24794,0 spd=-32768,-32768 brakes=0b11 estop=1 estop_count=2
+16:33:05.856 sent 0x01 3c000000 -> ack Ack(counter=3, opcode=1, status=2, reason=3)
+16:33:06.152 state mode=0 m1_pwm=0 m2_pwm=0 sp=-32768,-32768 pos=-24794,0 spd=-32768,-32768 brakes=0b11 estop=1 estop_count=2
+
+(D2 open)
+
+$ ssh <controller> 'cd dcmt-bench && B="venv/bin/python dcmt_bench.py" && $B state | tee /dev/stderr | grep -q "estop=0 " && $B brake 0 0 && $B open 60 0 && $B wd 500 && sleep 1.2 && $B wdog && $B state && $B open 60 0 && $B wd 1000 && $B wdog && $B clear && $B wdog && $B state && sleep 1 && $B state && $B wd 0 && $B wdog'
+16:33:43.886 state mode=0 m1_pwm=0 m2_pwm=0 sp=-32768,-32768 pos=-24794,0 spd=-32768,-32768 brakes=0b11 estop=0 estop_count=2
+16:33:44.195 sent 0x02 0000 -> ack Ack(counter=4, opcode=2, status=1, reason=0)
+16:33:44.505 sent 0x01 3c000000 -> ack Ack(counter=5, opcode=1, status=1, reason=0)
+16:33:44.815 sent 0x7E f401 -> ack Ack(counter=6, opcode=126, status=1, reason=0)
+16:33:46.315 wdog [armed][timeout_ms][tripped][trips] 01f4010101
+16:33:46.614 state mode=0 m1_pwm=0 m2_pwm=0 sp=-32768,-32768 pos=-25937,0 spd=-32768,-32768 brakes=0b11 estop=0 estop_count=2
+16:33:46.925 sent 0x01 3c000000 -> ack Ack(counter=7, opcode=1, status=2, reason=2)
+16:33:47.235 sent 0x7E e803 -> ack Ack(counter=8, opcode=126, status=1, reason=0)
+16:33:47.534 wdog [armed][timeout_ms][tripped][trips] 01e8030101
+16:33:47.844 sent 0x7C  -> ack Ack(counter=9, opcode=124, status=1, reason=0)
+16:33:48.145 wdog [armed][timeout_ms][tripped][trips] 01e8030001
+16:33:48.444 state mode=0 m1_pwm=0 m2_pwm=0 sp=-32768,-32768 pos=-25937,0 spd=-32768,-32768 brakes=0b11 estop=0 estop_count=2
+16:33:49.789 state mode=0 m1_pwm=0 m2_pwm=0 sp=-32768,-32768 pos=-25937,0 spd=-32768,-32768 brakes=0b11 estop=0 estop_count=2
+16:33:50.097 sent 0x7E 0000 -> ack Ack(counter=10, opcode=126, status=1, reason=0)
+16:33:50.394 wdog [armed][timeout_ms][tripped][trips] 0000000102
+
+$ ssh <controller> 'cd dcmt-bench && B="venv/bin/python dcmt_bench.py" && $B clear && $B wdog && $B state && $B brake 0 0 && $B open 80 0 && sleep 0.5 && $B state && $B open -80 0 && sleep 0.5 && $B state; $B open 0 0; $B brake 1 1; $B state'
+16:34:07.019 sent 0x7C  -> ack Ack(counter=11, opcode=124, status=1, reason=0)
+16:34:07.314 wdog [armed][timeout_ms][tripped][trips] 0000000002
+16:34:07.611 state mode=0 m1_pwm=0 m2_pwm=0 sp=-32768,-32768 pos=-25937,0 spd=-32768,-32768 brakes=0b11 estop=0 estop_count=2
+16:34:07.924 sent 0x02 0000 -> ack Ack(counter=12, opcode=2, status=1, reason=0)
+16:34:08.234 sent 0x01 50000000 -> ack Ack(counter=13, opcode=1, status=1, reason=0)
+16:34:09.036 state mode=0 m1_pwm=80 m2_pwm=0 sp=-32768,-32768 pos=-27472,0 spd=-32768,-32768 brakes=0b00 estop=0 estop_count=2
+16:34:09.346 sent 0x01 b0ff0000 -> ack Ack(counter=14, opcode=1, status=1, reason=0)
+16:34:10.148 state mode=0 m1_pwm=-80 m2_pwm=0 sp=-32768,-32768 pos=-26581,0 spd=-32768,-32768 brakes=0b00 estop=0 estop_count=2
+16:34:10.457 sent 0x01 00000000 -> ack Ack(counter=15, opcode=1, status=1, reason=0)
+16:34:10.767 sent 0x02 0101 -> ack Ack(counter=16, opcode=2, status=1, reason=0)
+16:34:11.066 state mode=0 m1_pwm=0 m2_pwm=0 sp=-32768,-32768 pos=-25950,0 spd=-32768,-32768 brakes=0b11 estop=0 estop_count=2
