@@ -1,3 +1,5 @@
+## gen2 Nano Every, 2026-10-24
+
 $ ssh <controller> 'cd dcmt-bench && for c in version caps state wdog; do venv/bin/python dcmt_bench.py $c; done'
 23:27:27.149 Version(crumbs_version=1602, major=2, minor=0, patch=0)
 23:27:27.462 caps 0103ff010000
@@ -225,3 +227,72 @@ $ ssh <controller> 'cd dcmt-bench && venv/bin/python dcmt_bench.py ser "M1POS=12
 23:39:37.364 > WDOG=0
 23:39:37.564 < WDOG-> disarmed
 
+## gen1 Nano, 2026-10-25
+
+$ ssh <controller> 'cd dcmt-bench && for c in version caps state wdog; do venv/bin/python dcmt_bench.py $c; done'
+16:19:58.249 Version(crumbs_version=1602, major=2, minor=0, patch=0)
+16:19:58.563 caps 0102f7010000
+16:19:58.863 state mode=0 m1_pwm=0 m2_pwm=0 sp=-32768,-32768 pos=0,0 spd=-32768,-32768 brakes=0b00 estop=0 estop_count=0
+16:19:59.161 wdog [armed][timeout_ms][tripped][trips] 0000000000
+
+$ ssh <controller> 'cd dcmt-bench && venv/bin/python dcmt_bench.py brake 0 0 && venv/bin/python dcmt_bench.py open 60 0 && sleep 0.5 && venv/bin/python dcmt_bench.py state'
+16:20:19.029 sent 0x02 0000 -> ack Ack(counter=1, opcode=2, status=1, reason=0)
+16:20:19.338 sent 0x01 3c000000 -> ack Ack(counter=2, opcode=1, status=1, reason=0)
+16:20:20.135 state mode=0 m1_pwm=60 m2_pwm=0 sp=-32768,-32768 pos=0,0 spd=-32768,-32768 brakes=0b00 estop=0 estop_count=0
+
+$ ssh <controller> 'cd dcmt-bench && venv/bin/python dcmt_bench.py open 0 0 && venv/bin/python dcmt_bench.py brake 1 1 && venv/bin/python dcmt_bench.py state'
+16:21:18.271 sent 0x01 00000000 -> ack Ack(counter=3, opcode=1, status=1, reason=0)
+16:21:18.580 sent 0x02 0101 -> ack Ack(counter=4, opcode=2, status=1, reason=0)
+16:21:18.877 state mode=0 m1_pwm=0 m2_pwm=0 sp=-32768,-32768 pos=0,0 spd=-32768,-32768 brakes=0b11 estop=0 estop_count=0
+
+(motor wiring corrected; the board rebooted)
+
+$ ssh <controller> 'cd dcmt-bench && venv/bin/python dcmt_bench.py brake 0 0 && venv/bin/python dcmt_bench.py open 60 0 && sleep 0.5 && venv/bin/python dcmt_bench.py state'
+16:31:55.081 sent 0x02 0000 -> ack Ack(counter=1, opcode=2, status=1, reason=0)
+16:31:55.389 sent 0x01 3c000000 -> ack Ack(counter=2, opcode=1, status=1, reason=0)
+16:31:56.186 state mode=0 m1_pwm=60 m2_pwm=0 sp=-32768,-32768 pos=-1104,0 spd=-32768,-32768 brakes=0b00 estop=0 estop_count=0
+
+(D2 to GND, then open)
+
+$ ssh <controller> 'cd dcmt-bench && venv/bin/python dcmt_bench.py state && sleep 1 && venv/bin/python dcmt_bench.py state'
+16:32:38.836 state mode=0 m1_pwm=0 m2_pwm=0 sp=-32768,-32768 pos=-24794,0 spd=-32768,-32768 brakes=0b11 estop=0 estop_count=1
+16:32:40.135 state mode=0 m1_pwm=0 m2_pwm=0 sp=-32768,-32768 pos=-24794,0 spd=-32768,-32768 brakes=0b11 estop=0 estop_count=1
+
+(D2 to GND, held)
+
+$ ssh <controller> 'cd dcmt-bench && venv/bin/python dcmt_bench.py state && venv/bin/python dcmt_bench.py open 60 0 && venv/bin/python dcmt_bench.py state'
+16:33:05.548 state mode=0 m1_pwm=0 m2_pwm=0 sp=-32768,-32768 pos=-24794,0 spd=-32768,-32768 brakes=0b11 estop=1 estop_count=2
+16:33:05.856 sent 0x01 3c000000 -> ack Ack(counter=3, opcode=1, status=2, reason=3)
+16:33:06.152 state mode=0 m1_pwm=0 m2_pwm=0 sp=-32768,-32768 pos=-24794,0 spd=-32768,-32768 brakes=0b11 estop=1 estop_count=2
+
+(D2 open)
+
+$ ssh <controller> 'cd dcmt-bench && B="venv/bin/python dcmt_bench.py" && $B state | tee /dev/stderr | grep -q "estop=0 " && $B brake 0 0 && $B open 60 0 && $B wd 500 && sleep 1.2 && $B wdog && $B state && $B open 60 0 && $B wd 1000 && $B wdog && $B clear && $B wdog && $B state && sleep 1 && $B state && $B wd 0 && $B wdog'
+16:33:43.886 state mode=0 m1_pwm=0 m2_pwm=0 sp=-32768,-32768 pos=-24794,0 spd=-32768,-32768 brakes=0b11 estop=0 estop_count=2
+16:33:44.195 sent 0x02 0000 -> ack Ack(counter=4, opcode=2, status=1, reason=0)
+16:33:44.505 sent 0x01 3c000000 -> ack Ack(counter=5, opcode=1, status=1, reason=0)
+16:33:44.815 sent 0x7E f401 -> ack Ack(counter=6, opcode=126, status=1, reason=0)
+16:33:46.315 wdog [armed][timeout_ms][tripped][trips] 01f4010101
+16:33:46.614 state mode=0 m1_pwm=0 m2_pwm=0 sp=-32768,-32768 pos=-25937,0 spd=-32768,-32768 brakes=0b11 estop=0 estop_count=2
+16:33:46.925 sent 0x01 3c000000 -> ack Ack(counter=7, opcode=1, status=2, reason=2)
+16:33:47.235 sent 0x7E e803 -> ack Ack(counter=8, opcode=126, status=1, reason=0)
+16:33:47.534 wdog [armed][timeout_ms][tripped][trips] 01e8030101
+16:33:47.844 sent 0x7C  -> ack Ack(counter=9, opcode=124, status=1, reason=0)
+16:33:48.145 wdog [armed][timeout_ms][tripped][trips] 01e8030001
+16:33:48.444 state mode=0 m1_pwm=0 m2_pwm=0 sp=-32768,-32768 pos=-25937,0 spd=-32768,-32768 brakes=0b11 estop=0 estop_count=2
+16:33:49.789 state mode=0 m1_pwm=0 m2_pwm=0 sp=-32768,-32768 pos=-25937,0 spd=-32768,-32768 brakes=0b11 estop=0 estop_count=2
+16:33:50.097 sent 0x7E 0000 -> ack Ack(counter=10, opcode=126, status=1, reason=0)
+16:33:50.394 wdog [armed][timeout_ms][tripped][trips] 0000000102
+
+$ ssh <controller> 'cd dcmt-bench && B="venv/bin/python dcmt_bench.py" && $B clear && $B wdog && $B state && $B brake 0 0 && $B open 80 0 && sleep 0.5 && $B state && $B open -80 0 && sleep 0.5 && $B state; $B open 0 0; $B brake 1 1; $B state'
+16:34:07.019 sent 0x7C  -> ack Ack(counter=11, opcode=124, status=1, reason=0)
+16:34:07.314 wdog [armed][timeout_ms][tripped][trips] 0000000002
+16:34:07.611 state mode=0 m1_pwm=0 m2_pwm=0 sp=-32768,-32768 pos=-25937,0 spd=-32768,-32768 brakes=0b11 estop=0 estop_count=2
+16:34:07.924 sent 0x02 0000 -> ack Ack(counter=12, opcode=2, status=1, reason=0)
+16:34:08.234 sent 0x01 50000000 -> ack Ack(counter=13, opcode=1, status=1, reason=0)
+16:34:09.036 state mode=0 m1_pwm=80 m2_pwm=0 sp=-32768,-32768 pos=-27472,0 spd=-32768,-32768 brakes=0b00 estop=0 estop_count=2
+16:34:09.346 sent 0x01 b0ff0000 -> ack Ack(counter=14, opcode=1, status=1, reason=0)
+16:34:10.148 state mode=0 m1_pwm=-80 m2_pwm=0 sp=-32768,-32768 pos=-26581,0 spd=-32768,-32768 brakes=0b00 estop=0 estop_count=2
+16:34:10.457 sent 0x01 00000000 -> ack Ack(counter=15, opcode=1, status=1, reason=0)
+16:34:10.767 sent 0x02 0101 -> ack Ack(counter=16, opcode=2, status=1, reason=0)
+16:34:11.066 state mode=0 m1_pwm=0 m2_pwm=0 sp=-32768,-32768 pos=-25950,0 spd=-32768,-32768 brakes=0b11 estop=0 estop_count=2

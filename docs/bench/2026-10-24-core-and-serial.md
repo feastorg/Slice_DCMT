@@ -5,7 +5,8 @@ parent: Bench Records
 
 # 2026-10-24: bread-slice-core, lead cap, serial and gen1
 
-**Status: in progress.** The gen2 Nano Every is done; the gen1 Nano is next.
+**Status: complete.** Run 2026-10-24 (gen2 Nano Every) and 2026-10-25 (gen1
+Nano). Every step run passed; the gen2 Nano was not run (see Not Checked).
 Expected values come from the host tests, the issues and the
 [2026-10-22 record](2026-10-22-applied-pwm-and-library-fixes.md).
 
@@ -98,11 +99,11 @@ every step that can turn the motor, waits for your go.
 
 | Step | Expected | Observed | Result |
 | --- | --- | --- | --- |
-| D1 boot: power-cycle | no LED activity (none fitted); M1 does not move | | |
-| D2 baseline | as on the gen2 Nano | | |
-| D3 e-stop hold | as on the Nano Every | | |
-| D4 watchdog trip | as on the Nano Every | | |
-| D5 direction (D5 is motor 1's DIR on gen1): `brake 0 0`, `open 80 0`, `state`; `open -80 0`, `state`; `open 0 0`, `brake 1 1` | M1 turns one way, then the other; `pos` rises, then falls. The LED driver is not built on gen1 and must not disturb D5 | | |
+| D1 boot: power-cycle | no LED activity (none fitted); M1 does not move | no LED activity; M1 still. Watched again on the reboot after the wiring fix (see Notes) | pass |
+| D2 baseline | as on the gen2 Nano | CRUMBS 1602, module 2.0.0; caps level 2, flags `0x1F7`; mode 0, PWMs 0, `estop=0`, `estop_count=0`, `brakes=0b00` (a boot with D2 open leaves the brakes released); watchdog disarmed | pass |
+| D3 e-stop hold | as on the Nano Every | after the wiring fix, `open 60 0`: `m1_pwm=60`, pos -1104 after 0.5 s. First press, released before a command was sent: after it `estop=0`, count 0 -> 1, `brakes=0b11`, `m1_pwm=0`, pos -24794 over 1.3 s. Second press, held: `estop=1`, count 2; `open` acked status 2 reason 3; pos -24794 | pass |
+| D4 watchdog trip | as on the Nano Every | `wdog` `01 f401 01 01` after the wait; `brakes=0b11`, `m1_pwm=0`, pos -25937; `open` acked status 2 reason 2; after `wd 1000` `01 e803 01 01`; `clear` applied, `01 e803 00 01`; pos -25937 after. As on the Nano Every, the 1.3 s between the last two reads tripped it again (`00 0000 01 02` after `wd 0`) | pass |
+| D5 direction (D5 is motor 1's DIR on gen1): `brake 0 0`, `open 80 0`, `state`; `open -80 0`, `state`; `open 0 0`, `brake 1 1` | M1 turns one way, then the other; `pos` rises, then falls. The LED driver is not built on gen1 and must not disturb D5 | after a `clear`: at +80 pos -25937 -> -27472; at -80 -> -26581; braked at -25950. `pos` moved in opposite directions; with this rig's wiring it falls for positive PWM (see Notes) | pass |
 
 ## Raw Output
 
@@ -111,7 +112,7 @@ The commands behind each step and their output:
 
 ## Not Checked
 
-- gen2 Nano, unless run later: it builds the same sources as the Nano Every
+- gen2 Nano: it builds the same sources as the Nano Every
   apart from the LED port and the speed loop. Its LED port is the
   ATmega328P path of the driver benched on a gen2 Nano on 2026-10-20, and its
   interrupt masking is avr-libc's `ATOMIC_BLOCK`, as on the 4809.
@@ -136,3 +137,13 @@ The commands behind each step and their output:
 - **`prep`'s first port open resets the board.** The ack counter restarted at
   1 and `M1SPEED=60`, sent inside the 1 s boot wait, was not applied; resent
   after the wait, it was.
+- **gen1: the first drive did not reach the motor.** With the board just
+  seated, `open 60 0` was acked and GET_STATE read `m1_pwm=60` and
+  `brakes=0b00`, but the shaft stayed still and `pos` stayed 0. The motor
+  wiring was corrected, the board rebooted (the ack counter restarted at 1),
+  and from then on M1 turned. The firmware's state was the same before and
+  after, so the fault was in the rig.
+- **gen1 counts negative for positive PWM.** After that fix, `pos` fell at
+  +60 and +80, where the Nano Every's rig counted up. Which way is positive
+  depends on how the motor and encoder are wired, which the fix changed; D5
+  checks only that the direction reverses.
