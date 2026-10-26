@@ -42,6 +42,13 @@ static bsc::StatusLed statusLed;
 bsc::EStop estopInput(ESTOP);
 bsc::CommandWatchdog commandWatchdog;
 volatile uint8_t holdResyncMask = 0;
+volatile bool watchdogCommandsOnly = false;
+
+void livenessStamp()
+{
+    if (!watchdogCommandsOnly)
+        commandWatchdog.stamp(millis());
+}
 volatile int16_t motor1AppliedPWM = 0;
 volatile int16_t motor2AppliedPWM = 0;
 
@@ -309,9 +316,19 @@ static bool is_command_op(uint8_t opcode)
     }
 }
 
+// The commands that keep a commands-only lease alive: the ones that can make
+// a motor move. SET_WATCHDOG, the lease's keepalive, refreshes it through
+// arm() in its handler.
+static bool is_actuating_op(uint8_t opcode)
+{
+    return opcode == DCMT_OP_SET_OPEN_LOOP || opcode == DCMT_OP_SET_BRAKE || opcode == DCMT_OP_SET_MODE ||
+           opcode == DCMT_OP_SET_SETPOINT;
+}
+
 static void on_crumbs_message(crumbs_context_t *c, const crumbs_message_t *msg)
 {
-    commandWatchdog.stamp(millis());
+    if (!watchdogCommandsOnly || is_actuating_op(msg->opcode))
+        commandWatchdog.stamp(millis());
     if (!is_command_op(msg->opcode))
         (void)crumbs_refuse(c, BREAD_REFUSE_UNKNOWN_OP);
 }

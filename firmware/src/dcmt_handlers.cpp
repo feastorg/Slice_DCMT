@@ -277,6 +277,7 @@ void handler_set_pid(crumbs_context_t *ctx, uint8_t opcode, const uint8_t *data,
 void handler_set_watchdog(crumbs_context_t *ctx, uint8_t opcode, const uint8_t *data, uint8_t data_len, void *user_data)
 {
     uint16_t timeout_ms = 0;
+    uint8_t flags = 0;
     (void)opcode;
     (void)user_data;
 
@@ -285,6 +286,19 @@ void handler_set_watchdog(crumbs_context_t *ctx, uint8_t opcode, const uint8_t *
         (void)crumbs_refuse(ctx, BREAD_REFUSE_MALFORMED);
         return;
     }
+    // The lease form (DCMT_CAP_WATCHDOG_LEASE): a third byte of flags. A flag
+    // this firmware does not define is refused and nothing is armed, so a
+    // controller never believes a lease it did not get.
+    if (data_len >= BREAD_WATCHDOG_SET_LEASE_PAYLOAD_LEN)
+    {
+        (void)crumbs_msg_read_u8(data, data_len, 2, &flags);
+        if ((flags & ~BREAD_WATCHDOG_FLAG_COMMANDS_ONLY) != 0)
+        {
+            (void)crumbs_refuse(ctx, BREAD_REFUSE_UNDEFINED_VALUE);
+            return;
+        }
+    }
+    watchdogCommandsOnly = (flags & BREAD_WATCHDOG_FLAG_COMMANDS_ONLY) != 0;
 
     // Arms, re-arms or disarms (0) and stamps liveness. It does not clear a
     // latched trip: re-arming is safe to send while tripped, and releasing
@@ -319,7 +333,7 @@ void reply_version(crumbs_context_t *ctx, crumbs_message_t *reply, void *user_da
     (void)user_data;
     // Every reply build proves a live master (SET_REPLY staging frames are
     // not dispatched to on_message, so this is where poll traffic stamps).
-    commandWatchdog.stamp(millis());
+    livenessStamp();
     crumbs_build_version_reply(reply, DCMT_TYPE_ID, DCMT_MODULE_VER_MAJOR, DCMT_MODULE_VER_MINOR, DCMT_MODULE_VER_PATCH);
 }
 
@@ -330,7 +344,7 @@ void reply_get_state(crumbs_context_t *ctx, crumbs_message_t *reply, void *user_
     (void)user_data;
 
     // The controller's periodic state poll is the primary liveness signal.
-    commandWatchdog.stamp(millis());
+    livenessStamp();
 
     if (slice.motor1Brake)
         brakes |= 0x01;
@@ -389,11 +403,12 @@ void reply_get_caps(crumbs_context_t *ctx, crumbs_message_t *reply, void *user_d
     uint8_t level = DCMT_CAP_LEVEL_2;
     uint32_t flags = DCMT_CAP_BASELINE_FLAGS | DCMT_CAP_CLOSED_LOOP_POSITION | DCMT_CAP_PID_TUNING |
                      DCMT_CAP_CMD_WATCHDOG | DCMT_CAP_CLEAR_WATCHDOG_TRIP | DCMT_CAP_ESTOP_HOLD |
-                     DCMT_CAP_REFUSES | DCMT_CAP_SETPOINT_LOOP;
+                     DCMT_CAP_REFUSES | DCMT_CAP_SETPOINT_LOOP |
+                     DCMT_CAP_WATCHDOG_LEASE;
     (void)ctx;
     (void)user_data;
 
-    commandWatchdog.stamp(millis());
+    livenessStamp();
 
 #if DCMT_ENABLE_SPEED_LOOP
     level = DCMT_CAP_LEVEL_3;
@@ -413,5 +428,5 @@ void reply_get_watchdog(crumbs_context_t *ctx, crumbs_message_t *reply, void *us
                                      timeout_ms != 0 ? 1 : 0, timeout_ms,
                                      commandWatchdog.tripped() ? 1 : 0, commandWatchdog.tripCount());
     // A reply build proves a live master too.
-    commandWatchdog.stamp(millis());
+    livenessStamp();
 }

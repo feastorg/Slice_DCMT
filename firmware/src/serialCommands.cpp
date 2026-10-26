@@ -86,10 +86,11 @@ static void processCommand(char *cmd)
     if (*cmd == '\0')
         return;
 
-    // A serial operator is a live master too: feed the command watchdog.
-    // Ordinary input (READ included) does not clear a latched trip, so a
-    // logger polling READ cannot release a hold; only WDCLEAR does.
-    commandWatchdog.stamp(millis());
+    // A serial operator is a live master too: feed the command watchdog,
+    // unless a commands-only lease is set. Ordinary input (READ included)
+    // does not clear a latched trip, so a logger polling READ cannot release
+    // a hold; only WDCLEAR does.
+    livenessStamp();
 
     // While an e-stop or a watchdog trip is held, commands that could make a
     // motor move are refused, as over I2C (dcmt_handlers.cpp): releasing the
@@ -324,6 +325,8 @@ static void processCommand(char *cmd)
         long v;
         if (!parse_arg(after_prefix_P(cmd, PSTR("WDOG=")), 0, 65535, v))
             return;
+        // Ends a commands-only lease, as the 2-byte SET_WATCHDOG does.
+        watchdogCommandsOnly = false;
         commandWatchdog.arm((uint16_t)v, millis());
         Serial.print(F("WDOG-> "));
         if (v == 0)
