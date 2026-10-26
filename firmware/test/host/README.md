@@ -45,6 +45,7 @@ paths as on the board. `make` exits non-zero if any check fails.
 | `test_watchdog_trip.cpp` | A command-watchdog trip: GET_WATCHDOG reports it, both motors brake, a SET is refused `WATCHDOG_TRIP`, a re-arm leaves it latched, and `CLEAR_WATCHDOG_TRIP` lifts it, keeps the count and resumes nothing |
 | `test_serial_numbers.cpp` | Serial numbers are parsed strictly: each row of #60 (trailing junk, empty, NaN, inf, out of range, wrong field count) is refused with no change, and in-range values still apply (#60) |
 | `test_setpoint_loop.cpp` | SET_SETPOINT names its loop: the 4-byte form writes the position setpoints only and the 5-byte form the named loop's; other lengths are refused `MALFORMED`, an undefined loop `UNDEFINED_VALUE`, and loop SPEED without the speed loop `NOT_BUILT`. Speed mode after a position target requests 0, and after a speed target that target; a speed target keeps the post-hold position follow, a position target ends it; GET_CAPS sets `DCMT_CAP_SETPOINT_LOOP` (#57) |
+| `test_watchdog_lease.cpp` | The commands-only lease: polls, SET_PID and serial lines no longer refresh the watchdog while SET_MODE, SET_BRAKE and a re-sent SET_WATCHDOG do; the 2-byte form and serial `WDOG=` end the lease; an undefined flag is refused and arms nothing; GET_CAPS sets `DCMT_CAP_WATCHDOG_LEASE` (bread-crumbs-contracts#63) |
 | `test_status_led.cpp` | Blue through the boot wait, then green or red on the first `loop()` pass, with the e-stop released or held from power-up; no LED driven on gen1 (#56) |
 
 ## Writing a test

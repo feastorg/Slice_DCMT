@@ -8,6 +8,13 @@ This project did not use formal release tags through most of its history, so thi
 
 ### Added
 
+- **A command lease for the watchdog** (`DCMT_CAP_WATCHDOG_LEASE`,
+  bread-crumbs-contracts#63). A 3-byte `SET_WATCHDOG` with
+  `BREAD_WATCHDOG_FLAG_COMMANDS_ONLY` lets only `SET_OPEN_LOOP`, `SET_BRAKE`,
+  `SET_MODE`, `SET_SETPOINT` and `SET_WATCHDOG` refresh it, so a poller that
+  outlives the control path no longer keeps the motors driven. The 2-byte
+  form and serial `WDOG=` end the lease; an undefined flag is refused and arms
+  nothing.
 - **SET_SETPOINT names its loop** (#57, `DCMT_CAP_SETPOINT_LOOP`). The
   5-byte form `[loop:u8][target1:i16][target2:i16]` writes only that loop's
   setpoints, `DCMT_PID_LOOP_POSITION` in counts or `DCMT_PID_LOOP_SPEED` in

@@ -57,8 +57,8 @@ Speed commands/capability are only available when `DCMT_ENABLE_SPEED_LOOP=1`.
 Controllers should gate behavior by capability flags, not by generation labels.
 
 All levels also advertise `DCMT_CAP_CMD_WATCHDOG`,
-`DCMT_CAP_CLEAR_WATCHDOG_TRIP`, `DCMT_CAP_ESTOP_HOLD` and
-`DCMT_CAP_REFUSES`.
+`DCMT_CAP_CLEAR_WATCHDOG_TRIP`, `DCMT_CAP_ESTOP_HOLD`, `DCMT_CAP_REFUSES`,
+`DCMT_CAP_SETPOINT_LOOP` and `DCMT_CAP_WATCHDOG_LEASE`.
 
 ## Setpoints
 
@@ -86,7 +86,7 @@ bread-crumbs-contracts `bread_refuse.h`:
 | `BREAD_REFUSE_MALFORMED` | the payload does not unpack; SET_PID is not 13 bytes; SET_SETPOINT is not 4 or 5 bytes; SET_WATCHDOG lacks its u16; CLEAR_WATCHDOG_TRIP carries a payload |
 | `BREAD_REFUSE_ESTOP` | SET_OPEN_LOOP, SET_MODE or SET_SETPOINT while the hardware e-stop is held, or a SET_BRAKE that asks for a release then; this reason wins when a watchdog trip is held too |
 | `BREAD_REFUSE_WATCHDOG_TRIP` | SET_OPEN_LOOP, SET_MODE or SET_SETPOINT while a trip is held, or a SET_BRAKE that asks for a release then |
-| `BREAD_REFUSE_UNDEFINED_VALUE` | a SET_MODE, SET_PID or SET_SETPOINT loop the contract does not define; a SET_OPEN_LOOP PWM outside `-DCMT_PWM_MAX` to `DCMT_PWM_MAX` (255) |
+| `BREAD_REFUSE_UNDEFINED_VALUE` | a SET_MODE, SET_PID or SET_SETPOINT loop the contract does not define; a SET_WATCHDOG flag other than `BREAD_WATCHDOG_FLAG_COMMANDS_ONLY`; a SET_OPEN_LOOP PWM outside `-DCMT_PWM_MAX` to `DCMT_PWM_MAX` (255) |
 | `BREAD_REFUSE_NOT_BUILT` | closed-loop speed (SET_MODE, or a SET_PID or SET_SETPOINT loop SPEED) when the speed loop is not built |
 | `BREAD_REFUSE_WRONG_MODE` | SET_OPEN_LOOP outside open loop |
 | `BREAD_REFUSE_UNKNOWN_OP` | an opcode that is not a DCMT or bread-common command, including a GET opcode sent as a command frame instead of through SET_REPLY |
@@ -106,7 +106,16 @@ watchdog. Frames of type `0x00` are accepted. GET_ACK replies carry type
 
 The watchdog boots disarmed (unless built with `-DDCMT_WATCHDOG_BOOT_MS=<ms>`).
 Once armed, by `BREAD_OP_SET_WATCHDOG` or `WDOG=<ms>`, it trips when no I2C
-command, I2C reply or serial line has arrived within the timeout. A trip
+command, I2C reply or serial line has arrived within the timeout. A
+controller can arm it as a lease instead (`DCMT_CAP_WATCHDOG_LEASE`): a
+3-byte `SET_WATCHDOG`, `[timeout_ms:u16][flags:u8]`, with
+`BREAD_WATCHDOG_FLAG_COMMANDS_ONLY`. Then only `SET_OPEN_LOOP`, `SET_BRAKE`,
+`SET_MODE`, `SET_SETPOINT` and `SET_WATCHDOG` refresh it; replies, other
+commands and serial lines do not, so a status poller that outlives the
+control path no longer keeps the motors driven. The control path re-sends
+`SET_WATCHDOG` as its keepalive. The 2-byte form and serial `WDOG=` end the
+lease, and a flag this firmware does not define is refused
+`BREAD_REFUSE_UNDEFINED_VALUE` and arms nothing. A trip
 brakes both motors and leaves no motion pending: it zeroes the PWM commands
 and speed setpoints, sets both brake flags, and keeps each position
 setpoint at its encoder position until that motor's brake is released or

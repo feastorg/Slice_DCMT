@@ -65,6 +65,14 @@ extern Timing timing;
 // disarmed unless DCMT_WATCHDOG_BOOT_MS is defined.
 extern bsc::EStop estopInput;
 extern bsc::CommandWatchdog commandWatchdog;
+// The lease (DCMT_CAP_WATCHDOG_LEASE): set by a 3-byte SET_WATCHDOG with
+// BREAD_WATCHDOG_FLAG_COMMANDS_ONLY, cleared by the 2-byte form and serial
+// WDOG=. While set, only SET_OPEN_LOOP, SET_BRAKE, SET_MODE, SET_SETPOINT
+// and SET_WATCHDOG refresh the watchdog.
+extern volatile bool watchdogCommandsOnly;
+// Refreshes the watchdog for a reply, a non-actuating frame or a serial line:
+// unless the lease is commands-only.
+void livenessStamp();
 // One bit per motor, set when a hold (watchdog trip or e-stop press) engages
 // the brakes and cleared when that motor's brake is released or a new
 // setpoint for it arrives. While a bit is set and the brake is engaged, the
