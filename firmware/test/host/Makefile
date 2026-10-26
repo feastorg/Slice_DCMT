@@ -55,7 +55,7 @@ check-libdeps:
 STAMP := $(OUT)/libdeps.stamp
 $(STAMP): FORCE | check-libdeps
 	@mkdir -p $(OUT)
-	@cat $(wildcard $(LIBDEPS)/*/.piopm) /dev/null > $@.new
+	@for f in "$(LIBDEPS)"/*/.piopm; do if [ -f "$$f" ]; then cat "$$f"; fi; done > $@.new
 	@if cmp -s $@.new $@; then rm $@.new; else mv $@.new $@; fi
 
 $(OUT)/%.o: $(CRUMBS)/core/%.c $(STAMP) | check-libdeps
