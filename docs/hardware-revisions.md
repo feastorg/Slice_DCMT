@@ -162,10 +162,10 @@ Arduino core:
 | ATmega328P (Nano) | Timer0, fast PWM: 16 MHz / 64 / 256 = **976.6 Hz** | Timer1, 8-bit phase-correct: 16 MHz / 64 / 510 = **490.2 Hz** |
 | ATmega4809 (Nano Every) | TCB0, clocked from TCA0: 250 kHz / 256 = **976.6 Hz** | TCA0, single slope: 250 kHz / 256 = **976.6 Hz** |
 
-From `framework-arduino-avr/cores/arduino/wiring.c` (`init()`) and
-`framework-arduino-megaavr/variants/nona4809/variant.c`
-(`initVariant()`, `PWM_TIMER_PERIOD` 0xFF). Computed from the core's timer
-setup, not measured.
+From `framework-arduino-avr/cores/arduino/wiring.c` (`init()`), and
+`framework-arduino-megaavr/variants/nona4809/variant.c` (`setup_timers()`,
+which the core's `init()` calls) with `timers.h` (`PWM_TIMER_PERIOD` 0xFF).
+Computed from the cores' timer setup, not measured.
 
 So on a Nano the same duty gives motor 2 half the switching frequency of
 motor 1: a different current ripple and response, so closed-loop gains tuned
