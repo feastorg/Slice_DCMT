@@ -40,7 +40,7 @@ CRUMBS_OBJ := $(OUT)/crumbs_core.o $(OUT)/crumbs_crc.o $(OUT)/crc8_nibble.o
 SINGLE   := test_dispatch test_mode_pwm test_applied_pwm test_serial_burst test_max_lead test_estop_hold test_watchdog_trip test_serial_numbers test_setpoint_loop test_watchdog_lease
 TESTS    := $(SINGLE) test_status_led
 
-.PHONY: all test clean check-libdeps
+.PHONY: all test clean check-libdeps FORCE
 all: test
 
 check-libdeps:
@@ -48,16 +48,26 @@ check-libdeps:
 	@test -d $(CONTRACTS)/bread || { echo "contracts not found at $(CONTRACTS)" >&2; exit 1; }
 	@test -f $(CORE)/bread_slice_core.h || { echo "bread-slice-core not found at $(CORE)" >&2; exit 1; }
 
-$(OUT)/%.o: $(CRUMBS)/core/%.c | check-libdeps
+# pio pkg install keeps a release archive's mtimes, so a library installed
+# by a pin change can look older than what was built from the last one. The
+# stamp holds the installed versions and is rewritten only when one changes,
+# so everything built from libdeps depends on it.
+STAMP := $(OUT)/libdeps.stamp
+$(STAMP): FORCE | check-libdeps
+	@mkdir -p $(OUT)
+	@cat $(wildcard $(LIBDEPS)/*/.piopm) /dev/null > $@.new
+	@if cmp -s $@.new $@; then rm $@.new; else mv $@.new $@; fi
+
+$(OUT)/%.o: $(CRUMBS)/core/%.c $(STAMP) | check-libdeps
 	@mkdir -p $(OUT)
 	$(CC) $(CFLAGS) -I$(CRUMBS) -I$(CRUMBS)/crc -c $< -o $@
-$(OUT)/%.o: $(CRUMBS)/crc/%.c | check-libdeps
+$(OUT)/%.o: $(CRUMBS)/crc/%.c $(STAMP) | check-libdeps
 	@mkdir -p $(OUT)
 	$(CC) $(CFLAGS) -I$(CRUMBS) -I$(CRUMBS)/crc -c $< -o $@
 
 # $(1) env, $(2) test
 define TEST_template
-$(OUT)/$(1)/$(2): $(2).cpp host.cpp host.h $(FW_SRC) $(wildcard $(FW)/include/*.h) $(wildcard stubs/*.h stubs/avr/*.h) $(CRUMBS_OBJ)
+$(OUT)/$(1)/$(2): $(2).cpp host.cpp host.h $(FW_SRC) $(wildcard $(FW)/include/*.h) $(wildcard stubs/*.h stubs/avr/*.h) $(CRUMBS_OBJ) $(STAMP)
 	@mkdir -p $(OUT)/$(1)
 	$(CXX) $(CXXFLAGS) $(FLAGS_$(1)) $(INCLUDES) $(2).cpp host.cpp $(FW_SRC) $(CRUMBS_OBJ) -o $$@
 endef
