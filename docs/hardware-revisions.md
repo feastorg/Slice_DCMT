@@ -151,6 +151,31 @@ closed loop. The D10↔D11 swap resolved it; **G3 was already laid out that way.
 The guard added alongside that fix means a map putting PWM on a non-timer pin now
 fails the build rather than shipping. Resolved; see #18 for the history.
 
+## The two motors run at different PWM frequencies on the Nano
+
+Every generation puts motor 1's PWM on D6 and motor 2's on D10 (table above).
+On the Nano those pins are on different timers, set up differently by the
+Arduino core:
+
+| MCU | D6 (motor 1) | D10 (motor 2) |
+|---|---|---|
+| ATmega328P (Nano) | Timer0, fast PWM: 16 MHz / 64 / 256 = **976.6 Hz** | Timer1, 8-bit phase-correct: 16 MHz / 64 / 510 = **490.2 Hz** |
+| ATmega4809 (Nano Every) | TCB0, clocked from TCA0: 250 kHz / 256 = **976.6 Hz** | TCA0, single slope: 250 kHz / 256 = **976.6 Hz** |
+
+From `framework-arduino-avr/cores/arduino/wiring.c` (`init()`) and
+`framework-arduino-megaavr/variants/nona4809/variant.c`
+(`initVariant()`, `PWM_TIMER_PERIOD` 0xFF). Computed from the core's timer
+setup, not measured.
+
+So on a Nano the same duty gives motor 2 half the switching frequency of
+motor 1: a different current ripple and response, so closed-loop gains tuned
+on one motor don't transfer exactly to the other. Both frequencies are
+audible. On the Nano Every the two match.
+
+Not changed in firmware. Matching them on the Nano means retiming Timer1,
+which `millis()` doesn't use, or putting both PWMs on one timer in a board
+revision. Decide with the next board revision (#68).
+
 ## The encoder connector is mirrored between G1 and G2, and a lead swap compensates
 
 The connector pinout is reversed end-for-end:
