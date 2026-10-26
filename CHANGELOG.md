@@ -177,14 +177,14 @@ This project did not use formal release tags through most of its history, so thi
   `is_command_op()` list. A command with no handler is now refused instead
   of answering APPLIED with nothing behind it: one whose registration
   failed, or one that lands at boot between `crumbs_set_callbacks()` and its
-  registration. Requires CRUMBS
-  `^0.17.0`. The gen1 Nano image grows by 14 B (22364 to 22378 B of flash).
+  registration. Requires CRUMBS `^0.17.0`. The gen1 Nano image grows by 14 B
+  (22364 to 22378 B of flash).
 - Requires bread-crumbs-contracts `^0.11.1` (`firmware/platformio.ini` and
   `slice.yaml`): 0.11.1 is the first to accept CRUMBS 0.17, and 0.11 the
-  release that defines the setpoint-loop form of
-  SET_SETPOINT (#57), the watchdog lease and the stall faults (#64). It is
-  additive: DCMT advertises none of the new flags yet, and the gen1 Nano
-  image is the same size as on 0.10.0 (22344 B of flash).
+  release that defines the setpoint-loop form of SET_SETPOINT (#57), the
+  watchdog lease and the stall faults (#64). It is additive: DCMT advertises
+  none of the new flags yet, and the gen1 Nano image is the same size as on
+  0.10.0 (22344 B of flash).
 - **The e-stop input, command watchdog and status LED come from
   bread-slice-core 0.1** (feastorg/.github#4). `bsc::EStop`,
   `bsc::bootWait()`, `bsc::CommandWatchdog` and `bsc::StatusLed` replace
