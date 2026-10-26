@@ -8,6 +8,17 @@ This project did not use formal release tags through most of its history, so thi
 
 ### Added
 
+- **SET_SETPOINT names its loop** (#57, `DCMT_CAP_SETPOINT_LOOP`). The
+  5-byte form `[loop:u8][target1:i16][target2:i16]` writes only that loop's
+  setpoints, `DCMT_PID_LOOP_POSITION` in counts or `DCMT_PID_LOOP_SPEED` in
+  RPM; the 4-byte form now writes the position setpoints only. Before, the
+  4-byte form wrote both, so a position target became the speed request at
+  the next switch to closed-loop speed: 5000 counts became a 5000 RPM
+  request. Other lengths are refused `MALFORMED`, an
+  undefined loop `UNDEFINED_VALUE`, and loop SPEED without the speed loop
+  `NOT_BUILT`. A controller that set speed through the 4-byte form now gets
+  speed 0 (bread-crumbs-contracts `docs/capabilities.md` lists this as a
+  fail-safe change).
 - **Bench records** in `docs/bench/`: one file per session on real
   hardware, indexed in `docs/bench/README.md`, following bread-infra's
   `spec/slice/bench-records.md`. The first is a backfill of the 2026-10-20
