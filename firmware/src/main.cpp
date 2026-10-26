@@ -508,12 +508,11 @@ void watchdogLogic()
 {
     // Detection only: motorControlLogic(), which loop() runs next, holds the
     // brakes on every pass while the trip is set, armed or not (#38).
-    if (!commandWatchdog.armed() || commandWatchdog.tripped())
-        return;
-
-    // True once, on the pass that trips. commandWatchdog has latched the trip
-    // with interrupts off before it returns, so the I2C handlers already
-    // refuse actuating commands.
+    //
+    // True once, on the pass that trips, and never while disarmed or already
+    // tripped. commandWatchdog has latched the trip with interrupts off
+    // before it returns, so the I2C handlers already refuse actuating
+    // commands.
     if (!commandWatchdog.check(millis()))
         return;
 
@@ -614,9 +613,9 @@ void motorControlLogic()
         // release holds where the shaft stopped instead of driving it back
         // by the coast distance, and publish the positions, which the mode
         // branches below would otherwise leave frozen for GET_STATE. This
-        // runs here, not in watchdogLogic(), which returns early once WDOG=0
-        // disarms during a trip. Read before the masked window:
-        // Encoder::read() re-enables interrupts.
+        // runs here, not in watchdogLogic(), which only detects the trip.
+        // Read before the masked window: Encoder::read() re-enables
+        // interrupts.
         //
         // The release then starts the PID cleanly only because
         // stop_control_loops() -> DCMotorServo::stop()/haltMotor() zeroes

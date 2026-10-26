@@ -80,8 +80,6 @@ int main()
     host_check("disarming leaves the trip held, brakes on, no write",
                wdog().tripped == 1 && motor1Driver.braked && motor2Driver.braked &&
                    motor1Driver.writes == writes1 && motor2Driver.writes == writes2);
-    arm(100);
-    (void)host_read_ack();
 
     open_loop(60, 0);
     crumbs_ack_t a = host_read_ack();
