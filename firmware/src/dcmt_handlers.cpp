@@ -154,17 +154,50 @@ void handler_set_mode(crumbs_context_t *ctx, uint8_t opcode, const uint8_t *data
     }
 }
 
+// DCMT_CAP_SETPOINT_LOOP (#57). Two lengths, told apart by data_len:
+//   4 bytes, [target1:i16][target2:i16]: the position setpoints;
+//   5 bytes, [loop:u8][target1:i16][target2:i16]: the setpoints of the loop
+//     named by loop (DCMT_PID_LOOP_*), as SET_PID names its loop.
+// Before, the 4-byte form wrote both loops, so a position target in counts
+// became an RPM request at the next switch to speed. Setpoints persist
+// across modes so a controller can load both before the mode.
 void handler_set_setpoint(crumbs_context_t *ctx, uint8_t opcode, const uint8_t *data, uint8_t data_len, void *user_data)
 {
-    dcmt_set_setpoint_t v;
+    uint8_t loop = DCMT_PID_LOOP_POSITION;
+    int16_t target1 = 0;
+    int16_t target2 = 0;
     (void)opcode;
     (void)user_data;
 
-    if (dcmt_set_setpoint_unpack(data, data_len, &v) != 0)
+    if (data_len == DCMT_SET_SETPOINT_PAYLOAD_LEN)
+    {
+        dcmt_set_setpoint_t v;
+        if (dcmt_set_setpoint_unpack(data, data_len, &v) != 0)
+        {
+            (void)crumbs_refuse(ctx, BREAD_REFUSE_MALFORMED);
+            return;
+        }
+        target1 = v.target1;
+        target2 = v.target2;
+    }
+    else if (data_len == DCMT_SET_SETPOINT_LOOP_PAYLOAD_LEN)
+    {
+        dcmt_set_setpoint_loop_t v;
+        if (dcmt_set_setpoint_loop_unpack(data, data_len, &v) != 0)
+        {
+            (void)crumbs_refuse(ctx, BREAD_REFUSE_MALFORMED);
+            return;
+        }
+        loop = v.loop;
+        target1 = v.target1;
+        target2 = v.target2;
+    }
+    else
     {
         (void)crumbs_refuse(ctx, BREAD_REFUSE_MALFORMED);
         return;
     }
+
     const uint8_t hold = hold_refuse_reason();
     if (hold != 0)
     {
@@ -172,16 +205,28 @@ void handler_set_setpoint(crumbs_context_t *ctx, uint8_t opcode, const uint8_t *
         return;
     }
 
-    // Persist setpoints independent of current mode so controllers can preload.
-    // A new setpoint ends the post-hold follow for both motors, so the
-    // controller's target stands as sent.
-    slice.motor1PositionSetpoint = v.target1;
-    slice.motor2PositionSetpoint = v.target2;
+    if (loop == DCMT_PID_LOOP_POSITION)
+    {
+        // A new position setpoint ends the post-hold follow for both motors,
+        // so the controller's target stands as sent.
+        slice.motor1PositionSetpoint = target1;
+        slice.motor2PositionSetpoint = target2;
+        holdResyncMask = 0;
+    }
 #if DCMT_ENABLE_SPEED_LOOP
-    slice.motor1SpeedSetpoint = v.target1;
-    slice.motor2SpeedSetpoint = v.target2;
+    else if (loop == DCMT_PID_LOOP_SPEED)
+    {
+        // The follow keeps the position setpoints on the encoder; a speed
+        // target leaves it running.
+        slice.motor1SpeedSetpoint = target1;
+        slice.motor2SpeedSetpoint = target2;
+    }
 #endif
-    holdResyncMask = 0;
+    else
+    {
+        (void)crumbs_refuse(ctx, loop == DCMT_PID_LOOP_SPEED ? BREAD_REFUSE_NOT_BUILT : BREAD_REFUSE_UNDEFINED_VALUE);
+        return;
+    }
 }
 
 void handler_set_pid(crumbs_context_t *ctx, uint8_t opcode, const uint8_t *data, uint8_t data_len, void *user_data)
@@ -344,7 +389,7 @@ void reply_get_caps(crumbs_context_t *ctx, crumbs_message_t *reply, void *user_d
     uint8_t level = DCMT_CAP_LEVEL_2;
     uint32_t flags = DCMT_CAP_BASELINE_FLAGS | DCMT_CAP_CLOSED_LOOP_POSITION | DCMT_CAP_PID_TUNING |
                      DCMT_CAP_CMD_WATCHDOG | DCMT_CAP_CLEAR_WATCHDOG_TRIP | DCMT_CAP_ESTOP_HOLD |
-                     DCMT_CAP_REFUSES;
+                     DCMT_CAP_REFUSES | DCMT_CAP_SETPOINT_LOOP;
     (void)ctx;
     (void)user_data;
 

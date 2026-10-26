@@ -5,12 +5,18 @@
 
 // The cap each motor's setMaxLead() last set, by servo index; 0 is none.
 inline long host_tacho_max_lead[2] = {0, 0};
+// The speed each motor's setSpeedRPM() last requested, by servo index.
+inline double host_tacho_requested[2] = {0, 0};
 
 class DCMotorTacho
 {
 public:
     DCMotorTacho(DCMotorServo *s, double, unsigned long = 50) : servo(s) {}
-    void setSpeedRPM(double rpm) { requested = rpm; }
+    void setSpeedRPM(double rpm)
+    {
+        requested = rpm;
+        host_tacho_requested[servo->index] = rpm;
+    }
     void setPIDTunings(double, double, double) {}
     void setMaxLead(long counts) { host_tacho_max_lead[servo->index] = counts; }
     double getMeasuredSpeedRPM() const { return 0; }

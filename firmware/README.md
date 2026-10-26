@@ -60,6 +60,21 @@ All levels also advertise `DCMT_CAP_CMD_WATCHDOG`,
 `DCMT_CAP_CLEAR_WATCHDOG_TRIP`, `DCMT_CAP_ESTOP_HOLD` and
 `DCMT_CAP_REFUSES`.
 
+## Setpoints
+
+`SET_SETPOINT` names its loop (`DCMT_CAP_SETPOINT_LOOP`, #57):
+
+- 4 bytes, `[target1:i16][target2:i16]`: the position setpoints, in counts;
+- 5 bytes, `[loop:u8][target1:i16][target2:i16]`: the setpoints of `loop`,
+  `DCMT_PID_LOOP_POSITION` (counts) or `DCMT_PID_LOOP_SPEED` (RPM), as
+  `SET_PID` names its loop.
+
+Each loop keeps its own setpoints across mode changes, so a controller can
+load both before the mode. A switch to closed-loop speed requests the speed
+setpoint, which only a speed-loop `SET_SETPOINT` or serial `M1SPEED=`/`M2SPEED=`
+sets; a position target never becomes a speed request. Before, the 4-byte
+form wrote both loops.
+
 ## Refused Commands
 
 A SET the firmware does not act on in full is refused with
@@ -68,11 +83,11 @@ bread-crumbs-contracts `bread_refuse.h`:
 
 | Reason | When |
 | --- | --- |
-| `BREAD_REFUSE_MALFORMED` | the payload does not unpack; SET_PID is not 13 bytes; SET_WATCHDOG lacks its u16; CLEAR_WATCHDOG_TRIP carries a payload |
+| `BREAD_REFUSE_MALFORMED` | the payload does not unpack; SET_PID is not 13 bytes; SET_SETPOINT is not 4 or 5 bytes; SET_WATCHDOG lacks its u16; CLEAR_WATCHDOG_TRIP carries a payload |
 | `BREAD_REFUSE_ESTOP` | SET_OPEN_LOOP, SET_MODE or SET_SETPOINT while the hardware e-stop is held, or a SET_BRAKE that asks for a release then; this reason wins when a watchdog trip is held too |
 | `BREAD_REFUSE_WATCHDOG_TRIP` | SET_OPEN_LOOP, SET_MODE or SET_SETPOINT while a trip is held, or a SET_BRAKE that asks for a release then |
-| `BREAD_REFUSE_UNDEFINED_VALUE` | a SET_MODE or SET_PID loop the contract does not define; a SET_OPEN_LOOP PWM outside `-DCMT_PWM_MAX` to `DCMT_PWM_MAX` (255) |
-| `BREAD_REFUSE_NOT_BUILT` | closed-loop speed (SET_MODE or SET_PID loop SPEED) when the speed loop is not built |
+| `BREAD_REFUSE_UNDEFINED_VALUE` | a SET_MODE, SET_PID or SET_SETPOINT loop the contract does not define; a SET_OPEN_LOOP PWM outside `-DCMT_PWM_MAX` to `DCMT_PWM_MAX` (255) |
+| `BREAD_REFUSE_NOT_BUILT` | closed-loop speed (SET_MODE, or a SET_PID or SET_SETPOINT loop SPEED) when the speed loop is not built |
 | `BREAD_REFUSE_WRONG_MODE` | SET_OPEN_LOOP outside open loop |
 | `BREAD_REFUSE_UNKNOWN_OP` | an opcode that is not a DCMT or bread-common command, including a GET opcode sent as a command frame instead of through SET_REPLY |
 
@@ -129,8 +144,9 @@ moves. To resume:
    stay stopped. A setpoint sent before this step ends the follow and
    stands as sent, so the brake release drives to it;
 3. send new commands: setpoints first, then the mode. A mode change to
-   closed-loop position drives to whatever setpoint is stored at that
-   moment.
+   closed-loop position drives to the stored position setpoint, and one to
+   closed-loop speed runs at the stored speed setpoint (0 after a hold, until
+   a speed-loop `SET_SETPOINT` sets one).
 
 Positions are `int16` on the wire, so closed-loop position works only while
 the encoder count stays within ±32767. Beyond that the stored setpoint is
