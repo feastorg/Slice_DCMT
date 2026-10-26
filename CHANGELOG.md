@@ -171,6 +171,12 @@ This project did not use formal release tags through most of its history, so thi
 
 ### Changed
 
+- **Command opcodes come from the handler table** (feastorg/CRUMBS#124).
+  `on_message` refuses UNKNOWN_OP any opcode without a registered handler,
+  asked of CRUMBS with `crumbs_has_handler()`, in place of the hand-kept
+  `is_command_op()` list. A command whose registration failed is now refused
+  instead of answering APPLIED with nothing behind it. Requires CRUMBS
+  `^0.17.0`. The gen1 Nano image grows by 14 B (22364 to 22378 B of flash).
 - Requires bread-crumbs-contracts `^0.11.0` (`firmware/platformio.ini` and
   `slice.yaml`), the release that defines the setpoint-loop form of
   SET_SETPOINT (#57), the watchdog lease and the stall faults (#64). It is
