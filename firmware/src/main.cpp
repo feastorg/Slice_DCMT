@@ -506,21 +506,10 @@ void processEStop(bsc::EStop::Event e)
 
 void watchdogLogic()
 {
-    if (!commandWatchdog.armed())
+    // Detection only: motorControlLogic(), which loop() runs next, holds the
+    // brakes on every pass while the trip is set, armed or not (#38).
+    if (!commandWatchdog.armed() || commandWatchdog.tripped())
         return;
-
-    if (commandWatchdog.tripped())
-    {
-        // Hold safe state until an explicit clear (CLEAR_WATCHDOG_TRIP or
-        // serial WDCLEAR) releases the trip.
-        // brake() only (no write(0) first): write() releases the brake pin,
-        // so alternating them every iteration toggles the driver at loop
-        // frequency — audible squeal (found live at first watchdog trip).
-        stop_control_loops();
-        motor1_brake();
-        motor2_brake();
-        return;
-    }
 
     // True once, on the pass that trips. commandWatchdog has latched the trip
     // with interrupts off before it returns, so the I2C handlers already
@@ -610,8 +599,11 @@ void motorControlLogic()
     // clean hard-brake on a driven motor (feastorg/Slice_DCMT#11).
     if (held)
     {
-        // brake() only — see the watchdog hold note; this branch also runs
-        // every iteration while a signal-wired e-stop or watchdog trip is held.
+        // brake() only, with no write(0) first: write() releases the brake
+        // pin, so alternating them on every pass toggles the driver at loop
+        // frequency, an audible squeal (found live at the first watchdog
+        // trip). This branch runs on every pass while an e-stop or a watchdog
+        // trip is held.
         stop_control_loops();
         motor1_brake();
         motor2_brake();

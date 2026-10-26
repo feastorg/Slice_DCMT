@@ -5,9 +5,13 @@
 #include "globals.h"
 #include <bread/dcmt_ops.h>
 #include <crumbs_message_helpers.h>
+#include <LMD18200.h>
 
 void setup();
 void loop();
+
+extern LMD18200 motor1Driver;
+extern LMD18200 motor2Driver;
 
 static void open_loop(int16_t m1, int16_t m2)
 {
@@ -60,6 +64,24 @@ int main()
                                                                  w.trip_count == 1);
     dcmt_state_t s = state();
     host_check("a trip brakes both motors", s.brakes == 0x03 && s.m1_pwm == 0 && s.m2_pwm == 0);
+
+    // The hold is motorControlLogic()'s, on every pass while the trip is set,
+    // and it outlasts a disarm (#38).
+    const unsigned writes1 = motor1Driver.writes, writes2 = motor2Driver.writes;
+    for (int i = 0; i < 50; i++)
+        loop();
+    host_check("the brakes stay on, with no write, while tripped",
+               motor1Driver.braked && motor2Driver.braked &&
+                   motor1Driver.writes == writes1 && motor2Driver.writes == writes2);
+    arm(0);
+    (void)host_read_ack();
+    for (int i = 0; i < 50; i++)
+        loop();
+    host_check("disarming leaves the trip held, brakes on, no write",
+               wdog().tripped == 1 && motor1Driver.braked && motor2Driver.braked &&
+                   motor1Driver.writes == writes1 && motor2Driver.writes == writes2);
+    arm(100);
+    (void)host_read_ack();
 
     open_loop(60, 0);
     crumbs_ack_t a = host_read_ack();
