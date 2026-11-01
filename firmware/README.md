@@ -42,8 +42,9 @@ are the archive implementation's, and the speed Ki was chosen against a
 first-order model fitted to that motor (#90; the model lives in the host
 motor tests, `firmware/test/host/motor_sim.h`). Tune them for each motor:
 the PID gains at runtime with `SET_PID` (or serial `PIDPOS=` /
-`PIDSPEED=`), and the speed Ki and the stall thresholds per build with a
-flag such as `-DDCMT_SPEED_PID_KI=<ki>`.
+`PIDSPEED=`), and every value per build with a flag such as
+`-DDCMT_SPEED_PID_KI=<ki>` (each is `#ifndef`-guarded in
+`include/config_hardware.h`).
 
 - `MOTOR1_CPR = 798`
 - `MOTOR2_CPR = 798`

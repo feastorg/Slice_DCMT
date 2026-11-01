@@ -210,6 +210,13 @@ This project did not use formal release tags through most of its history, so thi
 
 ### Changed
 
+- **Every motor-specific default is a build flag.** The position and speed
+  PID gains, `DCMT_SERVO_PWM_SKIP`, `DCMT_SERVO_MAX_PWM`,
+  `DCMT_SERVO_ACCURACY`, `DCMT_TACHO_INTERVAL_MS`, `DCMT_TACHO_MAX_LEAD` and
+  `MOTOR1_CPR`/`MOTOR2_CPR` are now `#ifndef`-guarded in
+  `config_hardware.h`, as the stall thresholds already were, so a build for
+  another motor sets them with `-D` instead of editing the header. The
+  defaults are unchanged: all four envs build byte-identical firmware.
 - **The default speed Ki is 0.2, up from 0.01** (#90). With 0.01 the speed
   loop stayed P-only for seconds: in the host model 60 RPM sat at 75 % of
   the target 4-5 s after the command and closed the rest with a time
