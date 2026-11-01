@@ -8,6 +8,10 @@ This project did not use formal release tags through most of its history, so thi
 
 ### Added
 
+- **`docs/hardware-revisions.md` records the motors' PWM frequencies**
+  (#68). On the Nano, motor 1 (D6, Timer0) switches at 976.6 Hz and
+  motor 2 (D10, Timer1) at 490.2 Hz; on the Nano Every both are
+  976.6 Hz. Computed from the cores' timer setup.
 - **Stall faults** (#64, `DCMT_CAP_FAULTS`, bread-crumbs-contracts#69).
   DCMotorServo's stall detection is on for both motors in closed loop: a
   motor driven for `DCMT_STALL_TIMEOUT_MS` (1000 ms) without its encoder
