@@ -1,13 +1,14 @@
-// #89 characterisation: at 60 RPM, motor 1's shaft is held and then
-// released. While it is held, the lead cap (DCMT_TACHO_MAX_LEAD) stops the
-// position target 300 counts ahead, and the speed PID's integral winds up.
+// #89 regression: at 60 RPM, motor 1's shaft is held and then released.
+// While it is held, the lead cap (DCMT_TACHO_MAX_LEAD) stops the position
+// target 300 counts ahead. Before the fix, the speed PID's integral kept
+// winding up against the cap, and the shaft lunged on release. The firmware
+// now runs the speed PID with Ki 0 while the cap clamps, so the integral is
+// frozen and the shaft returns to about the target.
 //
 // A hold of DCMT_STALL_TIMEOUT_MS or more latches a stall fault (#64), so the
 // motor stays braked when the shaft is let go: the 4 s hold of #89's report
-// no longer lunges. A shorter hold doesn't latch, and once released the
-// shaft runs faster than it did before the hold. This pins both, so a change
-// to the gains, the lead cap or the stall handling shows up here; when the
-// wind-up is fixed, the bounds below change with it.
+// no longer lunges either. This pins both. The motor model is the test's
+// (motor_sim.h), fitted to one bench motor; the firmware carries none of it.
 #include "host.h"
 #include "motor_sim.h"
 #include "globals.h"
@@ -36,9 +37,8 @@ int main()
     host_check("#89: the shaft doesn't turn while held", held == 0);
     host_check("#89: before the hold, speed is short of the target (48-56 RPM, #90)", before >= 48 && before <= 56);
     host_check("#89: a hold under DCMT_STALL_TIMEOUT_MS latches no fault", motorFaults == 0);
-    host_check("#89 overshoot: after a short hold, the peak 1 s speed is at least 5 RPM above the speed before it",
-               peak >= before + 5);
-    host_check("#89: and stays under 70 RPM (the lead cap bounds the lunge, #63)", peak < 70);
+    host_check("#89: after a short hold, the peak 1 s speed is within 5 RPM of the target (no lunge)",
+               peak >= target - 5 && peak <= target + 5);
 
     // The hold of #89's report: 4 s.
     sim_motor[0].held = true;

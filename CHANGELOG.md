@@ -24,8 +24,8 @@ This project did not use formal release tags through most of its history, so thi
   thresholds are build flags and starting values, not measurements. Before,
   a stalled motor, or one with a dead encoder, was driven at up to PWM 150
   for as long as closed loop ran, and the 4 s hold of #89 lunged on release;
-  it now latches after 1 s and stays braked. A hold under the timeout still
-  overshoots on release (#89).
+  it now latches after 1 s and stays braked. A hold under the timeout no
+  longer overshoots on release either (#89, below).
 - **A command lease for the watchdog** (`DCMT_CAP_WATCHDOG_LEASE`,
   bread-crumbs-contracts#63). A 3-byte `SET_WATCHDOG` with
   `BREAD_WATCHDOG_FLAG_COMMANDS_ONLY` lets only `SET_OPEN_LOOP`, `SET_BRAKE`,
@@ -63,6 +63,16 @@ This project did not use formal release tags through most of its history, so thi
 
 ### Fixed
 
+- **The speed loop's integral no longer winds up against the lead cap**
+  (#89). While a motor's position target sits `DCMT_TACHO_MAX_LEAD` counts
+  or more from its encoder, the firmware runs that motor's speed PID with
+  Ki 0 and the runtime Kp and Kd, so the integral is frozen, not reset. In
+  the host model (`test_stall_release_89`), a shaft held for 0.9 s at
+  60 RPM, under the stall timeout, peaked at 59.2 RPM in the 1 s after
+  release from 52.0 before it, with Ki 0.01; it now peaks at 57.0. With a
+  larger Ki the wind-up grows with it (#90). Runtime SET_PID speed gains
+  still apply, clamped or not. Conditional integration belongs in DCMotorTacho
+  (feastorg/dcmotorservo); this is a stopgap until it lands there.
 - **Host tests rebuild after a library pin change** (#88). `pio pkg
   install` keeps a release archive's mtimes, so a plain `make -C test/host`
   kept linking objects built from the previous CRUMBS. A stamp of the

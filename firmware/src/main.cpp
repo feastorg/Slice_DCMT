@@ -196,20 +196,46 @@ static void apply_position_pid_if_needed(const DCMT_SLICE &s)
 }
 
 #if DCMT_ENABLE_SPEED_LOOP
-static void apply_speed_pid_if_needed(const DCMT_SLICE &s)
+// True while DCMotorTacho's lead cap is clamping: the position target sits
+// DCMT_TACHO_MAX_LEAD or more counts from the encoder, so the speed PID's
+// output no longer moves the shaft.
+static bool lead_capped(DCMotorServo &servo)
 {
+    const long lead = servo.getRequestedPosition() - servo.getActualPosition();
+    return lead >= DCMT_TACHO_MAX_LEAD || lead <= -DCMT_TACHO_MAX_LEAD;
+}
+
+// The speed gains in force: the runtime ones (SET_PID, serial), with Ki 0
+// while the motor's lead cap is clamping, so a held or stalled shaft doesn't
+// wind up the integral and lunge on release (#89). PID_v1 doesn't rescale
+// its integral when Ki changes, so the integral is frozen, not reset.
+//
+// Conditional integration belongs in DCMotorTacho (feastorg/dcmotorservo);
+// this is a stopgap until it lands there.
+static PIDTunings speed_tunings(const PIDTunings &t, bool freeze)
+{
+    PIDTunings r = t;
+    if (freeze)
+        r.ki = 0.0f;
+    return r;
+}
+
+static void apply_speed_pid_if_needed(const DCMT_SLICE &s, bool freeze1 = false, bool freeze2 = false)
+{
+    const PIDTunings t1 = speed_tunings(s.speedPid1, freeze1);
+    const PIDTunings t2 = speed_tunings(s.speedPid2, freeze2);
     if (speedPidApplied &&
-        pid_tunings_equal(appliedSpeedPid1, s.speedPid1) &&
-        pid_tunings_equal(appliedSpeedPid2, s.speedPid2))
+        pid_tunings_equal(appliedSpeedPid1, t1) &&
+        pid_tunings_equal(appliedSpeedPid2, t2))
     {
         return;
     }
 
-    tacho1.setPIDTunings(s.speedPid1.kp, s.speedPid1.ki, s.speedPid1.kd);
-    tacho2.setPIDTunings(s.speedPid2.kp, s.speedPid2.ki, s.speedPid2.kd);
+    tacho1.setPIDTunings(t1.kp, t1.ki, t1.kd);
+    tacho2.setPIDTunings(t2.kp, t2.ki, t2.kd);
 
-    appliedSpeedPid1 = s.speedPid1;
-    appliedSpeedPid2 = s.speedPid2;
+    appliedSpeedPid1 = t1;
+    appliedSpeedPid2 = t2;
     speedPidApplied = true;
 }
 #endif
@@ -749,7 +775,7 @@ void motorControlLogic()
         local.speedPid1 = slice.speedPid1;
         local.speedPid2 = slice.speedPid2;
         interrupts();
-        apply_speed_pid_if_needed(local);
+        apply_speed_pid_if_needed(local, lead_capped(servo1), lead_capped(servo2));
 
         if (local.motor1Brake)
         {

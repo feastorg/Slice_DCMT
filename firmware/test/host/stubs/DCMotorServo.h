@@ -18,6 +18,8 @@ inline int16_t host_servo_output[2] = {0, 0};
 inline bool host_servo_stalled[2] = {false, false};
 inline long host_stall_timeout[2] = {-1, -1};
 inline long host_stall_min_counts[2] = {-1, -1};
+// The encoder count each servo's getActualPosition() returns; a test sets it.
+inline long host_servo_actual[2] = {0, 0};
 
 class DCMotorServo
 {
@@ -27,7 +29,8 @@ public:
     void run() { write_(host_servo_output[index]); }
     void stop() { brake_(); }
     void moveTo(long p) { target = p; }
-    long getActualPosition() { return 0; }
+    long getActualPosition() { return host_servo_actual[index]; }
+    long getRequestedPosition() { return target; }
     bool setPWMSkip(uint8_t) { return true; }
     void setMaxPWM(uint8_t) {}
     void setPIDTunings(double, double, double) {}
