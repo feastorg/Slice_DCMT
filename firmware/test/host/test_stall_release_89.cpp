@@ -35,7 +35,8 @@ int main()
     printf("     after release: peak 1 s mean %.1f RPM\n", peak);
 
     host_check("#89: the shaft doesn't turn while held", held == 0);
-    host_check("#89: before the hold, speed is short of the target (48-56 RPM, #90)", before >= 48 && before <= 56);
+    host_check("#89: before the hold, speed is within 5 % of the target (#90)",
+               before >= 0.95 * target && before <= 1.05 * target);
     host_check("#89: a hold under DCMT_STALL_TIMEOUT_MS latches no fault", motorFaults == 0);
     host_check("#89: after a short hold, the peak 1 s speed is within 5 RPM of the target (no lunge)",
                peak >= target - 5 && peak <= target + 5);

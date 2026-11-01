@@ -37,13 +37,25 @@
 // Timing constants
 #define SERIAL_UPDATE_TIME_MS 1000
 
-// Proven closed-loop tuning defaults from archive implementation.
+// Closed-loop tuning defaults. These, and the other motor-specific values
+// below (counts/rev, PWM skip and cap, accuracy, the tacho interval and lead
+// cap, the stall thresholds), come from a single bench motor: the PID gains
+// and servo values are the archive implementation's, and the speed Ki was
+// chosen against a first-order model fitted to that motor (#90, the host
+// motor tests). They are a starting point, not a property of the firmware:
+// tune them per motor at runtime with SET_PID / PIDPOS= / PIDSPEED=, or per
+// build with flags, e.g. -DDCMT_SPEED_PID_KI=<ki>.
 #define DCMT_POS_PID_KP 0.15f
 #define DCMT_POS_PID_KI 0.01f
 #define DCMT_POS_PID_KD 0.01f
 
 #define DCMT_SPEED_PID_KP 0.15f
-#define DCMT_SPEED_PID_KI 0.01f
+// 0.01 left the speed loop P-only for seconds: 60 RPM settled near 69 % of
+// the target and took about 20 s to close the rest. 0.2 reaches it within
+// 5 % in about 1.3 s in the model (#90).
+#ifndef DCMT_SPEED_PID_KI
+#define DCMT_SPEED_PID_KI 0.2f
+#endif
 #define DCMT_SPEED_PID_KD 0.01f
 
 #define DCMT_SERVO_PWM_SKIP 15

@@ -210,6 +210,16 @@ This project did not use formal release tags through most of its history, so thi
 
 ### Changed
 
+- **The default speed Ki is 0.2, up from 0.01** (#90). With 0.01 the speed
+  loop stayed P-only for seconds: in the host model 60 RPM sat at 75 % of
+  the target 4-5 s after the command and closed the rest with a time
+  constant of about 20 s. With 0.2 a 200 ms mean is within 5 % of the
+  target 1.29 s after the command and within 1 RPM over 9-10 s. The value
+  was chosen against a first-order model fitted to the single bench motor,
+  so it is a starting point: `DCMT_SPEED_PID_KI` is now a build flag
+  (`#ifndef`), and SET_PID / `PIDSPEED=` still set the speed gains at
+  runtime. The config header and `firmware/README.md` say so for every
+  motor-specific default.
 - **Command opcodes come from the handler table** (feastorg/CRUMBS#124).
   `on_message` refuses UNKNOWN_OP any opcode without a registered handler,
   asked of CRUMBS with `crumbs_has_handler()`, in place of the hand-kept

@@ -36,12 +36,19 @@ The runtime uses:
 - `DCMotorServo` for closed-loop position control
 - `DCMotorTacho` for cascaded closed-loop speed control
 
-Current defaults mirror archive-proven values:
+These defaults are a starting point for one motor, not properties of the
+firmware. They come from a single bench motor: the gains and servo values
+are the archive implementation's, and the speed Ki was chosen against a
+first-order model fitted to that motor (#90; the model lives in the host
+motor tests, `firmware/test/host/motor_sim.h`). Tune them for each motor:
+the PID gains at runtime with `SET_PID` (or serial `PIDPOS=` /
+`PIDSPEED=`), and the speed Ki and the stall thresholds per build with a
+flag such as `-DDCMT_SPEED_PID_KI=<ki>`.
 
 - `MOTOR1_CPR = 798`
 - `MOTOR2_CPR = 798`
-- outer PID defaults: `0.15 / 0.01 / 0.01`
-- inner PID defaults: `0.15 / 0.01 / 0.01`
+- outer (position) PID defaults: `0.15 / 0.01 / 0.01`
+- inner (speed) PID defaults: `0.15 / 0.2 / 0.01`
 - servo PWM skip: `15`
 - servo max PWM: `150`
 - servo accuracy: `10`
