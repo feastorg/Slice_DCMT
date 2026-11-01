@@ -58,6 +58,14 @@ non-zero if any check fails.
 | `test_watchdog_lease.cpp` | The commands-only lease: polls, SET_PID and serial lines no longer refresh the watchdog while SET_MODE, SET_BRAKE and a re-sent SET_WATCHDOG do; the 2-byte form and serial `WDOG=` end the lease; an undefined flag is refused and arms nothing; GET_CAPS sets `DCMT_CAP_WATCHDOG_LEASE` (bread-crumbs-contracts#63) |
 | `test_status_led.cpp` | Blue through the boot wait, then green or red on the first `loop()` pass, with the e-stop released or held from power-up; no LED driven on gen1 (#56) |
 
+Motor tests (`make motor`):
+
+| File | Covers |
+| --- | --- |
+| `test_speed_entry_62.cpp` | Closed-loop speed entered after open-loop travel starts from where the shaft is: after full reverse PWM, and after full forward PWM and a stop, speed mode at +60 RPM never drives backwards or at `DCMT_SERVO_MAX_PWM`, and the stopped shaft never moves back (#62) |
+| `test_speed_baseline_90.cpp` | The #90 baseline, pinned until the speed gains are retuned: at 60 RPM, speed is 65-80 % of the target 4-5 s after the command and within 3 RPM over 55-60 s |
+| `test_stall_release_89.cpp` | The #89 overshoot, pinned until it is fixed: at 60 RPM with the shaft held from 20 s to 24 s, the peak 1 s speed after release is at least 5 RPM above the speed before the hold and above the target, and under 70 RPM |
+
 ## Writing a test
 
 - Include `host.h` for the fake clock and e-stop line, and for

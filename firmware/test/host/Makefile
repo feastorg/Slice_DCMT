@@ -112,8 +112,10 @@ clean:
 # them. Built for the envs that build the speed loop (DCMT_ENABLE_SPEED_LOOP
 # defaults to 1 on the Nano Every only).
 MOTOR_ENVS  := gen1_nanoevery gen2_nanoevery
-MOTOR_SINGLE :=
-MOTOR_TESTS := $(MOTOR_SINGLE)
+# test_speed_entry_62 runs once per case (the motor target); the others run
+# once.
+MOTOR_SINGLE := test_speed_baseline_90 test_stall_release_89
+MOTOR_TESTS := $(MOTOR_SINGLE) test_speed_entry_62
 MOTOR_INCLUDES := -I$(DCMS) -I$(PID) $(INCLUDES)
 MOTOR_SRC   := motor_sim.cpp $(wildcard $(DCMS)/*.cpp) $(PID)/PID_v1.cpp
 
@@ -132,6 +134,9 @@ motor: $(MOTOR_BINS)
 	for e in $(MOTOR_ENVS); do \
 	  for t in $(MOTOR_SINGLE); do \
 	    echo "== $$e: $$t"; $(OUT)/$$e/$$t || status=1; \
+	  done; \
+	  for c in reverse forward; do \
+	    echo "== $$e: test_speed_entry_62 $$c"; $(OUT)/$$e/test_speed_entry_62 $$c || status=1; \
 	  done; \
 	done; \
 	exit $$status
