@@ -6,13 +6,14 @@
 
 #include "globals.h"
 
-// While a watchdog trip or a hardware e-stop is held, SET_OPEN_LOOP,
-// SET_SETPOINT, SET_MODE and a brake release are refused rather than stored:
-// clearing the trip or releasing the e-stop resumes nothing, and the
-// operator re-commands afterwards (DCMT_CAP_ESTOP_HOLD). bread-slice-core
-// latches the trip and asserts the e-stop with interrupts off before
-// watchdogLogic() and processEStop() zero the outputs, so these ISR-side
-// checks cannot let a command in after the reset.
+// While a watchdog trip or a hardware e-stop is held, or a motor fault is
+// latched, SET_OPEN_LOOP, SET_SETPOINT, SET_MODE and a brake release are
+// refused rather than stored: clearing the trip or the fault, or releasing
+// the e-stop, resumes nothing, and the operator re-commands afterwards
+// (DCMT_CAP_ESTOP_HOLD, DCMT_CAP_FAULTS). bread-slice-core latches the trip
+// and asserts the e-stop, and latchFaults() sets the fault bits, with
+// interrupts off before the outputs are zeroed, so these ISR-side checks
+// cannot let a command in after the reset.
 //
 // Every SET this firmware does not act on in full is refused with a
 // BREAD_REFUSE_* reason (bread_refuse.h), so GET_ACK reports it refused
@@ -34,14 +35,16 @@ static uint8_t mode_refuse_reason(uint8_t mode)
 }
 
 // 0 if no hold is in force, else the reason to refuse an actuating command
-// with. An e-stop wins over a watchdog trip: clearing the trip does not lift
-// the e-stop hold.
+// with. An e-stop wins over a watchdog trip, and both over a latched fault:
+// clearing one does not lift the others.
 static uint8_t hold_refuse_reason()
 {
     if (estopInput.asserted())
         return BREAD_REFUSE_ESTOP;
     if (commandWatchdog.tripped())
         return BREAD_REFUSE_WATCHDOG_TRIP;
+    if (motorFaults != 0)
+        return BREAD_REFUSE_FAULT;
     return 0;
 }
 
@@ -327,6 +330,29 @@ void handler_clear_watchdog_trip(crumbs_context_t *ctx, uint8_t opcode, const ui
     commandWatchdog.clear();
 }
 
+void handler_clear_faults(crumbs_context_t *ctx, uint8_t opcode, const uint8_t *data, uint8_t data_len, void *user_data)
+{
+    (void)opcode;
+    (void)data;
+    (void)user_data;
+
+    // Empty, like CLEAR_WATCHDOG_TRIP: a frame with a payload is refused
+    // and the faults stay latched.
+    if (data_len != BREAD_FAULTS_CLEAR_PAYLOAD_LEN)
+    {
+        (void)crumbs_refuse(ctx, BREAD_REFUSE_MALFORMED);
+        return;
+    }
+
+    // BREAD_OP_CLEAR_FAULTS: an operator's acknowledgement that the cause is
+    // dealt with. Clears every fault and resumes nothing: the brakes the
+    // latch engaged stay engaged and the speed setpoints and PWM commands it
+    // zeroed are still 0. DCMotorServo's own stall latch was cleared when
+    // this one was set (checkMotorFaults()), so a shaft that is still
+    // stalled latches again only once it is driven for the timeout.
+    motorFaults = 0;
+}
+
 void reply_version(crumbs_context_t *ctx, crumbs_message_t *reply, void *user_data)
 {
     (void)ctx;
@@ -404,7 +430,7 @@ void reply_get_caps(crumbs_context_t *ctx, crumbs_message_t *reply, void *user_d
     uint32_t flags = DCMT_CAP_BASELINE_FLAGS | DCMT_CAP_CLOSED_LOOP_POSITION | DCMT_CAP_PID_TUNING |
                      DCMT_CAP_CMD_WATCHDOG | DCMT_CAP_CLEAR_WATCHDOG_TRIP | DCMT_CAP_ESTOP_HOLD |
                      DCMT_CAP_REFUSES | DCMT_CAP_SETPOINT_LOOP |
-                     DCMT_CAP_WATCHDOG_LEASE;
+                     DCMT_CAP_WATCHDOG_LEASE | DCMT_CAP_FAULTS;
     (void)ctx;
     (void)user_data;
 
@@ -427,6 +453,15 @@ void reply_get_watchdog(crumbs_context_t *ctx, crumbs_message_t *reply, void *us
     (void)bread_watchdog_build_reply(reply, DCMT_TYPE_ID,
                                      timeout_ms != 0 ? 1 : 0, timeout_ms,
                                      commandWatchdog.tripped() ? 1 : 0, commandWatchdog.tripCount());
+    // A reply build proves a live master too.
+    livenessStamp();
+}
+
+void reply_get_faults(crumbs_context_t *ctx, crumbs_message_t *reply, void *user_data)
+{
+    (void)ctx;
+    (void)user_data;
+    (void)bread_faults_build_reply(reply, DCMT_TYPE_ID, motorFaults);
     // A reply build proves a live master too.
     livenessStamp();
 }

@@ -1,5 +1,6 @@
-// motorControlLogic()'s held branch: while an e-stop or a watchdog trip is
-// held, each alone, both motors are braked on every pass and no PWM is written, whatever the brake flags and PWM
+// motorControlLogic()'s held branch: while an e-stop is held, a watchdog trip
+// is held or a motor fault is latched, each alone, both motors are braked on
+// every pass and no PWM is written, whatever the brake flags and PWM
 // commands say. The hold sets the brake flags and the handlers refuse a
 // release, so the mode branches would brake too; the held branch is what
 // brakes when those flags are wrong, so each case clears them and stores a
@@ -7,6 +8,7 @@
 #include "host.h"
 #include "globals.h"
 #include <bread/dcmt_ops.h>
+#include <DCMotorServo.h>
 #include <LMD18200.h>
 #include <cstdio>
 
@@ -50,7 +52,7 @@ static void check_hold(const char *name, void (*engage)(), void (*lift)())
 
     engage();
     loop();
-    const int holds = (estopInput.asserted() ? 1 : 0) + (commandWatchdog.tripped() ? 1 : 0);
+    const int holds = (estopInput.asserted() ? 1 : 0) + (commandWatchdog.tripped() ? 1 : 0) + (motorFaults != 0 ? 1 : 0);
     char what[160];
     snprintf(what, sizeof what, "%s is the only hold in force", name);
     host_check(what, holds == 1);
@@ -99,6 +101,13 @@ static void trip_clear()
     host_check("CLEAR_WATCHDOG_TRIP is applied", applied());
 }
 
+static void fault() { host_servo_stalled[0] = true; }
+static void fault_clear()
+{
+    host_send(DCMT_TYPE_ID, BREAD_OP_CLEAR_FAULTS, nullptr, 0);
+    host_check("CLEAR_FAULTS is applied", applied());
+}
+
 int main()
 {
     setup();
@@ -106,6 +115,7 @@ int main()
 
     check_hold("an e-stop", estop_press, estop_release);
     check_hold("a watchdog trip", trip, trip_clear);
+    check_hold("a stall fault", fault, fault_clear);
 
     return host_finish();
 }

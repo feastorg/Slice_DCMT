@@ -27,6 +27,7 @@ template <typename T, typename L, typename H>
 inline T constrain(T x, L lo, H hi) { return x < lo ? lo : (x > hi ? hi : x); }
 
 #define F(s) (s)
+#define HEX 16
 #define PSTR(s) (s)
 #define PROGMEM
 typedef const char *PGM_P;

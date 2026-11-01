@@ -58,6 +58,19 @@
 // on release; 300 removed that on the 2026-10-22 bench (#63).
 #define DCMT_TACHO_MAX_LEAD 300
 
+// Stall faults (#64, DCMT_CAP_FAULTS). In closed loop, a motor driven for
+// DCMT_STALL_TIMEOUT_MS without its encoder moving DCMT_STALL_MIN_COUNTS
+// counts latches DCMT_FAULT_M1_STALL or _M2_STALL, which brakes both motors
+// until CLEAR_FAULTS, serial FAULTCLEAR or a reboot. DCMotorServo's stall
+// detection does the check. Starting values, not measured ones: override
+// with build flags, e.g. -DDCMT_STALL_TIMEOUT_MS=<ms>.
+#ifndef DCMT_STALL_TIMEOUT_MS
+#define DCMT_STALL_TIMEOUT_MS 1000
+#endif
+#ifndef DCMT_STALL_MIN_COUNTS
+#define DCMT_STALL_MIN_COUNTS 4
+#endif
+
 // ----- Motor1 Definitions -----
 #if (DCMT_HW_GEN == 1)
 #define MOTOR1_PWM_PIN 6

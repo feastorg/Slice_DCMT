@@ -46,7 +46,7 @@ CRUMBS_SRC := $(CRUMBS)/core/crumbs_core.c $(CRUMBS)/crc/crumbs_crc.c $(CRUMBS)/
 CRUMBS_OBJ := $(OUT)/crumbs_core.o $(OUT)/crumbs_crc.o $(OUT)/crc8_nibble.o
 # test_status_led runs once per e-stop case (the test target); the others
 # run once.
-SINGLE   := test_dispatch test_mode_pwm test_applied_pwm test_serial_burst test_max_lead test_estop_hold test_watchdog_trip test_serial_numbers test_setpoint_loop test_watchdog_lease test_hold_brakes
+SINGLE   := test_dispatch test_mode_pwm test_applied_pwm test_serial_burst test_max_lead test_estop_hold test_watchdog_trip test_serial_numbers test_setpoint_loop test_watchdog_lease test_stall_fault test_hold_brakes
 TESTS    := $(SINGLE) test_status_led
 
 .PHONY: all test motor clean check-libdeps check-motor-libdeps FORCE
@@ -112,10 +112,10 @@ clean:
 # them. Built for the envs that build the speed loop (DCMT_ENABLE_SPEED_LOOP
 # defaults to 1 on the Nano Every only).
 MOTOR_ENVS  := gen1_nanoevery gen2_nanoevery
-# test_speed_entry_62 runs once per case (the motor target); the others run
-# once.
+# test_speed_entry_62 and test_stall_fault_64 run once per case (the motor
+# target); the others run once.
 MOTOR_SINGLE := test_speed_baseline_90 test_stall_release_89
-MOTOR_TESTS := $(MOTOR_SINGLE) test_speed_entry_62
+MOTOR_TESTS := $(MOTOR_SINGLE) test_speed_entry_62 test_stall_fault_64
 MOTOR_INCLUDES := -I$(DCMS) -I$(PID) $(INCLUDES)
 MOTOR_SRC   := motor_sim.cpp $(wildcard $(DCMS)/*.cpp) $(PID)/PID_v1.cpp
 
@@ -137,6 +137,9 @@ motor: $(MOTOR_BINS)
 	  done; \
 	  for c in reverse forward; do \
 	    echo "== $$e: test_speed_entry_62 $$c"; $(OUT)/$$e/test_speed_entry_62 $$c || status=1; \
+	  done; \
+	  for c in speed_held position_rest position_held speed_10; do \
+	    echo "== $$e: test_stall_fault_64 $$c"; $(OUT)/$$e/test_stall_fault_64 $$c || status=1; \
 	  done; \
 	done; \
 	exit $$status

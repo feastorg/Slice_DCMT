@@ -81,6 +81,11 @@ void livenessStamp();
 #define HOLD_RESYNC_M1 0x01
 #define HOLD_RESYNC_M2 0x02
 extern volatile uint8_t holdResyncMask;
+// Latched motor faults, DCMT_FAULT_* bits (#64). Set by the main loop when
+// DCMotorServo reports a stall, cleared by CLEAR_FAULTS or serial
+// FAULTCLEAR; nonzero holds both motors braked and refuses the commands
+// that could make one move.
+extern volatile uint8_t motorFaults;
 
 // The PWM each motor is driven at: the last motorN_write() value, clamped to
 // +/-255, or 0 after motorN_brake(). Written by the main loop, read by the
@@ -95,6 +100,7 @@ void updateStatusLed();
 void processEStop(bsc::EStop::Event e);
 void watchdogLogic();
 void motorControlLogic();
+void checkMotorFaults();
 void printSliceState(Print &out);
 void printSerialOutput();
 void serialCommands();
@@ -105,9 +111,11 @@ void handler_set_setpoint(crumbs_context_t *ctx, uint8_t opcode, const uint8_t *
 void handler_set_pid(crumbs_context_t *ctx, uint8_t opcode, const uint8_t *data, uint8_t data_len, void *user_data);
 void handler_set_watchdog(crumbs_context_t *ctx, uint8_t opcode, const uint8_t *data, uint8_t data_len, void *user_data);
 void handler_clear_watchdog_trip(crumbs_context_t *ctx, uint8_t opcode, const uint8_t *data, uint8_t data_len, void *user_data);
+void handler_clear_faults(crumbs_context_t *ctx, uint8_t opcode, const uint8_t *data, uint8_t data_len, void *user_data);
 void reply_version(crumbs_context_t *ctx, crumbs_message_t *reply, void *user_data);
 void reply_get_state(crumbs_context_t *ctx, crumbs_message_t *reply, void *user_data);
 void reply_get_caps(crumbs_context_t *ctx, crumbs_message_t *reply, void *user_data);
 void reply_get_watchdog(crumbs_context_t *ctx, crumbs_message_t *reply, void *user_data);
+void reply_get_faults(crumbs_context_t *ctx, crumbs_message_t *reply, void *user_data);
 
 #endif // GLOBALS_H

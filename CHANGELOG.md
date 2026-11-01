@@ -8,6 +8,20 @@ This project did not use formal release tags through most of its history, so thi
 
 ### Added
 
+- **Stall faults** (#64, `DCMT_CAP_FAULTS`, bread-crumbs-contracts#69).
+  DCMotorServo's stall detection is on for both motors in closed loop: a
+  motor driven for `DCMT_STALL_TIMEOUT_MS` (1000 ms) without its encoder
+  moving `DCMT_STALL_MIN_COUNTS` (4) counts latches `DCMT_FAULT_M1_STALL` or
+  `_M2_STALL`. A fault brakes both motors and holds as a watchdog trip does;
+  `SET_OPEN_LOOP`, `SET_SETPOINT`, `SET_MODE` and any brake release are
+  refused `BREAD_REFUSE_FAULT` until `BREAD_OP_CLEAR_FAULTS` or serial
+  `FAULTCLEAR`, which resume nothing. `BREAD_OP_GET_FAULTS` reports the bits;
+  GET_STATE stays 20 bytes. Serial `READ` ends with `FAULT:0x<bits>`. The
+  thresholds are build flags and starting values, not measurements. Before,
+  a stalled motor, or one with a dead encoder, was driven at up to PWM 150
+  for as long as closed loop ran, and the 4 s hold of #89 lunged on release;
+  it now latches after 1 s and stays braked. A hold under the timeout still
+  overshoots on release (#89).
 - **A command lease for the watchdog** (`DCMT_CAP_WATCHDOG_LEASE`,
   bread-crumbs-contracts#63). A 3-byte `SET_WATCHDOG` with
   `BREAD_WATCHDOG_FLAG_COMMANDS_ONLY` lets only `SET_OPEN_LOOP`, `SET_BRAKE`,

@@ -46,6 +46,7 @@ Current defaults mirror archive-proven values:
 - servo max PWM: `150`
 - servo accuracy: `10`
 - tacho interval: `5 ms`
+- stall timeout / minimum counts: `1000 ms` / `4` (see Stall Faults)
 
 Speed commands/capability are only available when `DCMT_ENABLE_SPEED_LOOP=1`.
 
@@ -58,7 +59,7 @@ Controllers should gate behavior by capability flags, not by generation labels.
 
 All levels also advertise `DCMT_CAP_CMD_WATCHDOG`,
 `DCMT_CAP_CLEAR_WATCHDOG_TRIP`, `DCMT_CAP_ESTOP_HOLD`, `DCMT_CAP_REFUSES`,
-`DCMT_CAP_SETPOINT_LOOP` and `DCMT_CAP_WATCHDOG_LEASE`.
+`DCMT_CAP_SETPOINT_LOOP`, `DCMT_CAP_WATCHDOG_LEASE` and `DCMT_CAP_FAULTS`.
 
 ## Setpoints
 
@@ -83,15 +84,16 @@ bread-crumbs-contracts `bread_refuse.h`:
 
 | Reason | When |
 | --- | --- |
-| `BREAD_REFUSE_MALFORMED` | the payload does not unpack; SET_PID is not 13 bytes; SET_SETPOINT is not 4 or 5 bytes; SET_WATCHDOG lacks its u16; CLEAR_WATCHDOG_TRIP carries a payload |
+| `BREAD_REFUSE_MALFORMED` | the payload does not unpack; SET_PID is not 13 bytes; SET_SETPOINT is not 4 or 5 bytes; SET_WATCHDOG lacks its u16; CLEAR_WATCHDOG_TRIP or CLEAR_FAULTS carries a payload |
 | `BREAD_REFUSE_ESTOP` | SET_OPEN_LOOP, SET_MODE or SET_SETPOINT while the hardware e-stop is held, or a SET_BRAKE that asks for a release then; this reason wins when a watchdog trip is held too |
-| `BREAD_REFUSE_WATCHDOG_TRIP` | SET_OPEN_LOOP, SET_MODE or SET_SETPOINT while a trip is held, or a SET_BRAKE that asks for a release then |
+| `BREAD_REFUSE_WATCHDOG_TRIP` | SET_OPEN_LOOP, SET_MODE or SET_SETPOINT while a trip is held, or a SET_BRAKE that asks for a release then; this reason wins over a latched fault |
+| `BREAD_REFUSE_FAULT` | SET_OPEN_LOOP, SET_MODE or SET_SETPOINT while a stall fault is latched, or a SET_BRAKE that asks for a release then |
 | `BREAD_REFUSE_UNDEFINED_VALUE` | a SET_MODE, SET_PID or SET_SETPOINT loop the contract does not define; a SET_WATCHDOG flag other than `BREAD_WATCHDOG_FLAG_COMMANDS_ONLY`; a SET_OPEN_LOOP PWM outside `-DCMT_PWM_MAX` to `DCMT_PWM_MAX` (255) |
 | `BREAD_REFUSE_NOT_BUILT` | closed-loop speed (SET_MODE, or a SET_PID or SET_SETPOINT loop SPEED) when the speed loop is not built |
 | `BREAD_REFUSE_WRONG_MODE` | SET_OPEN_LOOP outside open loop |
 | `BREAD_REFUSE_UNKNOWN_OP` | an opcode with no registered command handler, including a GET opcode sent as a command frame instead of through SET_REPLY |
 
-A SET_BRAKE that asks for a release while tripped or e-stopped still engages
+A SET_BRAKE that asks for a release while tripped, e-stopped or faulted still engages
 any brake it names, then refuses, and a SET_OPEN_LOOP with one PWM out of range still sets
 the other motor's, then refuses. GET_STATE shows what took effect. Every valid frame
 refreshes the watchdog, a refused one included.
@@ -168,7 +170,8 @@ Serial commands (115200 baud, newline-terminated):
 
 - `WDOG=<ms>` - arm with that timeout, or disarm with `0`
 - `WDCLEAR` - clear a latched trip
-- `READ` - print state, ending `WDOG:<timeout|off>, WDTRIP:<tripped>/<trip count>`
+- `FAULTCLEAR` - clear latched stall faults (see Stall Faults)
+- `READ` - print state, ending `WDOG:<timeout|off>, WDTRIP:<tripped>/<trip count>, FAULT:0x<bits>`
 
 ## Hardware E-stop
 
@@ -200,6 +203,38 @@ reboots the slice into open loop at PWM 0; power the Nano from the switched
 supply too, since a Nano kept alive over USB sees no stop and runs its
 stored commands when motor power returns. bread-crumbs-contracts
 `docs/controller-compatibility.md` covers both wirings.
+
+## Stall Faults
+
+In closed loop (position or speed), a motor driven for
+`DCMT_STALL_TIMEOUT_MS` (1000 ms) without its encoder moving
+`DCMT_STALL_MIN_COUNTS` (4) counts latches a stall fault (#64):
+`DCMT_FAULT_M1_STALL` or `DCMT_FAULT_M2_STALL`. DCMotorServo's stall
+detection does the check, so a motor at rest inside the servo's deadband,
+which is not driven, never latches. Open loop is not checked. Both values are
+build flags and starting points, not measurements; stall detection has not
+been checked on the bench yet.
+
+A fault holds the way a watchdog trip does: both motors brake, the PWM
+commands and speed setpoints go to 0, both brake flags are set, each position
+setpoint follows its encoder, and the mode is kept. While any fault is
+latched, the I2C commands the watchdog section lists are refused with
+`BREAD_REFUSE_FAULT` (an e-stop or a watchdog trip, when held too, reports
+its own reason), and the serial ones are ignored with a message.
+
+`BREAD_OP_GET_FAULTS` (`0x7A`) replies `[faults:u8]`, the `DCMT_FAULT_*`
+bits. GET_STATE is unchanged at 20 bytes. A fault is cleared only by:
+
+- `BREAD_OP_CLEAR_FAULTS` (`0x7B`, empty payload) over the bus; a frame with
+  a payload is refused `BREAD_REFUSE_MALFORMED` and the faults stay;
+- the serial `FAULTCLEAR` command;
+- a reboot.
+
+Clearing resumes nothing. Resume as after a cleared trip: release the brakes,
+then send setpoints, then the mode. A shaft that is still blocked latches
+again once it has been driven for the timeout.
+
+GET_CAPS advertises `DCMT_CAP_FAULTS`.
 
 ## References
 
