@@ -36,3 +36,4 @@ in bread-infra.
 | 2026-10-24 | [bread-slice-core, lead cap, serial and gen1](2026-10-24-core-and-serial.md) | `720879b` | gen2 Nano Every, gen1 Nano | pass; gen2 Nano not run |
 | 2026-10-25 | [Setpoint loops, the e-stop release and the watchdog lease](2026-10-25-setpoint-loop-lease.md) | `718a41f` | gen2 Nano Every | pass |
 | 2026-10-31 | [Opcode refusal and reply integrity](2026-10-31-refusal-and-bus.md) | `c3e6fca` | gen2 Nano Every, gen2 Nano | pass; no motor steps |
+| 2026-11-01 | [Stall latch, closed-loop speed and the amber LED](2026-11-01-stall-speed-amber.md) | `6a8df02` | gen2 Nano Every | pass, with three findings: a bus hang, a small-step stall latch, M2 overshoot |
