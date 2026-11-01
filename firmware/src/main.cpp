@@ -485,14 +485,16 @@ void setupDCMT()
     appliedMode = slice.mode;
 }
 
-// Red while the e-stop is held, green otherwise; StatusLed writes only on a
-// change. Called from loop() only. The boot wait in setup() polls the e-stop
-// too, and when that wrote the LED, its first pass replaced the boot blue
-// within microseconds.
+// Red while the e-stop is held, amber while a command-watchdog trip or a
+// latched motor fault holds the motors (the hold motorControlLogic() applies),
+// green otherwise; red wins over amber. StatusLed writes only on a change.
+// Called from loop() only. The boot wait in setup() polls the e-stop too, and
+// when that wrote the LED, its first pass replaced the boot blue within
+// microseconds.
 void updateStatusLed()
 {
 #if DCMT_HAS_STATUS_LED
-    statusLed.set(estopInput.asserted() ? bsc::StatusLed::EStop : bsc::StatusLed::Running);
+    statusLed.set(bsc::StatusLed::stateFor(estopInput.asserted(), commandWatchdog.tripped() || motorFaults != 0));
 #endif
 }
 
