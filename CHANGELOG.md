@@ -38,6 +38,10 @@ This project did not use formal release tags through most of its history, so thi
 
 ### Fixed
 
+- **Host tests rebuild after a library pin change** (#88). `pio pkg
+  install` keeps a release archive's mtimes, so a plain `make -C test/host`
+  kept linking objects built from the previous CRUMBS. A stamp of the
+  installed library versions now rebuilds them.
 - **Serial numbers are parsed strictly** (#60), with bread-slice-core's
   `parseLong()` and `parseFloat()`. The whole token must parse and be in
   range for its field, or the command is refused with no change and an
