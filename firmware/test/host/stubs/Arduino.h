@@ -51,6 +51,21 @@ public:
     template <typename T> void println(T v, int) { out += std::to_string(v); out += "\n"; }
 };
 
+// The motor build links the real DCMotorServo, whose debug helpers build
+// Strings. Only what they use.
+class String
+{
+public:
+    std::string s;
+    String(const char *c = "") : s(c) {}
+    String(int v) : s(std::to_string(v)) {}
+    String(unsigned int v) : s(std::to_string(v)) {}
+    String(long v) : s(std::to_string(v)) {}
+    String(double v, int = 2) : s(std::to_string(v)) {}
+    String &operator+=(const String &o) { s += o.s; return *this; }
+    friend String operator+(String a, const String &b) { return a += b; }
+};
+
 // Bytes a test appends to in are what the firmware reads.
 class HardwareSerial : public Print
 {
