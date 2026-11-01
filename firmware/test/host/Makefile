@@ -114,7 +114,7 @@ clean:
 MOTOR_ENVS  := gen1_nanoevery gen2_nanoevery
 # test_speed_entry_62 and test_stall_fault_64 run once per case (the motor
 # target); the others run once.
-MOTOR_SINGLE := test_speed_baseline_90 test_stall_release_89
+MOTOR_SINGLE := test_speed_baseline_90 test_stall_release_89 test_speed_zero_reads_0
 MOTOR_TESTS := $(MOTOR_SINGLE) test_speed_entry_62 test_stall_fault_64
 MOTOR_INCLUDES := -I$(DCMS) -I$(PID) $(INCLUDES)
 MOTOR_SRC   := motor_sim.cpp $(wildcard $(DCMS)/*.cpp) $(PID)/PID_v1.cpp

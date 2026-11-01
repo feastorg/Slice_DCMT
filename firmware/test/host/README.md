@@ -69,6 +69,7 @@ Motor tests (`make motor`):
 | `test_speed_entry_62.cpp` | Closed-loop speed entered after open-loop travel starts from where the shaft is: after full reverse PWM, and after full forward PWM and a stop, speed mode at +60 RPM never drives backwards or at `DCMT_SERVO_MAX_PWM`, and the stopped shaft never moves back (#62) |
 | `test_speed_baseline_90.cpp` | The #90 regression, with the default speed gains: at 60 RPM, a 200 ms mean is within 5 % of the target by 2 s after the command, speed is within 1 RPM over 9-10 s and 15-20 s, and the peak 200 ms mean overshoots by under 10 % |
 | `test_stall_release_89.cpp` | The #89 regression: at 60 RPM with the shaft held for 100 ms under `DCMT_STALL_TIMEOUT_MS`, no fault latches and the peak 1 s speed after release is within 5 RPM of the target, where the wound-up integral used to lunge; a 4 s hold, #89's own, latches a stall fault and the shaft stays braked after release (#64) |
+| `test_speed_zero_reads_0.cpp` | GET_STATE `spd1` reads 0 once motor 1 stops at a speed setpoint of 0, after 3 s at 60 RPM; before DCMotorServo 1.2.1 it kept the last running speed (feastorg/dcmotorservo#18) |
 | `test_stall_fault_64.cpp` | Stall detection with the real libraries (#64), one process per case: a shaft held at 60 RPM latches `M1_STALL` `DCMT_STALL_TIMEOUT_MS` +/- 50 ms after the hold and stays braked and still after release; position mode at rest inside the deadband for 10 s never latches; a shaft held 5000 counts from its position target latches; 20 s at 10 RPM never latches |
 
 ## Writing a test
