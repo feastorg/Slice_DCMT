@@ -8,6 +8,10 @@ This project did not use formal release tags through most of its history, so thi
 
 ### Added
 
+- **`docs/hardware-revisions.md` records the motors' PWM frequencies**
+  (#68). On the Nano, motor 1 (D6, Timer0) switches at 976.6 Hz and
+  motor 2 (D10, Timer1) at 490.2 Hz; on the Nano Every both are
+  976.6 Hz. Computed from the cores' timer setup.
 - **A command lease for the watchdog** (`DCMT_CAP_WATCHDOG_LEASE`,
   bread-crumbs-contracts#63). A 3-byte `SET_WATCHDOG` with
   `BREAD_WATCHDOG_FLAG_COMMANDS_ONLY` lets only `SET_OPEN_LOOP`, `SET_BRAKE`,
