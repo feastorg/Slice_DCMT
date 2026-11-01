@@ -63,6 +63,12 @@ This project did not use formal release tags through most of its history, so thi
 
 ### Fixed
 
+- **GET_STATE speed reads 0 once a motor stops at a speed setpoint of 0.**
+  It used to keep the last running speed for as long as the setpoint
+  stayed 0: in the host model (`test_speed_zero_reads_0`), `spd1` read 60
+  two seconds after a stop from 60 RPM, with the shaft still. DCMotorServo
+  1.2.1 keeps measuring while the setpoint is 0 (feastorg/dcmotorservo#18),
+  and `firmware/platformio.ini` and `slice.yaml` now require `^1.2.1`.
 - **The speed loop's integral no longer winds up against the lead cap**
   (#89). While a motor's position target sits `DCMT_TACHO_MAX_LEAD` counts
   or more from its encoder, the firmware runs that motor's speed PID with
