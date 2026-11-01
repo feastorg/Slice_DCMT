@@ -39,6 +39,13 @@ This project did not use formal release tags through most of its history, so thi
   Arduino core and motor libraries stubbed, once per PlatformIO env. The
   first tests cover command dispatch (#45) and the boot status LED. CI runs
   them beside the four builds.
+- **Motor host tests** (#94). `make -C firmware/test/host motor` builds the
+  firmware with the real DCMotorServo, DCMotorTacho and PID_v1 from libdeps
+  in place of their stubs, against a first-order model of each motor, for
+  the two Nano Every envs. The default target runs them after the stub
+  tests, so CI does too. They cover the speed entry after open-loop travel
+  (#62) and pin today's 60 RPM shortfall (#90) and post-stall overshoot
+  (#89).
 
 ### Fixed
 

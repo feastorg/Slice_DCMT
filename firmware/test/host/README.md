@@ -14,6 +14,12 @@ and run on the host. Nothing is reimplemented:
   `host_servo_output[n]` through the firmware's motor callback, as the real
   library's output does, and `stop()` brakes through it.
 
+The motor tests (`make motor`) build the same firmware with the real
+DCMotorServo, DCMotorTacho and PID_v1 from libdeps in place of the two
+motor-library stubs, so the closed loop runs as it does on the board, with the
+firmware's own gains, PWM limits, speed interval and lead cap. `motor_sim.cpp`
+models a motor on each channel between the LMD18200 and Encoder stubs.
+
 Frames go in through `crumbs_peripheral_handle_receive()` and replies come
 back through `crumbs_peripheral_build_reply()`, the two calls the I2C
 interrupts make. So a test sees what a controller on the bus would see,
@@ -23,14 +29,18 @@ including GET_ACK.
 
 ```sh
 cd firmware
-pio pkg install -e gen2_nano   # once, for CRUMBS and the contracts
-make -C test/host
+pio pkg install -e gen2_nano   # once, for the libraries
+make -C test/host              # the stub tests, then the motor tests
+make -C test/host test         # the stub tests only
+make -C test/host motor        # the motor tests only
 ```
 
 Each test is built once per PlatformIO env (`gen1_nano`, `gen2_nano`,
 `gen1_nanoevery`, `gen2_nanoevery`), with that env's `DCMT_HW_GEN` and MCU
 macros. The pin map, status LED and speed loop then follow the same `#if`
-paths as on the board. `make` exits non-zero if any check fails.
+paths as on the board. The motor tests are built for `gen1_nanoevery` and
+`gen2_nanoevery` only, the envs that build the speed loop. `make` exits
+non-zero if any check fails.
 
 ## Tests
 
@@ -48,6 +58,14 @@ paths as on the board. `make` exits non-zero if any check fails.
 | `test_watchdog_lease.cpp` | The commands-only lease: polls, SET_PID and serial lines no longer refresh the watchdog while SET_MODE, SET_BRAKE and a re-sent SET_WATCHDOG do; the 2-byte form and serial `WDOG=` end the lease; an undefined flag is refused and arms nothing; GET_CAPS sets `DCMT_CAP_WATCHDOG_LEASE` (bread-crumbs-contracts#63) |
 | `test_status_led.cpp` | Blue through the boot wait, then green or red on the first `loop()` pass, with the e-stop released or held from power-up; no LED driven on gen1 (#56) |
 
+Motor tests (`make motor`):
+
+| File | Covers |
+| --- | --- |
+| `test_speed_entry_62.cpp` | Closed-loop speed entered after open-loop travel starts from where the shaft is: after full reverse PWM, and after full forward PWM and a stop, speed mode at +60 RPM never drives backwards or at `DCMT_SERVO_MAX_PWM`, and the stopped shaft never moves back (#62) |
+| `test_speed_baseline_90.cpp` | The #90 baseline, pinned until the speed gains are retuned: at 60 RPM, speed is 65-80 % of the target 4-5 s after the command and within 3 RPM over 55-60 s |
+| `test_stall_release_89.cpp` | The #89 overshoot, pinned until it is fixed: at 60 RPM with the shaft held from 20 s to 24 s, the peak 1 s speed after release is at least 5 RPM above the speed before the hold and above the target, and under 70 RPM |
+
 ## Writing a test
 
 - Include `host.h` for the fake clock and e-stop line, and for
@@ -58,6 +76,24 @@ paths as on the board. `make` exits non-zero if any check fails.
   cold boot runs as its own process: see the `test` target in the Makefile.
 - Add the file to `SINGLE` in the Makefile and a row to the table above.
 
-Not covered here: the closed-loop control itself, which belongs to the
-DCMotorServo library (CameronBrooks11/DCMotorServo#12 and #13 add its first
-host tests), and anything that needs the board (#32).
+## Writing a motor test
+
+- Include `motor_sim.h`. `sim_boot()` runs `setup()` and one pass;
+  `sim_run(ms)` runs `loop()` for that much fake time and steps both motor
+  models after every pass, and records motor 1's encoder count and applied
+  PWM in `sim_trace`.
+- `sim_speed_run(rpm, duration, holdFrom, holdTo)` puts motor 1 in speed mode
+  at `rpm` through SET_SETPOINT and SET_MODE, holds its shaft over
+  `[holdFrom, holdTo)` ms after the command, and returns the command's time
+  `t0`. Measure with `sim_rpm(t0 + a, t0 + b)` (mean RPM from position) or
+  `sim_peak_rpm(from, to, window)`.
+- `sim_motor[n]` is each motor's model: set `held` directly to hold a shaft
+  outside `sim_speed_run()`, or its gain, deadband and time constant.
+- To run against another DCMotorServo checkout, pass `DCMS=<its src/>` and a
+  separate `OUT=`, so the default build isn't replaced.
+- Add the file to `MOTOR_SINGLE` in the Makefile and a row to the table
+  above.
+
+The motor model is a first-order fit (24.3 counts/s per PWM above a deadband
+of 10, 30 ms), not a measured motor, so the motor tests show what the
+firmware and libraries do with it. Anything that needs the board is #32.
