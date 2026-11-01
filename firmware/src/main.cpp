@@ -42,6 +42,7 @@ static bsc::StatusLed statusLed;
 bsc::EStop estopInput(ESTOP);
 bsc::CommandWatchdog commandWatchdog;
 volatile uint8_t holdResyncMask = 0;
+volatile uint8_t motorFaults = 0;
 volatile bool watchdogCommandsOnly = false;
 
 void livenessStamp()
@@ -195,20 +196,46 @@ static void apply_position_pid_if_needed(const DCMT_SLICE &s)
 }
 
 #if DCMT_ENABLE_SPEED_LOOP
-static void apply_speed_pid_if_needed(const DCMT_SLICE &s)
+// True while DCMotorTacho's lead cap is clamping: the position target sits
+// DCMT_TACHO_MAX_LEAD or more counts from the encoder, so the speed PID's
+// output no longer moves the shaft.
+static bool lead_capped(DCMotorServo &servo)
 {
+    const long lead = servo.getRequestedPosition() - servo.getActualPosition();
+    return lead >= DCMT_TACHO_MAX_LEAD || lead <= -DCMT_TACHO_MAX_LEAD;
+}
+
+// The speed gains in force: the runtime ones (SET_PID, serial), with Ki 0
+// while the motor's lead cap is clamping, so a held or stalled shaft doesn't
+// wind up the integral and lunge on release (#89). PID_v1 doesn't rescale
+// its integral when Ki changes, so the integral is frozen, not reset.
+//
+// Conditional integration belongs in DCMotorTacho (feastorg/dcmotorservo);
+// this is a stopgap until it lands there.
+static PIDTunings speed_tunings(const PIDTunings &t, bool freeze)
+{
+    PIDTunings r = t;
+    if (freeze)
+        r.ki = 0.0f;
+    return r;
+}
+
+static void apply_speed_pid_if_needed(const DCMT_SLICE &s, bool freeze1 = false, bool freeze2 = false)
+{
+    const PIDTunings t1 = speed_tunings(s.speedPid1, freeze1);
+    const PIDTunings t2 = speed_tunings(s.speedPid2, freeze2);
     if (speedPidApplied &&
-        pid_tunings_equal(appliedSpeedPid1, s.speedPid1) &&
-        pid_tunings_equal(appliedSpeedPid2, s.speedPid2))
+        pid_tunings_equal(appliedSpeedPid1, t1) &&
+        pid_tunings_equal(appliedSpeedPid2, t2))
     {
         return;
     }
 
-    tacho1.setPIDTunings(s.speedPid1.kp, s.speedPid1.ki, s.speedPid1.kd);
-    tacho2.setPIDTunings(s.speedPid2.kp, s.speedPid2.ki, s.speedPid2.kd);
+    tacho1.setPIDTunings(t1.kp, t1.ki, t1.kd);
+    tacho2.setPIDTunings(t2.kp, t2.ki, t2.kd);
 
-    appliedSpeedPid1 = s.speedPid1;
-    appliedSpeedPid2 = s.speedPid2;
+    appliedSpeedPid1 = t1;
+    appliedSpeedPid2 = t2;
     speedPidApplied = true;
 }
 #endif
@@ -264,6 +291,7 @@ void loop()
     updateStatusLed();
     watchdogLogic();
     motorControlLogic();
+    checkMotorFaults();
     serialCommands();
     printSerialOutput();
 }
@@ -360,6 +388,10 @@ void setupSlice()
     if (rc != 0)
         SLICE_DEBUG_PRINTLN(F("CRUMBS: Failed to register BREAD_OP_CLEAR_WATCHDOG_TRIP"));
 
+    rc = crumbs_register_handler(&ctx, BREAD_OP_CLEAR_FAULTS, handler_clear_faults, nullptr);
+    if (rc != 0)
+        SLICE_DEBUG_PRINTLN(F("CRUMBS: Failed to register BREAD_OP_CLEAR_FAULTS"));
+
     rc = crumbs_register_reply_handler(&ctx, 0x00, reply_version, nullptr);
     if (rc != 0)
         SLICE_DEBUG_PRINTLN(F("CRUMBS: Failed to register version reply handler"));
@@ -375,6 +407,10 @@ void setupSlice()
     rc = crumbs_register_reply_handler(&ctx, BREAD_OP_GET_WATCHDOG, reply_get_watchdog, nullptr);
     if (rc != 0)
         SLICE_DEBUG_PRINTLN(F("CRUMBS: Failed to register BREAD_OP_GET_WATCHDOG reply handler"));
+
+    rc = crumbs_register_reply_handler(&ctx, BREAD_OP_GET_FAULTS, reply_get_faults, nullptr);
+    if (rc != 0)
+        SLICE_DEBUG_PRINTLN(F("CRUMBS: Failed to register BREAD_OP_GET_FAULTS reply handler"));
 
 #ifdef DCMT_WATCHDOG_BOOT_MS
     // Integration opt-in: come up armed (e.g. e-stop wirings that power-cycle
@@ -426,6 +462,10 @@ void setupDCMT()
     servo2.setMaxPWM(DCMT_SERVO_MAX_PWM);
     servo1.setAccuracy(DCMT_SERVO_ACCURACY);
     servo2.setAccuracy(DCMT_SERVO_ACCURACY);
+    // Stall faults (#64): the library latches a stall in run(), which only
+    // closed loop calls; checkMotorFaults() turns it into DCMT_FAULT_*.
+    servo1.enableStallDetection(DCMT_STALL_TIMEOUT_MS, DCMT_STALL_MIN_COUNTS);
+    servo2.enableStallDetection(DCMT_STALL_TIMEOUT_MS, DCMT_STALL_MIN_COUNTS);
 
     servo1.setCurrentPosition(motor1Encoder.read());
     servo2.setCurrentPosition(motor2Encoder.read());
@@ -577,7 +617,8 @@ void motorControlLogic()
     // window only when a closed-loop mode needs them; a torn view across the
     // two windows self-corrects next iteration.
     DCMT_SLICE local;
-    const bool held = estopInput.asserted() || commandWatchdog.tripped();
+    // A latched motor fault (#64) holds as a watchdog trip does.
+    const bool held = estopInput.asserted() || commandWatchdog.tripped() || motorFaults != 0;
     noInterrupts();
     local.mode = slice.mode;
     local.motor1Brake = slice.motor1Brake;
@@ -603,7 +644,7 @@ void motorControlLogic()
         // pin, so alternating them on every pass toggles the driver at loop
         // frequency, an audible squeal (found live at the first watchdog
         // trip). This branch runs on every pass while an e-stop or a watchdog
-        // trip is held.
+        // trip is held, or a fault is latched.
         stop_control_loops();
         motor1_brake();
         motor2_brake();
@@ -627,7 +668,7 @@ void motorControlLogic()
         const int16_t h1 = clamp_i16(servo1.getActualPosition());
         const int16_t h2 = clamp_i16(servo2.getActualPosition());
         noInterrupts();
-        if (commandWatchdog.tripped() || estopInput.asserted())
+        if (commandWatchdog.tripped() || estopInput.asserted() || motorFaults != 0)
         {
             slice.motor1PositionSetpoint = h1;
             slice.motor2PositionSetpoint = h2;
@@ -734,7 +775,7 @@ void motorControlLogic()
         local.speedPid1 = slice.speedPid1;
         local.speedPid2 = slice.speedPid2;
         interrupts();
-        apply_speed_pid_if_needed(local);
+        apply_speed_pid_if_needed(local, lead_capped(servo1), lead_capped(servo2));
 
         if (local.motor1Brake)
         {
@@ -785,4 +826,66 @@ void motorControlLogic()
     slice.motor2Brake = true;
     interrupts();
     SLICE_DEBUG_PRINTLN(F("ERROR: Unknown mode, forcing OPEN_LOOP with brakes."));
+}
+
+// Latch fault bits and hold the safe state a watchdog trip holds (#64,
+// DCMT_CAP_FAULTS): both motors braked, PWM commands and speed setpoints 0,
+// both brake flags set, and the position setpoints on the encoders, which
+// motorControlLogic()'s held branch keeps following. The bits are set
+// first, with interrupts off, so the I2C handlers refuse actuating commands
+// before the fields below are reset. Clearing resumes nothing.
+static void latchFaults(uint8_t bits)
+{
+    noInterrupts();
+    motorFaults |= bits;
+    interrupts();
+
+    stop_control_loops();
+    motor1_brake();
+    motor2_brake();
+
+    // Read the encoders outside the masked window (Encoder::read()
+    // re-enables interrupts).
+    const int16_t pos1 = clamp_i16(servo1.getActualPosition());
+    const int16_t pos2 = clamp_i16(servo2.getActualPosition());
+
+    noInterrupts();
+    slice.motor1PWM = 0;
+    slice.motor2PWM = 0;
+    slice.motor1Speed = 0;
+    slice.motor2Speed = 0;
+    slice.motor1SpeedSetpoint = 0;
+    slice.motor2SpeedSetpoint = 0;
+    slice.motor1Brake = true;
+    slice.motor2Brake = true;
+    slice.motor1PositionSetpoint = pos1;
+    slice.motor2PositionSetpoint = pos2;
+    holdResyncMask = HOLD_RESYNC_M1 | HOLD_RESYNC_M2;
+    interrupts();
+    SLICE_DEBUG_PRINTLN(F("MOTOR STALL: motors braked until FAULTCLEAR"));
+}
+
+// Runs after motorControlLogic() on every pass. DCMotorServo latches a stall
+// in run() when a motor is driven for DCMT_STALL_TIMEOUT_MS without moving
+// DCMT_STALL_MIN_COUNTS, and has braked that motor itself. motorFaults is
+// the latch from then on, so the library's is cleared here: CLEAR_FAULTS
+// runs in the I2C interrupt, where clearStall() can't be called (it reads
+// the encoder, and Encoder::read() re-enables interrupts). While motorFaults
+// is set the held branch stops both loops on every pass, so run() is not
+// called and nothing is detected until the clear.
+void checkMotorFaults()
+{
+    uint8_t bits = 0;
+    if (servo1.isStalled())
+    {
+        bits |= DCMT_FAULT_M1_STALL;
+        servo1.clearStall();
+    }
+    if (servo2.isStalled())
+    {
+        bits |= DCMT_FAULT_M2_STALL;
+        servo2.clearStall();
+    }
+    if (bits != 0)
+        latchFaults(bits);
 }

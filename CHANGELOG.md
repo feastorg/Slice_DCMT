@@ -12,6 +12,20 @@ This project did not use formal release tags through most of its history, so thi
   (#68). On the Nano, motor 1 (D6, Timer0) switches at 976.6 Hz and
   motor 2 (D10, Timer1) at 490.2 Hz; on the Nano Every both are
   976.6 Hz. Computed from the cores' timer setup.
+- **Stall faults** (#64, `DCMT_CAP_FAULTS`, bread-crumbs-contracts#69).
+  DCMotorServo's stall detection is on for both motors in closed loop: a
+  motor driven for `DCMT_STALL_TIMEOUT_MS` (1000 ms) without its encoder
+  moving `DCMT_STALL_MIN_COUNTS` (4) counts latches `DCMT_FAULT_M1_STALL` or
+  `_M2_STALL`. A fault brakes both motors and holds as a watchdog trip does;
+  `SET_OPEN_LOOP`, `SET_SETPOINT`, `SET_MODE` and any brake release are
+  refused `BREAD_REFUSE_FAULT` until `BREAD_OP_CLEAR_FAULTS` or serial
+  `FAULTCLEAR`, which resume nothing. `BREAD_OP_GET_FAULTS` reports the bits;
+  GET_STATE stays 20 bytes. Serial `READ` ends with `FAULT:0x<bits>`. The
+  thresholds are build flags and starting values, not measurements. Before,
+  a stalled motor, or one with a dead encoder, was driven at up to PWM 150
+  for as long as closed loop ran, and the 4 s hold of #89 lunged on release;
+  it now latches after 1 s and stays braked. A hold under the timeout no
+  longer overshoots on release either (#89, below).
 - **A command lease for the watchdog** (`DCMT_CAP_WATCHDOG_LEASE`,
   bread-crumbs-contracts#63). A 3-byte `SET_WATCHDOG` with
   `BREAD_WATCHDOG_FLAG_COMMANDS_ONLY` lets only `SET_OPEN_LOOP`, `SET_BRAKE`,
@@ -49,6 +63,16 @@ This project did not use formal release tags through most of its history, so thi
 
 ### Fixed
 
+- **The speed loop's integral no longer winds up against the lead cap**
+  (#89). While a motor's position target sits `DCMT_TACHO_MAX_LEAD` counts
+  or more from its encoder, the firmware runs that motor's speed PID with
+  Ki 0 and the runtime Kp and Kd, so the integral is frozen, not reset. In
+  the host model (`test_stall_release_89`), a shaft held for 0.9 s at
+  60 RPM, under the stall timeout, peaked at 59.2 RPM in the 1 s after
+  release from 52.0 before it, with Ki 0.01; it now peaks at 57.0. With a
+  larger Ki the wind-up grows with it (#90). Runtime SET_PID speed gains
+  still apply, clamped or not. Conditional integration belongs in DCMotorTacho
+  (feastorg/dcmotorservo); this is a stopgap until it lands there.
 - **Host tests rebuild after a library pin change** (#88). `pio pkg
   install` keeps a release archive's mtimes, so a plain `make -C test/host`
   kept linking objects built from the previous CRUMBS. A stamp of the
@@ -186,6 +210,23 @@ This project did not use formal release tags through most of its history, so thi
 
 ### Changed
 
+- **Every motor-specific default is a build flag.** The position and speed
+  PID gains, `DCMT_SERVO_PWM_SKIP`, `DCMT_SERVO_MAX_PWM`,
+  `DCMT_SERVO_ACCURACY`, `DCMT_TACHO_INTERVAL_MS`, `DCMT_TACHO_MAX_LEAD` and
+  `MOTOR1_CPR`/`MOTOR2_CPR` are now `#ifndef`-guarded in
+  `config_hardware.h`, as the stall thresholds already were, so a build for
+  another motor sets them with `-D` instead of editing the header. The
+  defaults are unchanged: all four envs build byte-identical firmware.
+- **The default speed Ki is 0.2, up from 0.01** (#90). With 0.01 the speed
+  loop stayed P-only for seconds: in the host model 60 RPM sat at 75 % of
+  the target 4-5 s after the command and closed the rest with a time
+  constant of about 20 s. With 0.2 a 200 ms mean is within 5 % of the
+  target 1.29 s after the command and within 1 RPM over 9-10 s. The value
+  was chosen against a first-order model fitted to the single bench motor,
+  so it is a starting point: `DCMT_SPEED_PID_KI` is now a build flag
+  (`#ifndef`), and SET_PID / `PIDSPEED=` still set the speed gains at
+  runtime. The config header and `firmware/README.md` say so for every
+  motor-specific default.
 - **Command opcodes come from the handler table** (feastorg/CRUMBS#124).
   `on_message` refuses UNKNOWN_OP any opcode without a registered handler,
   asked of CRUMBS with `crumbs_has_handler()`, in place of the hand-kept

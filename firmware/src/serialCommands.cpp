@@ -92,11 +92,12 @@ static void processCommand(char *cmd)
     // a hold; only WDCLEAR does.
     livenessStamp();
 
-    // While an e-stop or a watchdog trip is held, commands that could make a
-    // motor move are refused, as over I2C (dcmt_handlers.cpp): releasing the
-    // e-stop or clearing the trip resumes nothing. Engaging a brake, PID
-    // tuning, WDOG=, WDCLEAR and READ stay available.
-    if ((estopInput.asserted() || commandWatchdog.tripped()) &&
+    // While an e-stop or a watchdog trip is held, or a motor fault is
+    // latched, commands that could make a motor move are refused, as over
+    // I2C (dcmt_handlers.cpp): releasing the e-stop or clearing the trip or
+    // the fault resumes nothing. Engaging a brake, PID tuning, WDOG=,
+    // WDCLEAR, FAULTCLEAR and READ stay available.
+    if ((estopInput.asserted() || commandWatchdog.tripped() || motorFaults != 0) &&
         (starts_with_P(cmd, PSTR("MODE=")) ||
          starts_with_P(cmd, PSTR("M1PWM=")) || starts_with_P(cmd, PSTR("M2PWM=")) ||
          starts_with_P(cmd, PSTR("M1POS=")) || starts_with_P(cmd, PSTR("M2POS=")) ||
@@ -105,8 +106,10 @@ static void processCommand(char *cmd)
     {
         if (estopInput.asserted())
             Serial.println(F("Ignored: e-stop held; release it, then release the brakes"));
-        else
+        else if (commandWatchdog.tripped())
             Serial.println(F("Ignored: watchdog trip held; send WDCLEAR, then release the brakes"));
+        else
+            Serial.println(F("Ignored: motor fault latched; send FAULTCLEAR, then release the brakes"));
         return;
     }
 
@@ -344,6 +347,14 @@ static void processCommand(char *cmd)
         commandWatchdog.clear();
         Serial.println(F("WDOG trip cleared"));
     }
+    else if (strcmp_P(cmd, PSTR("FAULTCLEAR")) == 0)
+    {
+        // The local operator's clear, as CLEAR_FAULTS: every latched fault
+        // and nothing else. The brakes stay engaged and nothing moves until
+        // new commands are sent.
+        motorFaults = 0;
+        Serial.println(F("Faults cleared"));
+    }
     else if (strcmp_P(cmd, PSTR("READ")) == 0)
     {
         printSliceState(Serial);
@@ -351,7 +362,7 @@ static void processCommand(char *cmd)
     else
     {
         Serial.println(F("Invalid command."));
-        Serial.println(F("Open/Pos: MODE=OPEN|POS, M1PWM=, M2PWM=, M1POS=, M2POS=, PIDPOS=kp,ki,kd, BRAKE1=0/1, BRAKE2=0/1, WDOG=ms(0=off), WDCLEAR, READ"));
+        Serial.println(F("Open/Pos: MODE=OPEN|POS, M1PWM=, M2PWM=, M1POS=, M2POS=, PIDPOS=kp,ki,kd, BRAKE1=0/1, BRAKE2=0/1, WDOG=ms(0=off), WDCLEAR, FAULTCLEAR, READ"));
 #if DCMT_ENABLE_SPEED_LOOP
         Serial.println(F("Closed-loop: MODE=POS|SPEED, M1POS=, M2POS=, M1SPEED=, M2SPEED=, PIDPOS=kp,ki,kd, PIDSPEED=kp,ki,kd"));
 #endif

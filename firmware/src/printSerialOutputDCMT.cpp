@@ -59,7 +59,9 @@ void printSliceState(Print &out)
     out.print(F(", WDTRIP:"));
     out.print(wdTrip);
     out.print(F("/"));
-    out.println(wdTrips);
+    out.print(wdTrips);
+    out.print(F(", FAULT:0x"));
+    out.println(motorFaults, HEX);
 }
 
 void printSerialOutput()

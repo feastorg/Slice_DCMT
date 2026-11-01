@@ -37,26 +37,71 @@
 // Timing constants
 #define SERIAL_UPDATE_TIME_MS 1000
 
-// Proven closed-loop tuning defaults from archive implementation.
+// Closed-loop tuning defaults. These, and the other motor-specific values
+// below (counts/rev, PWM skip and cap, accuracy, the tacho interval and lead
+// cap, the stall thresholds), come from a single bench motor: the PID gains
+// and servo values are the archive implementation's, and the speed Ki was
+// chosen against a first-order model fitted to that motor (#90, the host
+// motor tests). They are a starting point, not a property of the firmware:
+// tune them per motor at runtime with SET_PID / PIDPOS= / PIDSPEED=, or per
+// build with flags, e.g. -DDCMT_SPEED_PID_KI=<ki>.
+#ifndef DCMT_POS_PID_KP
 #define DCMT_POS_PID_KP 0.15f
+#endif
+#ifndef DCMT_POS_PID_KI
 #define DCMT_POS_PID_KI 0.01f
+#endif
+#ifndef DCMT_POS_PID_KD
 #define DCMT_POS_PID_KD 0.01f
+#endif
 
+#ifndef DCMT_SPEED_PID_KP
 #define DCMT_SPEED_PID_KP 0.15f
-#define DCMT_SPEED_PID_KI 0.01f
+#endif
+// 0.01 left the speed loop P-only for seconds: 60 RPM settled near 69 % of
+// the target and took about 20 s to close the rest. 0.2 reaches it within
+// 5 % in about 1.3 s in the model (#90).
+#ifndef DCMT_SPEED_PID_KI
+#define DCMT_SPEED_PID_KI 0.2f
+#endif
+#ifndef DCMT_SPEED_PID_KD
 #define DCMT_SPEED_PID_KD 0.01f
+#endif
 
+#ifndef DCMT_SERVO_PWM_SKIP
 #define DCMT_SERVO_PWM_SKIP 15
+#endif
+#ifndef DCMT_SERVO_MAX_PWM
 #define DCMT_SERVO_MAX_PWM 150
+#endif
+#ifndef DCMT_SERVO_ACCURACY
 #define DCMT_SERVO_ACCURACY 10
+#endif
 
 // Speed-loop update interval in milliseconds.
+#ifndef DCMT_TACHO_INTERVAL_MS
 #define DCMT_TACHO_INTERVAL_MS 5
+#endif
 
 // How far, in encoder counts, the speed loop may drive the position target
 // ahead of the encoder. Without a cap a held shaft banks travel and lunges
 // on release; 300 removed that on the 2026-10-22 bench (#63).
+#ifndef DCMT_TACHO_MAX_LEAD
 #define DCMT_TACHO_MAX_LEAD 300
+#endif
+
+// Stall faults (#64, DCMT_CAP_FAULTS). In closed loop, a motor driven for
+// DCMT_STALL_TIMEOUT_MS without its encoder moving DCMT_STALL_MIN_COUNTS
+// counts latches DCMT_FAULT_M1_STALL or _M2_STALL, which brakes both motors
+// until CLEAR_FAULTS, serial FAULTCLEAR or a reboot. DCMotorServo's stall
+// detection does the check. Starting values, not measured ones: override
+// with build flags, e.g. -DDCMT_STALL_TIMEOUT_MS=<ms>.
+#ifndef DCMT_STALL_TIMEOUT_MS
+#define DCMT_STALL_TIMEOUT_MS 1000
+#endif
+#ifndef DCMT_STALL_MIN_COUNTS
+#define DCMT_STALL_MIN_COUNTS 4
+#endif
 
 // ----- Motor1 Definitions -----
 #if (DCMT_HW_GEN == 1)
@@ -127,7 +172,11 @@
 #endif
 
 // Encoder counts-per-rev (archive-proven closed-loop value).
+#ifndef MOTOR1_CPR
 #define MOTOR1_CPR 798
+#endif
+#ifndef MOTOR2_CPR
 #define MOTOR2_CPR 798
+#endif
 
 #endif // HARDWARE_CONFIG_H
