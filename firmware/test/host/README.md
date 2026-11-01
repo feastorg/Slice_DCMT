@@ -60,6 +60,7 @@ non-zero if any check fails.
 | `test_speed_freeze.cpp` | The speed loop's integral freeze (#89): while a motor's lead reaches `DCMT_TACHO_MAX_LEAD` either way, its speed PID runs with Ki 0 and the runtime Kp and Kd, including a SET_PID sent while clamped; the other motor, and the same one once the lead drops, run the runtime gains in full. Skips where the speed loop isn't built |
 | `test_hold_brakes.cpp` | `motorControlLogic()`'s hold: with an e-stop, a watchdog trip or a stall fault each alone, both motors are braked on every pass and no PWM is written, even with the brake flags cleared and a PWM stored |
 | `test_status_led.cpp` | Blue through the boot wait, then green or red on the first `loop()` pass, with the e-stop released or held from power-up; no LED driven on gen1 (#56) |
+| `test_status_led_hold.cpp` | Amber while a command-watchdog trip or a latched stall fault holds the motors, red over amber while the e-stop is held, amber again on the release while the hold stays latched, and green once it is cleared; no LED driven on gen1 |
 
 Motor tests (`make motor`):
 
