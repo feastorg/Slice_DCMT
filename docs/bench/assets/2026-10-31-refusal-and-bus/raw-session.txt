@@ -1,0 +1,47 @@
+## gen2 Nano Every, c3e6fca, env gen2_nanoevery, 2026-10-31
+
+The controller's venv has crumbs-i2c 0.16.2 and bread-crumbs-contracts 0.11.0.
+dcmt_bench.py is the 2026-10-25 record's copy, unchanged (same MD5).
+
+$ ssh <controller> 'cd dcmt-bench && for c in version caps state wdog; do venv/bin/python dcmt_bench.py $c 2>&1 | tail -1; done'
+14:53:38.076 Version(crumbs_version=1700, major=2, minor=0, patch=0)
+14:53:38.402 caps 0103ff070000
+14:53:38.705 state mode=0 m1_pwm=0 m2_pwm=0 sp=-32768,-32768 pos=0,0 spd=-32768,-32768 brakes=0b00 estop=0 estop_count=0
+14:53:39.009 wdog [armed][timeout_ms][tripped][trips] 0000000000
+
+## U1: query opcodes as command frames
+
+$ ssh <controller> 'cd dcmt-bench && D="venv/bin/python dcmt_bench.py" && $D raw 0x80 && $D raw 0x7F && $D raw 0x7D && $D raw 0x40 && $D raw 0x01 00 && $D state'
+14:54:24.698 sent 0x80  -> ack Ack(counter=1, opcode=128, status=2, reason=7)
+14:54:25.010 sent 0x7F  -> ack Ack(counter=2, opcode=127, status=2, reason=7)
+14:54:25.321 sent 0x7D  -> ack Ack(counter=3, opcode=125, status=2, reason=7)
+14:54:25.635 sent 0x40  -> ack Ack(counter=4, opcode=64, status=2, reason=7)
+14:54:25.948 sent 0x01 00 -> ack Ack(counter=5, opcode=1, status=2, reason=1)
+14:54:26.249 state mode=0 m1_pwm=0 m2_pwm=0 sp=-32768,-32768 pos=0,0 spd=-32768,-32768 brakes=0b00 estop=0 estop_count=0
+
+(0x01 is SET_OPEN_LOOP, 4 bytes: the 1-byte frame is MALFORMED. The control is SET_MODE:)
+
+$ ssh <controller> 'cd dcmt-bench && D="venv/bin/python dcmt_bench.py" && $D raw 0x03 00 && $D state'
+14:54:39.900 sent 0x03 00 -> ack Ack(counter=6, opcode=3, status=1, reason=0)
+14:54:40.201 state mode=0 m1_pwm=0 m2_pwm=0 sp=-32768,-32768 pos=0,0 spd=-32768,-32768 brakes=0b00 estop=0 estop_count=0
+
+## B1: GET_STATE replies with query retries off, 300 s (replylog.py, in Slice_RLHT's 2026-10-31 assets)
+
+Run after the same capture on Slice_RLHT (address 19), which is in that record.
+
+$ ssh <controller> 'cd rlht-bench && ../dcmt-bench/venv/bin/python replylog.py 19 1 300; ../dcmt-bench/venv/bin/python replylog.py 21 2 300'
+(RLHT's part omitted)
+15:16:54.671 start addr=21 type=2
+polls=2554 failed=0 ff_passed=0
+
+## gen2 Nano, c3e6fca, env gen2_nano, motors unplugged
+
+$ ssh <controller> 'cd dcmt-bench && for c in version state; do venv/bin/python dcmt_bench.py $c 2>&1 | tail -1; done'
+19:45:55.792 Version(crumbs_version=1700, major=2, minor=0, patch=0)
+19:45:56.108 state mode=0 m1_pwm=0 m2_pwm=0 sp=-32768,-32768 pos=0,0 spd=-32768,-32768 brakes=0b00 estop=0 estop_count=0
+
+$ ssh <controller> 'cd rlht-bench && ../dcmt-bench/venv/bin/python replylog.py 21 2 300; ../dcmt-bench/venv/bin/python replylog.py 19 1 300'
+19:46:00.092 start addr=21 type=2
+19:48:34.212 FrameError('CRC 0xFF does not match 0x42') 028014000000000000c0ffffffffffffffffffffffffffffffffffffffffff
+polls=2555 failed=1 ff_passed=0
+(RLHT's part omitted)
