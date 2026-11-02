@@ -63,6 +63,19 @@ This project did not use formal release tags through most of its history, so thi
 
 ### Fixed
 
+- **An interrupt storm no longer leaves a motor running** (#101, Nano Every).
+  An I2C collision during a slave transmit could leave the core's TWI slave
+  interrupt firing without end. That held SCL low and starved `millis()`,
+  so the command watchdog could not trip and the motor kept its PWM. Only
+  the e-stop stopped it. `loop()` now watches the millis timer's interrupt
+  flag; still pending on `DCMT_STARVE_PASSES` (50) passes in a row, it
+  records the interrupt and TWI registers in `.noinit`, brakes both motors
+  with interrupts off and lets the hardware watchdog reset the chip. The
+  record prints at the next boot and on serial `STARVE?`. On the bench it
+  caught one: `TWI0.SSTATUS 0xBB` (DIF, CLKHOLD, COLL), `TCB3.INTFLAGS`
+  pending, `SREG` I set, `CPUINT.STATUS 0x00`, reset flag WDRF. This is the
+  guard, not the cause: the core's collision and bus-error branches still
+  leave the flag set.
 - **GET_STATE speed reads 0 once a motor stops at a speed setpoint of 0.**
   It used to keep the last running speed for as long as the setpoint
   stayed 0: in the host model (`test_speed_zero_reads_0`), `spd1` read 60
