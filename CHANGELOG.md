@@ -12,6 +12,14 @@ This project did not use formal release tags through most of its history, so thi
   (#68). On the Nano, motor 1 (D6, Timer0) switches at 976.6 Hz and
   motor 2 (D10, Timer1) at 490.2 Hz; on the Nano Every both are
   976.6 Hz. Computed from the cores' timer setup.
+- **`docs/hardware-revisions.md` gives each encoder header's terminal
+  order and MCU pins on G1, G2 and G3** (#19), in one frame all three
+  boards share, read from the board files. The upper header is firmware
+  motor 1 on every generation. The terminal order and the A/B transposition
+  at the MCU are now described as the two separate facts they are.
+- **`docs/architecture.md` is filled in**: connectors, MCU pins, power
+  domains per generation, the firmware's structure and the board outline.
+  `slice.yaml` lists the two encoder inputs.
 - **Stall faults** (#64, `DCMT_CAP_FAULTS`, bread-crumbs-contracts#69).
   DCMotorServo's stall detection is on for both motors in closed loop: a
   motor driven for `DCMT_STALL_TIMEOUT_MS` (1000 ms) without its encoder
@@ -63,6 +71,13 @@ This project did not use formal release tags through most of its history, so thi
 
 ### Fixed
 
+- **Stale statements in `docs/hardware-revisions.md` and `slice.yaml`.** A
+  `gen2` build on G3 no longer swaps motor 2's PWM and DIRECTION (it has
+  not since the D10↔D11 rework, #18); the module version is `2.0.0`, not
+  `1.0.0`; a G1 harness moved to G2 puts the encoder's supply on MCU pins
+  rather than "5 V on GND"; and `slice.yaml` named only one of G2's two
+  trace swaps and called the encoder compensation reversed motor leads,
+  which is not recorded.
 - **GET_STATE speed reads 0 once a motor stops at a speed setpoint of 0.**
   It used to keep the last running speed for as long as the setpoint
   stayed 0: in the host model (`test_speed_zero_reads_0`), `spd1` read 60
