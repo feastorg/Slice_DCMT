@@ -76,6 +76,11 @@ This project did not use formal release tags through most of its history, so thi
   speed on the Nano Every) that it couldn't run, and the host had to be
   told `encoders: false`. The four default builds are byte-identical to
   before.
+- **A CI check that the default firmware is unchanged**
+  (`.github/workflows/firmware-identity.yml`). On a PR that touches
+  `firmware/`, it builds the four default envs at the base and at the PR
+  in one job, and puts each `firmware.hex` hash in the job summary. With
+  the `firmware-unchanged` label, any difference fails the check.
 
 ### Fixed
 

@@ -1,0 +1,87 @@
+name: Firmware Identity
+
+# Builds the four default envs at the PR's base and at the PR merged into it,
+# in one job, and compares each firmware.hex. The table goes to the job
+# summary on every PR. With the `firmware-unchanged` label, any difference
+# fails the check: the label is the PR's claim that it changes nothing for
+# the default builds (plumbing, profiles behind #if, docs in firmware/), and
+# this is the proof. A PR that changes behaviour leaves the label off.
+#
+# Both builds run here rather than against a stored hash: the libraries are
+# caret-ranged, so a stored hash goes stale when one releases.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+    paths:
+      - "firmware/**"
+      - ".github/workflows/firmware-identity.yml"
+
+concurrency:
+  group: firmware-identity-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  identity:
+    name: default firmware unchanged
+    # A label event only matters when it is this label.
+    if: >-
+      (github.event.action != 'labeled' && github.event.action != 'unlabeled') ||
+      github.event.label.name == 'firmware-unchanged'
+    runs-on: ubuntu-24.04
+    steps:
+      # The merge commit, with history so its first parent (the base it was
+      # merged into) can be checked out.
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Cache PlatformIO
+        uses: actions/cache@v6
+        with:
+          path: ~/.platformio
+          key: pio-${{ runner.os }}-identity-${{ hashFiles('firmware/platformio.ini') }}
+
+      - name: Install PlatformIO
+        run: pip install platformio
+
+      - name: Build base and head, and compare
+        env:
+          REQUIRE_IDENTICAL: ${{ contains(github.event.pull_request.labels.*.name, 'firmware-unchanged') }}
+          PLATFORMIO_SETTING_ENABLE_TELEMETRY: "No"
+        run: |
+          set -euo pipefail
+          # The merge commit's first parent, not the event's base.sha: that
+          # one goes stale when the base branch moves without a push here,
+          # while the merge commit is recomputed against the current tip.
+          BASE_SHA=$(git rev-parse HEAD^1)
+          base="$RUNNER_TEMP/base"
+          git worktree add --detach "$base" "$BASE_SHA"
+          {
+            echo "### Default firmware, base \`${BASE_SHA:0:7}\` vs this PR"
+            echo
+            echo "| env | base | head | |"
+            echo "| --- | --- | --- | --- |"
+          } >> "$GITHUB_STEP_SUMMARY"
+          differ=0
+          for env in gen1_nano gen2_nano gen1_nanoevery gen2_nanoevery; do
+            pio run -d firmware -e "$env"
+            pio run -d "$base/firmware" -e "$env"
+            h=$(sha256sum < "firmware/.pio/build/$env/firmware.hex" | cut -c1-16)
+            b=$(sha256sum < "$base/firmware/.pio/build/$env/firmware.hex" | cut -c1-16)
+            if [ "$h" = "$b" ]; then r=identical; else r="**differs**"; differ=1; fi
+            echo "| \`$env\` | \`$b\` | \`$h\` | $r |" >> "$GITHUB_STEP_SUMMARY"
+            echo "$env: base $b head $h $r"
+          done
+          if [ "$differ" = 1 ] && [ "$REQUIRE_IDENTICAL" = "true" ]; then
+            echo "::error::A default env's firmware.hex differs from the base, and the PR is labelled firmware-unchanged."
+            exit 1
+          fi
+          if [ "$REQUIRE_IDENTICAL" != "true" ]; then
+            echo >> "$GITHUB_STEP_SUMMARY"
+            echo "Not enforced: the PR has no \`firmware-unchanged\` label." >> "$GITHUB_STEP_SUMMARY"
+          fi
