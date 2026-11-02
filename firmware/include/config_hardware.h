@@ -171,12 +171,17 @@
 #error "MOTOR2_PWM_PIN has no hardware timer on this MCU -- analogWrite would degrade to on/off. See docs/hardware-revisions.md"
 #endif
 
-// Encoder counts-per-rev (archive-proven closed-loop value).
+// Encoder counts per output-shaft revolution. 848 is the E-S Motor
+// 36PG-3429-19-EN measured on the bench on 2026-11-02 (#103): -16 008
+// counts left a flag on its output shaft 1/8 turn from where it started,
+// 18.875 turns (about +-1.2 counts). The datasheet's 12 PPR x 4 x 1:19 would
+// be 912, and the earlier 798 read speeds about 6 % high. Another motor sets
+// its own with -DMOTOR1_CPR= / -DMOTOR2_CPR=.
 #ifndef MOTOR1_CPR
-#define MOTOR1_CPR 798
+#define MOTOR1_CPR 848
 #endif
 #ifndef MOTOR2_CPR
-#define MOTOR2_CPR 798
+#define MOTOR2_CPR 848
 #endif
 
 #endif // HARDWARE_CONFIG_H
