@@ -359,6 +359,10 @@ static void processCommand(char *cmd)
     {
         printSliceState(Serial);
     }
+    else if (strcmp_P(cmd, PSTR("STARVE?")) == 0)
+    {
+        printStarveRecord();
+    }
     else
     {
         Serial.println(F("Invalid command."));
