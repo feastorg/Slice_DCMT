@@ -21,16 +21,16 @@ and latched stall faults each brake both motors.
 
 | Interface | Connector | Signals | Notes |
 | --- | --- | --- | --- |
-| Backplane | J1, 10-pin | 1 GND, 2 +12V, 3 I2C clock, 4 I2C data, 5 GND, 6 E-STOP, 7 INT, 8 SYNC, 9 +12V, 10 GND | Same pinout on G1, G2 and G3. E-STOP reaches D2, INT reaches D3; the firmware uses neither INT nor SYNC. |
-| Motor outputs | one 2-terminal output per motor | H-bridge outputs | The driver numbering on the board does not always match the firmware's motor numbering; see Hardware Revisions. |
-| Motor supply | per motor, a selector and supply terminals | backplane +12V, or a separate supply | Selector: 3-pin jumpers J4/J5 on G1, slide switches SW1/SW2 on G2, switches S1/S2 on G3. |
+| Backplane | J1, 10-pin | 1 GND, 2 +12V, 3 I2C clock, 4 I2C data, 5 GND, 6 E-STOP, 7 INT, 8 SYNC, 9 +12V, 10 GND | Same pin order on G1, G2 and G3. On G3 the ground pins are driver ground (`GNDPWR`), joined to logic ground at NT1. E-STOP reaches D2, INT reaches D3; the firmware uses neither INT nor SYNC. |
+| Motor outputs | one 2-terminal output per motor | H-bridge outputs | The driver numbering on the board does not always match the firmware's motor numbering, and G2 marks motor polarity opposite to G1; see Hardware Revisions. |
+| Motor supply | per motor, a supply selection and supply terminals | backplane +12V, or a separate supply | G2 and G3: a switch per motor (SW1/SW2, S1/S2) chooses between them. G1: a 3-pin header per motor (J4/J5); see Hardware Revisions before fitting a shunt. G2's `+`/`-` silkscreen on these terminals is reversed. |
 | Encoder headers | two 4-terminal headers, one per motor | A, B, +5V, GND | Order and MCU pins differ by generation; see Hardware Revisions. Unprotected MCU pins. |
-| Qwiic | J18, G2 only | GND, +5V, I2C data, I2C clock | The backplane I2C bus, brought out. G1 and G3 have none. |
+| 5 V I2C | J18, G2 only: JST-SH, Qwiic form factor | GND, +5V, I2C data, I2C clock | The backplane I2C bus, brought out at 5 V. Qwiic parts are usually 3.3 V. G1 and G3 have none. |
 | Status LED | WS2812B on D5, G2 and G3 | — | G1 has no LED. |
 
 ## 🪛 MCU Pin Mapping
 
-The MCU is a socketed Arduino Nano (ATmega328P) or Nano Every (ATmega4809);
+The MCU is an Arduino Nano (ATmega328P) or Nano Every (ATmega4809) module;
 both are used on G1 and G2.
 
 | MCU pin | Function |
@@ -77,7 +77,9 @@ is built by default on the Nano Every only (`DCMT_ENABLE_SPEED_LOOP`).
 
 ## 🧩 Mechanical
 
-- Mounting pattern: `slice-standard-v0`, four M3 holes (`slice.yaml`).
+- Mounting pattern: `slice-standard-v0` (`slice.yaml`): four holes, 5 mm in
+  from each corner, at the same positions on G1, G2 and G3. G1's are drilled
+  3.2 mm; G2's and G3's are drilled 5 mm.
 - Dimensions: 70 mm × 100 mm board outline, the same on G1, G2 and G3.
 - Notes: the backplane connector J1 is on one long edge; the motor, supply and
   encoder terminals are on the opposite edge.

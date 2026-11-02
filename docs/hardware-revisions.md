@@ -249,6 +249,13 @@ They are not interchangeable. Motor-lead reversal also flips the open-loop
 direction sense, which matters to anything that assumes a direction — a stirring
 impeller, a peristaltic pump's flow direction. Encoder-lead swapping does not.
 
+**The silkscreen points at the motor leads.** G1 marks `M+` on each driver's
+OUTPUT1 terminal. G2 marks `M1-` and `M2-` on OUTPUT1, and `M1+` and `M2+` on
+OUTPUT2. So a motor wired to each board's own marks runs reversed on G2
+relative to G1, which is the motor-lead candidate. That makes it the likely
+mechanism, but it is not a record of how the boards were wired; the test below
+still settles it.
+
 > **To settle it:** on a G2 board, command a small positive open-loop PWM and
 > compare the shaft direction against G1 under the same command. Same direction
 > means the encoder leads were swapped; opposite means the motor leads were.
@@ -259,6 +266,29 @@ impeller, a peristaltic pump's flow direction. Encoder-lead swapping does not.
 > code change reveals it. Equally, transposing the encoder macros in firmware to
 > "fix" G2 would double-apply the correction and turn a converging axis into a
 > diverging one. See #19.
+
+## Silkscreen and supply-header traps
+
+From the board files. Each of these can be wired wrong by following the board.
+
+**G2's separate-supply terminals are marked with reversed polarity.** On each
+motor's supply pair, the back silkscreen puts `-` beside the `/CUST1` or
+`/CUST2` terminal (J10, J16), which feeds the driver's supply through SW1 or
+SW2. It puts `+` beside the GND terminal (J11, J17). Wired to the marks, a
+separate supply is reversed across the LMD18200. The positive lead goes to J10
+or J16. G1's marks are correct.
+
+**G1's supply header is not a two-position selector.** J4 (driver U1, firmware
+motor 2) and J5 (driver U2, firmware motor 1) are 3-pin headers: pin 1 is the
+separate supply (`CUSTOM`), pin 2 backplane +12V, pin 3 the driver's supply. A
+shunt on pins 2–3 feeds the driver from the backplane. A shunt on pins 1–2
+ties the separate supply to backplane +12V and leaves the driver unpowered.
+Running from the separate supply needs pins 1 and 3 joined, which a standard
+shunt cannot do.
+
+**G2's encoder terminal labels are not Arduino pin names.** The back
+silkscreen labels the encoder terminals `A1`, `B1`, `A2`, `B2`, meaning channel
+and header. The `A1` terminal reaches the MCU's A3 (table above).
 
 ## G3 has no firmware profile
 

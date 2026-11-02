@@ -20,6 +20,13 @@ This project did not use formal release tags through most of its history, so thi
 - **`docs/architecture.md` is filled in**: connectors, MCU pins, power
   domains per generation, the firmware's structure and the board outline.
   `slice.yaml` lists the two encoder inputs.
+- **`docs/hardware-revisions.md` lists the silkscreen and supply-header
+  traps** found in the board files. G2's separate-supply terminals are marked
+  with reversed polarity. G1's 3-pin supply header ties the two supplies
+  together if a shunt is fitted on pins 1–2. G2's encoder labels `A1`/`B1`
+  are not Arduino pin names. G2 also marks motor polarity opposite to G1,
+  which points to reversed motor leads as the G2 encoder compensation (#19).
+  That is still to be confirmed on a board.
 - **Stall faults** (#64, `DCMT_CAP_FAULTS`, bread-crumbs-contracts#69).
   DCMotorServo's stall detection is on for both motors in closed loop: a
   motor driven for `DCMT_STALL_TIMEOUT_MS` (1000 ms) without its encoder
