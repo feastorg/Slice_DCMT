@@ -60,6 +60,22 @@ This project did not use formal release tags through most of its history, so thi
   tests, so CI does too. They cover the speed entry after open-loop travel
   (#62) and pin today's 60 RPM shortfall (#90) and post-stall overshoot
   (#89).
+- **Builds for motors without encoders** (#106, step 1). `DCMT_PORT1_INPUT`
+  and `DCMT_PORT2_INPUT` choose what each encoder header carries:
+  `DCMT_INPUT_ENCODER` (the default) or `DCMT_INPUT_NONE`. A port built
+  `NONE` constructs no Encoder, so it claims no pins, and its motor's
+  position reads 0. Closed loop is built only when both ports carry an
+  encoder. Otherwise GET_CAPS reports level 1 with flags `0xDE3`, and
+  `SET_MODE` position or speed, `SET_SETPOINT` and `SET_PID` are refused
+  `BREAD_REFUSE_NOT_BUILT`; over serial, `MODE=POS`, `M1POS=`, `M2POS=`
+  and `PIDPOS=` are absent. The position branch is compiled out, so a
+  closed-loop mode that got past the refusals would fall back to braked
+  open loop. New envs `gen1_nano_noenc`, `gen2_nano_noenc`,
+  `gen1_nanoevery_noenc` and `gen2_nanoevery_noenc` set both ports `NONE`.
+  Before, a board with no encoders advertised closed-loop position (and
+  speed on the Nano Every) that it couldn't run, and the host had to be
+  told `encoders: false`. The four default builds are byte-identical to
+  before.
 
 ### Fixed
 

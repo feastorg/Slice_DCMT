@@ -14,6 +14,13 @@ This firmware separates three concerns:
 - independent from generation and board.
 - override with `-DI2C_ADR=<addr>`.
 
+4. What each encoder header carries (`DCMT_PORT1_INPUT`, `DCMT_PORT2_INPUT`)
+- `DCMT_INPUT_ENCODER` (the default): a quadrature encoder.
+- `DCMT_INPUT_NONE`: nothing; no Encoder is built on that port's pins and
+  the motor's position reads 0.
+- port 1 is motor 1, port 2 motor 2. Closed loop is built only when both
+  ports carry an encoder, since one mode applies to both motors.
+
 ## Environment Matrix
 
 - `gen1_nano`
@@ -21,13 +28,22 @@ This firmware separates three concerns:
 - `gen1_nanoevery`
 - `gen2_nanoevery`
 
-All environments support:
+These support:
 
 - open-loop
 - closed-loop position
 
 Speed closed-loop is controlled by `DCMT_ENABLE_SPEED_LOOP`.
 Default behavior is board-dependent (see above), and can be overridden via build flag.
+
+Each has a `_noenc` twin for motors without encoders (`gen1_nano_noenc`,
+`gen2_nano_noenc`, `gen1_nanoevery_noenc`, `gen2_nanoevery_noenc`): both
+ports `DCMT_INPUT_NONE`, open loop only. Flash these to a board whose
+motors have no encoders, so it doesn't advertise closed loop it can't run.
+The closed-loop modes, setpoints and gains are refused
+`BREAD_REFUSE_NOT_BUILT` over I2C; over serial, `MODE=POS`, `M1POS=`,
+`M2POS=` and `PIDPOS=` don't exist, as the speed commands don't on a build
+without the speed loop.
 
 ## Closed-Loop Backend
 
@@ -60,6 +76,7 @@ Speed commands/capability are only available when `DCMT_ENABLE_SPEED_LOOP=1`.
 
 ## Capability Mapping (`GET_CAPS`)
 
+- Level 1: baseline (open loop and brakes); the `_noenc` envs
 - Level 2: baseline + closed-position + PID tuning
 - Level 3: Level 2 + closed-speed
 
@@ -67,7 +84,10 @@ Controllers should gate behavior by capability flags, not by generation labels.
 
 All levels also advertise `DCMT_CAP_CMD_WATCHDOG`,
 `DCMT_CAP_CLEAR_WATCHDOG_TRIP`, `DCMT_CAP_ESTOP_HOLD`, `DCMT_CAP_REFUSES`,
-`DCMT_CAP_SETPOINT_LOOP`, `DCMT_CAP_WATCHDOG_LEASE` and `DCMT_CAP_FAULTS`.
+`DCMT_CAP_WATCHDOG_LEASE` and `DCMT_CAP_FAULTS`. Levels 2 and 3 also
+advertise `DCMT_CAP_SETPOINT_LOOP`. Level 1's flags are `0xDE3`; it keeps
+`DCMT_CAP_FAULTS` because GET_FAULTS and CLEAR_FAULTS are still served,
+though nothing latches a fault without closed loop.
 
 ## Setpoints
 
@@ -219,9 +239,11 @@ In closed loop (position or speed), a motor driven for
 `DCMT_STALL_MIN_COUNTS` (4) counts latches a stall fault (#64):
 `DCMT_FAULT_M1_STALL` or `DCMT_FAULT_M2_STALL`. DCMotorServo's stall
 detection does the check, so a motor at rest inside the servo's deadband,
-which is not driven, never latches. Open loop is not checked. Both values are
-build flags and starting points, not measurements; stall detection has not
-been checked on the bench yet.
+which is not driven, never latches. Open loop is not checked, so a `_noenc`
+build, which has only open loop, never latches a fault: it serves
+GET_FAULTS (always 0) and CLEAR_FAULTS so a controller can use them
+unchanged. Both values are build flags and starting points, not
+measurements; stall detection has not been checked on the bench yet.
 
 A fault holds the way a watchdog trip does: both motors brake, the PWM
 commands and speed setpoints go to 0, both brake flags are set, each position

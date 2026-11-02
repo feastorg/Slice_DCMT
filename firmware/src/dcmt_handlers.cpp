@@ -23,8 +23,15 @@
 // 0 if this build runs mode, else the reason to refuse it with.
 static uint8_t mode_refuse_reason(uint8_t mode)
 {
+#if DCMT_HAS_POSITION_LOOP
     if (mode == OPEN_LOOP || mode == CLOSED_LOOP_POSITION)
         return 0;
+#else
+    if (mode == OPEN_LOOP)
+        return 0;
+    if (mode == CLOSED_LOOP_POSITION)
+        return BREAD_REFUSE_NOT_BUILT;
+#endif
     if (mode == CLOSED_LOOP_SPEED)
 #if DCMT_ENABLE_SPEED_LOOP
         return 0;
@@ -208,6 +215,7 @@ void handler_set_setpoint(crumbs_context_t *ctx, uint8_t opcode, const uint8_t *
         return;
     }
 
+#if DCMT_HAS_POSITION_LOOP
     if (loop == DCMT_PID_LOOP_POSITION)
     {
         // A new position setpoint ends the post-hold follow for both motors,
@@ -230,6 +238,14 @@ void handler_set_setpoint(crumbs_context_t *ctx, uint8_t opcode, const uint8_t *
         (void)crumbs_refuse(ctx, loop == DCMT_PID_LOOP_SPEED ? BREAD_REFUSE_NOT_BUILT : BREAD_REFUSE_UNDEFINED_VALUE);
         return;
     }
+#else
+    // Open loop only (DCMT_PORTn_INPUT): no loop here takes a setpoint.
+    (void)target1;
+    (void)target2;
+    (void)crumbs_refuse(ctx, (loop == DCMT_PID_LOOP_POSITION || loop == DCMT_PID_LOOP_SPEED)
+                                 ? BREAD_REFUSE_NOT_BUILT
+                                 : BREAD_REFUSE_UNDEFINED_VALUE);
+#endif
 }
 
 void handler_set_pid(crumbs_context_t *ctx, uint8_t opcode, const uint8_t *data, uint8_t data_len, void *user_data)
@@ -258,6 +274,7 @@ void handler_set_pid(crumbs_context_t *ctx, uint8_t opcode, const uint8_t *data,
     // is not built, and a loop the contract does not define, are refused and
     // nothing is applied. Tunings persist across modes so a controller can
     // preload them.
+#if DCMT_HAS_POSITION_LOOP
     if (v.loop == DCMT_PID_LOOP_POSITION)
     {
         slice.posPid1 = {kp1, ki1, kd1};
@@ -275,6 +292,18 @@ void handler_set_pid(crumbs_context_t *ctx, uint8_t opcode, const uint8_t *data,
         (void)crumbs_refuse(ctx, v.loop == DCMT_PID_LOOP_SPEED ? BREAD_REFUSE_NOT_BUILT : BREAD_REFUSE_UNDEFINED_VALUE);
         return;
     }
+#else
+    // Open loop only (DCMT_PORTn_INPUT): no loop here takes gains.
+    (void)kp1;
+    (void)ki1;
+    (void)kd1;
+    (void)kp2;
+    (void)ki2;
+    (void)kd2;
+    (void)crumbs_refuse(ctx, (v.loop == DCMT_PID_LOOP_POSITION || v.loop == DCMT_PID_LOOP_SPEED)
+                                 ? BREAD_REFUSE_NOT_BUILT
+                                 : BREAD_REFUSE_UNDEFINED_VALUE);
+#endif
 }
 
 void handler_set_watchdog(crumbs_context_t *ctx, uint8_t opcode, const uint8_t *data, uint8_t data_len, void *user_data)
@@ -426,11 +455,20 @@ void reply_get_state(crumbs_context_t *ctx, crumbs_message_t *reply, void *user_
 
 void reply_get_caps(crumbs_context_t *ctx, crumbs_message_t *reply, void *user_data)
 {
+#if DCMT_HAS_POSITION_LOOP
     uint8_t level = DCMT_CAP_LEVEL_2;
     uint32_t flags = DCMT_CAP_BASELINE_FLAGS | DCMT_CAP_CLOSED_LOOP_POSITION | DCMT_CAP_PID_TUNING |
                      DCMT_CAP_CMD_WATCHDOG | DCMT_CAP_CLEAR_WATCHDOG_TRIP | DCMT_CAP_ESTOP_HOLD |
                      DCMT_CAP_REFUSES | DCMT_CAP_SETPOINT_LOOP |
                      DCMT_CAP_WATCHDOG_LEASE | DCMT_CAP_FAULTS;
+#else
+    // Open loop only (DCMT_PORTn_INPUT): none of the closed-loop flags.
+    // GET_FAULTS and CLEAR_FAULTS are still served; nothing latches a fault
+    // without closed loop, so GET_FAULTS reads 0.
+    uint8_t level = DCMT_CAP_LEVEL_1;
+    uint32_t flags = DCMT_CAP_BASELINE_FLAGS | DCMT_CAP_CMD_WATCHDOG | DCMT_CAP_CLEAR_WATCHDOG_TRIP |
+                     DCMT_CAP_ESTOP_HOLD | DCMT_CAP_REFUSES | DCMT_CAP_WATCHDOG_LEASE | DCMT_CAP_FAULTS;
+#endif
     (void)ctx;
     (void)user_data;
 

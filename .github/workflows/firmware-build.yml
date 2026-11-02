@@ -19,7 +19,15 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        env: [gen1_nano, gen2_nano, gen1_nanoevery, gen2_nanoevery]
+        env:
+          - gen1_nano
+          - gen2_nano
+          - gen1_nanoevery
+          - gen2_nanoevery
+          - gen1_nano_noenc
+          - gen2_nano_noenc
+          - gen1_nanoevery_noenc
+          - gen2_nanoevery_noenc
     steps:
       - uses: actions/checkout@v7
 

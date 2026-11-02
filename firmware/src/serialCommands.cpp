@@ -33,7 +33,8 @@ static bool parse_arg(const char *s, long lo, long hi, long &out)
 }
 
 // Exactly three gains, kp,ki,kd, each finite and in SET_PID's range (u16
-// x1000 on the wire: 0 to 65.535).
+// x1000 on the wire: 0 to 65.535). Only the closed loops take gains.
+#if DCMT_HAS_POSITION_LOOP
 static bool parse_pid_triplet(const char *s, float &kp, float &ki, float &kd)
 {
     char buf[sizeof cmdBuf];
@@ -65,6 +66,7 @@ static bool parse_pid_triplet(const char *s, float &kp, float &ki, float &kd)
     kd = v[2];
     return true;
 }
+#endif
 
 static void strupper(char *s)
 {
@@ -123,8 +125,10 @@ static void processCommand(char *cmd)
         ControlModes next;
         if (strcmp_P(mode, PSTR("OPEN")) == 0)
             next = OPEN_LOOP;
+#if DCMT_HAS_POSITION_LOOP
         else if (strcmp_P(mode, PSTR("POS")) == 0)
             next = CLOSED_LOOP_POSITION;
+#endif
 #if DCMT_ENABLE_SPEED_LOOP
         else if (strcmp_P(mode, PSTR("SPEED")) == 0)
             next = CLOSED_LOOP_SPEED;
@@ -133,8 +137,10 @@ static void processCommand(char *cmd)
         {
 #if DCMT_ENABLE_SPEED_LOOP
             Serial.println(F("MODE options: OPEN | POS | SPEED"));
-#else
+#elif DCMT_HAS_POSITION_LOOP
             Serial.println(F("MODE options: OPEN | POS"));
+#else
+            Serial.println(F("MODE options: OPEN (no encoders in this build)"));
 #endif
             return;
         }
@@ -153,8 +159,10 @@ static void processCommand(char *cmd)
         Serial.print(F("Mode-> "));
         if (slice.mode == OPEN_LOOP)
             Serial.println(F("OPEN_LOOP"));
+#if DCMT_HAS_POSITION_LOOP
         else if (slice.mode == CLOSED_LOOP_POSITION)
             Serial.println(F("CLOSED_LOOP_POSITION"));
+#endif
 #if DCMT_ENABLE_SPEED_LOOP
         else
             Serial.println(F("CLOSED_LOOP_SPEED"));
@@ -201,6 +209,7 @@ static void processCommand(char *cmd)
         Serial.print(F("M2PWM-> "));
         Serial.println((int16_t)v);
     }
+#if DCMT_HAS_POSITION_LOOP
     else if (starts_with_P(cmd, PSTR("M1POS=")))
     {
         // -32768 is GET_STATE's invalid sentinel.
@@ -249,6 +258,7 @@ static void processCommand(char *cmd)
         interrupts();
         Serial.println(F("Position PID updated"));
     }
+#endif
 #if DCMT_ENABLE_SPEED_LOOP
     else if (starts_with_P(cmd, PSTR("M1SPEED=")))
     {
@@ -366,7 +376,11 @@ static void processCommand(char *cmd)
     else
     {
         Serial.println(F("Invalid command."));
+#if DCMT_HAS_POSITION_LOOP
         Serial.println(F("Open/Pos: MODE=OPEN|POS, M1PWM=, M2PWM=, M1POS=, M2POS=, PIDPOS=kp,ki,kd, BRAKE1=0/1, BRAKE2=0/1, WDOG=ms(0=off), WDCLEAR, FAULTCLEAR, READ"));
+#else
+        Serial.println(F("Open: MODE=OPEN, M1PWM=, M2PWM=, BRAKE1=0/1, BRAKE2=0/1, WDOG=ms(0=off), WDCLEAR, FAULTCLEAR, READ"));
+#endif
 #if DCMT_ENABLE_SPEED_LOOP
         Serial.println(F("Closed-loop: MODE=POS|SPEED, M1POS=, M2POS=, M1SPEED=, M2SPEED=, PIDPOS=kp,ki,kd, PIDSPEED=kp,ki,kd"));
 #endif

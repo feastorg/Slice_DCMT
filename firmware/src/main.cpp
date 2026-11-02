@@ -8,8 +8,10 @@
 #include <crumbs.h>
 #include <crumbs_arduino.h>
 #include <LMD18200.h>
-#include <Encoder.h>
 #include "config.h"
+#if DCMT_PORT1_INPUT == DCMT_INPUT_ENCODER || DCMT_PORT2_INPUT == DCMT_INPUT_ENCODER
+#include <Encoder.h>
+#endif
 #include "config_hardware.h"
 #include "globals.h"
 #include <DCMotorServo.h>
@@ -57,9 +59,15 @@ volatile int16_t motor2AppliedPWM = 0;
 LMD18200 motor1Driver(MOTOR1_PWM_PIN, MOTOR1_DIR_PIN, MOTOR1_BRAKE_PIN, MOTOR1_CSENSE_PIN);
 LMD18200 motor2Driver(MOTOR2_PWM_PIN, MOTOR2_DIR_PIN, MOTOR2_BRAKE_PIN, MOTOR2_CSENSE_PIN);
 
-// Encoders
+// Encoders. A port built as DCMT_INPUT_NONE constructs none: the Encoder
+// constructor claims the pins (pull-ups, and interrupts on the Nano Every)
+// at static initialisation and has no way to release them.
+#if DCMT_PORT1_INPUT == DCMT_INPUT_ENCODER
 Encoder motor1Encoder(MOTOR1_ENCODER_PIN1, MOTOR1_ENCODER_PIN2);
+#endif
+#if DCMT_PORT2_INPUT == DCMT_INPUT_ENCODER
 Encoder motor2Encoder(MOTOR2_ENCODER_PIN1, MOTOR2_ENCODER_PIN2);
+#endif
 
 // Shared state
 DCMT_SLICE slice;
@@ -127,6 +135,7 @@ static void motor1_brake(void)
     record_applied(motor1AppliedPWM, 0);
 }
 
+#if DCMT_PORT1_INPUT == DCMT_INPUT_ENCODER
 static long motor1_read_encoder(void)
 {
     return motor1Encoder.read();
@@ -136,6 +145,17 @@ static void motor1_write_encoder(long newPosition)
 {
     motor1Encoder.write(newPosition);
 }
+#else
+// No encoder on port 1: the position reads 0, as an empty header does.
+static long motor1_read_encoder(void)
+{
+    return 0;
+}
+
+static void motor1_write_encoder(long)
+{
+}
+#endif
 
 static void motor2_write(int16_t speed)
 {
@@ -149,6 +169,7 @@ static void motor2_brake(void)
     record_applied(motor2AppliedPWM, 0);
 }
 
+#if DCMT_PORT2_INPUT == DCMT_INPUT_ENCODER
 static long motor2_read_encoder(void)
 {
     return motor2Encoder.read();
@@ -158,6 +179,17 @@ static void motor2_write_encoder(long newPosition)
 {
     motor2Encoder.write(newPosition);
 }
+#else
+// No encoder on port 2: the position reads 0, as an empty header does.
+static long motor2_read_encoder(void)
+{
+    return 0;
+}
+
+static void motor2_write_encoder(long)
+{
+}
+#endif
 
 // ---- Closed-loop backend ----
 static DCMotorServo servo1(motor1_write, motor1_brake, motor1_read_encoder, motor1_write_encoder);
@@ -580,8 +612,12 @@ void setupDCMT()
     servo1.enableStallDetection(DCMT_STALL_TIMEOUT_MS, DCMT_STALL_MIN_COUNTS);
     servo2.enableStallDetection(DCMT_STALL_TIMEOUT_MS, DCMT_STALL_MIN_COUNTS);
 
+#if DCMT_PORT1_INPUT == DCMT_INPUT_ENCODER
     servo1.setCurrentPosition(motor1Encoder.read());
+#endif
+#if DCMT_PORT2_INPUT == DCMT_INPUT_ENCODER
     servo2.setCurrentPosition(motor2Encoder.read());
+#endif
 
 #if DCMT_ENABLE_SPEED_LOOP
     apply_speed_pid_if_needed(slice);
@@ -835,6 +871,10 @@ void motorControlLogic()
         return;
     }
 
+    // Without an encoder on both ports the position branch is not built: a
+    // mode value that gets past the refusals falls through to the
+    // unknown-mode fallback below, which brakes both motors.
+#if DCMT_HAS_POSITION_LOOP
     if (local.mode == CLOSED_LOOP_POSITION)
     {
         noInterrupts();
@@ -882,6 +922,7 @@ void motorControlLogic()
         interrupts();
         return;
     }
+#endif
 
 #if DCMT_ENABLE_SPEED_LOOP
     if (local.mode == CLOSED_LOOP_SPEED)

@@ -39,14 +39,17 @@ Each test is built once per PlatformIO env (`gen1_nano`, `gen2_nano`,
 `gen1_nanoevery`, `gen2_nanoevery`), with that env's `DCMT_HW_GEN` and MCU
 macros. The pin map, status LED and speed loop then follow the same `#if`
 paths as on the board. The motor tests are built for `gen1_nanoevery` and
-`gen2_nanoevery` only, the envs that build the speed loop. `make` exits
-non-zero if any check fails.
+`gen2_nanoevery` only, the envs that build the speed loop. The four
+`_noenc` envs, with no encoder on either port, run `test_noenc` and the stub
+tests that don't use a closed loop (`NOENC_SINGLE` in the Makefile). `make`
+exits non-zero if any check fails.
 
 ## Tests
 
 | File | Covers |
 | --- | --- |
 | `test_dispatch.cpp` | Which frames are taken as commands: every opcode is swept, GET opcodes sent as commands are refused, queries answer through SET_REPLY, and another family's type is rejected (#45, #50) |
+| `test_noenc.cpp` | A build with no encoder on either port (the `_noenc` envs): no Encoder constructed, GET_CAPS level 1 with flags `0xDE3`, the closed-loop modes, setpoints and gains refused NOT_BUILT and stored nowhere, open loop driving both motors with positions 0, a smuggled closed-loop mode falling back to braked open loop, the serial position commands absent, GET_FAULTS 0 |
 | `test_applied_pwm.cpp` | GET_STATE `m1_pwm`/`m2_pwm` report the PWM each motor is driven at: open loop, braked, position and speed (the servo stub's output), and e-stop (#61) |
 | `test_mode_pwm.cpp` | Leaving open loop clears the open-loop PWM through serial `MODE=` and through `SET_MODE`, so GET_STATE reads 0 and a return to open loop doesn't resume the old PWM (#36) |
 | `test_serial_burst.cpp` | A burst of serial lines is answered one line per `loop()` pass, so an e-stop pressed mid-burst is asserted before the next line and the lines after it are refused (#49) |
