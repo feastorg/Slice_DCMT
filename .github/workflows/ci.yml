@@ -10,6 +10,9 @@ on:
       - "slice.yaml"
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   validate:
     uses: feastorg/bread-infra/.github/workflows/validate-manifest.yml@main
