@@ -23,6 +23,10 @@ on:
       - ".github/workflows/**"
   workflow_dispatch:
 
+# Read-only by default; the two publishing jobs below get what they need.
+permissions:
+  contents: read
+
 jobs:
   # Fails if the board is not aligned with BREADS: KiCad 10 file format, a real
   # (error-severity) schematic-parity gate, every library reference resolving,
@@ -36,6 +40,9 @@ jobs:
   # Publishing only makes sense for the canonical branch.
   gen-kibot-index:
     if: github.event_name != 'pull_request'
+    # It commits the KiBot index and board renders to main.
+    permissions:
+      contents: write
     uses: feastorg/bread-infra/.github/workflows/publish-kibot.yml@v1.2.0
     needs: [kibot]
     with:
@@ -43,6 +50,11 @@ jobs:
 
   deploy-pages:
     if: github.event_name != 'pull_request'
+    # What deploy-pages.yml itself declares.
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
     uses: feastorg/bread-infra/.github/workflows/deploy-pages.yml@v1.2.0
     needs: [gen-kibot-index, kibot]
     with:

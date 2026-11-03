@@ -12,6 +12,9 @@ on:
       - ".github/workflows/firmware-build.yml"
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   build:
     name: pio run (${{ matrix.env }})
