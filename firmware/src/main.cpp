@@ -265,8 +265,114 @@ static void apply_mode_transition(const DCMT_SLICE &s)
     appliedMode = s.mode;
 }
 
+// ---- Interrupt starvation guard (#101) ----
+// On the Nano Every the bus has hung with a motor running: SCL held low by
+// this board, loop() still running (the e-stop braked), but millis() frozen,
+// so the command watchdog could not trip and the e-stop release never
+// debounced. That fits a level-0 interrupt that keeps re-firing and starves
+// every lower vector, the millis timer (TCB3) and the encoders included.
+// The guard watches TCB3's interrupt flag from loop(): the millis ISR clears
+// it within microseconds, so a flag still set on DCMT_STARVE_PASSES passes in
+// a row means that ISR is not being served. It then records the interrupt
+// and TWI state where a reset does not clear it, brakes both motors with
+// interrupts off, and stops feeding the hardware watchdog, which resets the
+// chip within a second. The record is printed at the next boot and by the
+// serial command STARVE?.
+#if defined(ARDUINO_ARCH_MEGAAVR) && defined(MILLIS_USE_TIMERB3)
+#define DCMT_STARVE_GUARD 1
+#ifndef DCMT_STARVE_PASSES
+#define DCMT_STARVE_PASSES 50
+#endif
+#define DCMT_STARVE_MAGIC 0x5A17
+
+struct StarveRecord
+{
+    uint16_t magic;
+    uint8_t count;
+    uint8_t sreg;
+    uint8_t cpuintStatus;
+    uint8_t twiSStatus;
+    uint8_t twiSCtrlA;
+    uint8_t twiMStatus;
+    uint8_t tcbIntCtrl;
+    uint8_t tcbIntFlags;
+};
+static StarveRecord starveRecord __attribute__((section(".noinit")));
+static uint16_t starvePasses = 0;
+static uint8_t resetFlags = 0;
+
+static void starveGuard()
+{
+    if (!(TCB3.INTFLAGS & TCB_CAPT_bm))
+    {
+        starvePasses = 0;
+        return;
+    }
+    if (++starvePasses < DCMT_STARVE_PASSES)
+        return;
+
+    const uint8_t sreg = SREG;
+    cli();
+    const uint8_t count = (starveRecord.magic == DCMT_STARVE_MAGIC) ? starveRecord.count : 0;
+    starveRecord.sreg = sreg;
+    starveRecord.cpuintStatus = CPUINT.STATUS;
+    starveRecord.twiSStatus = TWI0.SSTATUS;
+    starveRecord.twiSCtrlA = TWI0.SCTRLA;
+    starveRecord.twiMStatus = TWI0.MSTATUS;
+    starveRecord.tcbIntCtrl = TCB3.INTCTRL;
+    starveRecord.tcbIntFlags = TCB3.INTFLAGS;
+    starveRecord.count = (uint8_t)(count + 1);
+    starveRecord.magic = DCMT_STARVE_MAGIC;
+    // The drivers directly: motorN_brake() records the applied PWM in a
+    // masked window that would turn interrupts back on.
+    motor1Driver.brake();
+    motor2Driver.brake();
+    for (;;)
+    {
+        // No wdt_reset(): the hardware watchdog resets the chip.
+    }
+}
+
+static void printHex(const __FlashStringHelper *name, uint8_t v)
+{
+    Serial.print(name);
+    if (v < 0x10)
+        Serial.print('0');
+    Serial.print(v, HEX);
+}
+
+void printStarveRecord()
+{
+    if (starveRecord.magic != DCMT_STARVE_MAGIC)
+    {
+        Serial.println(F("STARVE: none recorded"));
+        return;
+    }
+    Serial.print(F("STARVE: count "));
+    Serial.print(starveRecord.count);
+    printHex(F(" SREG 0x"), starveRecord.sreg);
+    printHex(F(" CPUINT.STATUS 0x"), starveRecord.cpuintStatus);
+    printHex(F(" TWI0.SSTATUS 0x"), starveRecord.twiSStatus);
+    printHex(F(" TWI0.SCTRLA 0x"), starveRecord.twiSCtrlA);
+    printHex(F(" TWI0.MSTATUS 0x"), starveRecord.twiMStatus);
+    printHex(F(" TCB3.INTCTRL 0x"), starveRecord.tcbIntCtrl);
+    printHex(F(" TCB3.INTFLAGS 0x"), starveRecord.tcbIntFlags);
+    printHex(F(" RSTFR 0x"), resetFlags);
+    Serial.println();
+}
+#else
+void printStarveRecord()
+{
+    Serial.println(F("STARVE: not built for this MCU"));
+}
+#endif
+
 void setup()
 {
+#if DCMT_STARVE_GUARD
+    resetFlags = RSTCTRL.RSTFR;
+    RSTCTRL.RSTFR = resetFlags;
+#endif
     wdt_disable();
     // e-stop: no external bias resistor on current boards, so use the internal
     // pull-up. Enable it first, so it has the rest of setup to charge the
@@ -281,11 +387,18 @@ void setup()
     // the command watchdog when it ends, so a DCMT_WATCHDOG_BOOT_MS under a
     // second does not trip on the first pass.
     bsc::bootWait(estopInput, 1000, processEStop, &commandWatchdog);
+#if DCMT_STARVE_GUARD
+    if (starveRecord.magic == DCMT_STARVE_MAGIC)
+        printStarveRecord();
+#endif
     wdt_enable(WDTO_1S);
 }
 
 void loop()
 {
+#if DCMT_STARVE_GUARD
+    starveGuard();
+#endif
     wdt_reset();
     processEStop(estopInput.poll(millis()));
     updateStatusLed();

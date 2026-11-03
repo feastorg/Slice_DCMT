@@ -78,6 +78,28 @@ This project did not use formal release tags through most of its history, so thi
 
 ### Fixed
 
+- **A TWI collision no longer locks up the I2C slave** (#101, Nano Every).
+  framework-arduino-megaavr 1.8.8's `TWI_SlaveInterruptHandler` handles a
+  collision or bus error without clearing the data or address interrupt
+  flag, so the TWI slave interrupt fired without end. The build now
+  compiles a copy of the core's `twi.c` in which both branches write 1 to
+  `COLL` and `BUSERR` and `TWI_SCMD_COMPTRANS_gc` to `SCTRLB`, which clears
+  the flag and waits for the next Start
+  (`firmware/scripts/patch_megaavr_twi.py`). The core package is not
+  modified, and the build stops if `twi.c` is not the 1.8.8 file.
+- **An interrupt storm no longer leaves a motor running** (#101, Nano Every).
+  An I2C collision during a slave transmit could leave the core's TWI slave
+  interrupt firing without end. That held SCL low and starved `millis()`,
+  so the command watchdog could not trip and the motor kept its PWM. Only
+  the e-stop stopped it. `loop()` now watches the millis timer's interrupt
+  flag; still pending on `DCMT_STARVE_PASSES` (50) passes in a row, it
+  records the interrupt and TWI registers in `.noinit`, brakes both motors
+  with interrupts off and lets the hardware watchdog reset the chip. The
+  record prints at the next boot and on serial `STARVE?`. On the bench it
+  caught one: `TWI0.SSTATUS 0xBB` (DIF, CLKHOLD, COLL), `TCB3.INTFLAGS`
+  pending, `SREG` I set, `CPUINT.STATUS 0x00`, reset flag WDRF. This is the
+  guard, not the cause: the core's collision and bus-error branches still
+  leave the flag set.
 - **Stale statements in `docs/hardware-revisions.md` and `slice.yaml`.** A
   `gen2` build on G3 no longer swaps motor 2's PWM and DIRECTION (it has
   not since the D10↔D11 rework, #18); the module version is `2.0.0`, not
