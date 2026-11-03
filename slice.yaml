@@ -73,7 +73,14 @@ interfaces:
     address_default: 21
     address_configurable: true
   data:
-    inputs: []
+    # One 4-terminal header per motor: two MCU pins, 5 V and GND, with no
+    # protection. Terminal order and MCU pins differ by generation; see
+    # docs/hardware-revisions.md.
+    inputs:
+      - name: "ENCODER1"
+        type: "quadrature-encoder"
+      - name: "ENCODER2"
+        type: "quadrature-encoder"
     outputs:
       - name: "MOTOR1"
         type: "pwm-h-bridge"
@@ -149,8 +156,9 @@ manufacturing:
 validation:
   status: "not_validated"
   # See docs/hardware-revisions.md. G1 is in service on the reference rig; G2
-  # requires a D6<->D7 trace swap and reversed motor leads; G3 is undeployed and
-  # has no firmware profile.
+  # requires the D6<->D7 and D10<->D11 trace swaps, and wiring that compensates
+  # its transposed encoder channels; G3 is undeployed and has no firmware
+  # profile.
   tested_revisions: ["G1", "G2"]
   tests:
     electrical: false

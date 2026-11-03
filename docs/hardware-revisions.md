@@ -17,7 +17,7 @@ in service.
 | | Board files | Status |
 |---|---|---|
 | **G1** | `archive/hw_archive/g1-2021-06-08-mtu/` | Superseded, still **supported**. In service on the reference rig. |
-| **G2** | `archive/hw_archive/g2-2024-02-13-finn/` | Next onto the bench. **Requires hand rework — see below.** |
+| **G2** | `archive/hw_archive/g2-2024-02-13-finn/` | On the bench; the records in `docs/bench/` use it. **Requires hand rework — see below.** |
 | **G3** | `hardware/` (current KiCad) | **Not deployed.** Still in bench testing. No firmware profile exists. |
 
 Archive directory names carry the generation, the board date and where the
@@ -60,9 +60,10 @@ themselves rather than a transcription.
 **The table names the board's nets, and on G1 those run opposite to the
 firmware's motor numbering.** Firmware `MOTOR1_*` (D6, D5, D7) lands on `/MC2`,
 `/DIR2`, `/BR2` — driver U2, whose outputs go to J7 — while `MOTOR2_*` (D10, D9,
-D11) lands on U1 and J6. On G2 the two agree. Both are correct; it means the G1
-row of the PWM table below, which uses firmware numbering, refers to the
-opposite driver from the G1 column here.
+D11) lands on U1 and J6. On G2 the two agree. On G3 they run opposite again:
+firmware motor 1 (D6, D7, D8) lands on `/PWM2`, `/DIR2`, `/BR2`. All are
+correct; it means the G1 row of the PWM table below, which uses firmware
+numbering, refers to the opposite driver from the G1 column here.
 
 The thermal flags are wired on all three generations but are not read anywhere
 in `firmware/`; `MOTOR1_THERMAL_PIN` and `MOTOR2_THERMAL_PIN` are defined only
@@ -112,8 +113,8 @@ uses a TCB rather than TCA0, so D10 is uncontended there too.
 **A G2 board without both swaps is mismatched by the current firmware**, and the
 mismatch is the dangerous direction — PWM driving the direction line means a
 command of zero produces full output. The bus cannot tell them apart: the
-reported module version is `1.0.0` regardless (#13). Mark reworked boards
-physically.
+reported module version is the same with or without the rework (#13). Mark
+reworked boards physically.
 
 The firmware now refuses to build a map that puts PWM on a non-timer pin
 (`DCMT_PIN_HAS_TIMER`), so this class of defect cannot recur silently.
@@ -176,20 +177,59 @@ Not changed in firmware. Matching them on the Nano means retiming Timer1,
 which `millis()` doesn't use, or putting both PWMs on one timer in a board
 revision. Decide with the next board revision (#68).
 
-## The encoder connector is mirrored between G1 and G2, and a lead swap compensates
+## The encoder headers, by generation
 
-The connector pinout is reversed end-for-end:
+Each board has two 4-terminal encoder headers. The positions below are given in
+one frame, which all three boards share: component side up, backplane connector
+J1 on the left. The terminals then run down the right-hand edge, motor output
+and supply terminals at the top and the encoder headers below them, and each
+list reads from top to bottom.
+Without a stated frame, the same header reads in either order.
 
-- **G1**: `A, B, 5V, GND`
-- **G2**: `GND, 5V, B, A`
+| | Upper header | Lower header |
+|---|---|---|
+| Firmware motor | **1** | **2** |
+| G1 | J3, silk `ENC 2`: `GND, 5V, B, A` | J2, silk `ENC 1`: `GND, 5V, B, A` |
+| G2 | J6–J9, silk `ENCODER 1` (terminal labels on the back): `A, B, 5V, GND` | J2–J5, silk `ENCODER 2`: `A, B, 5V, GND` |
+| G3 | J3, no silk labels: `A, B, 5V, GND` | J2, no silk labels: `A, B, 5V, GND` |
 
-A cable cannot be plugged in the same orientation on both — reversed, it would
-put 5V on GND.
+The MCU pin each signal terminal reaches:
 
-The firmware's encoder macros are shared across generations
-(`MOTOR1_ENCODER_PIN1/2 = A2/A3`, `MOTOR2_ENCODER_PIN1/2 = A0/A1`), so the
-firmware reads channels in the order (A, B) on G1 and (B, A) on G2. Transposed
-channels negate the encoder count.
+| Terminal | G1 upper / lower | G2 upper / lower | G3 upper / lower |
+|---|---|---|---|
+| A | A2 / A0 | A3 / A1 | A3 / A1 |
+| B | A3 / A1 | A2 / A0 | A2 / A0 |
+
+Both tables come from the board files: each header's pad positions and nets,
+the silkscreen text beside it, and the Nano pad nets in the pin-map table above.
+The upper header is firmware motor 1 on every generation. On G1 its silkscreen
+says `ENC 2`, matching that board's driver net numbers, which also run opposite
+to the firmware's.
+
+Every header carries the MCU's own 5 V rail and two MCU pins, with no series
+resistor, bias or protection on any generation.
+
+### G1's terminal order is mirrored on G2 and G3
+
+G1 reads `GND, 5V, B, A` from the top; G2 and G3 read `A, B, 5V, GND`. Read from
+the bottom instead, G1 is `A, B, 5V, GND` and G2 is `GND, 5V, B, A`, which is
+how this page listed them before. It is the same fact.
+
+A harness moved terminal-for-terminal from a G1 header to a G2 header lands
+every wire on a different signal: the encoder's GND wire on `A`, its 5 V wire on
+`B`, its B output on `5V` and its A output on `GND`. The encoder is then fed
+through the MCU's input pins, and an output driven against the 5 V rail or
+ground can short it. Wire each generation to its own table, and check
+continuity with the board unpowered before connecting.
+
+### G2 and G3 transpose A and B at the MCU, and the wiring compensates
+
+This is separate from the terminal order. The firmware's encoder macros are
+shared across generations (`MOTOR1_ENCODER_PIN1/2 = A2/A3`,
+`MOTOR2_ENCODER_PIN1/2 = A0/A1`), and terminal `A` reaches a different MCU pin
+on G2 and G3 than on G1 (table above). So the firmware reads channels in the
+order (A, B) on G1 and (B, A) on G2 and G3. Transposed channels negate the
+encoder count.
 
 **On G2 a second physical inversion cancels this**, and closed-loop position and
 speed control were both validated on G2 at the bench in early 2026. There is no
@@ -209,6 +249,13 @@ They are not interchangeable. Motor-lead reversal also flips the open-loop
 direction sense, which matters to anything that assumes a direction — a stirring
 impeller, a peristaltic pump's flow direction. Encoder-lead swapping does not.
 
+**The silkscreen points at the motor leads.** G1 marks `M+` on each driver's
+OUTPUT1 terminal. G2 marks `M1-` and `M2-` on OUTPUT1, and `M1+` and `M2+` on
+OUTPUT2. So a motor wired to each board's own marks runs reversed on G2
+relative to G1, which is the motor-lead candidate. That makes it the likely
+mechanism, but it is not a record of how the boards were wired; the test below
+still settles it.
+
 > **To settle it:** on a G2 board, command a small positive open-loop PWM and
 > compare the shaft direction against G1 under the same command. Same direction
 > means the encoder leads were swapped; opposite means the motor leads were.
@@ -220,12 +267,38 @@ impeller, a peristaltic pump's flow direction. Encoder-lead swapping does not.
 > "fix" G2 would double-apply the correction and turn a converging axis into a
 > diverging one. See #19.
 
+## Silkscreen and supply-header traps
+
+From the board files. Each of these can be wired wrong by following the board.
+
+**G2's separate-supply terminals are marked with reversed polarity.** On each
+motor's supply pair, the back silkscreen puts `-` beside the `/CUST1` or
+`/CUST2` terminal (J10, J16), which feeds the driver's supply through SW1 or
+SW2. It puts `+` beside the GND terminal (J11, J17). Wired to the marks, a
+separate supply is reversed across the LMD18200. The positive lead goes to J10
+or J16. G1's marks are correct.
+
+**G1's supply header is not a two-position selector.** J4 (driver U1, firmware
+motor 2) and J5 (driver U2, firmware motor 1) are 3-pin headers: pin 1 is the
+separate supply (`CUSTOM`), pin 2 backplane +12V, pin 3 the driver's supply. A
+shunt on pins 2–3 feeds the driver from the backplane. A shunt on pins 1–2
+ties the separate supply to backplane +12V and leaves the driver unpowered.
+Running from the separate supply needs pins 1 and 3 joined, which a standard
+shunt cannot do.
+
+**G2's encoder terminal labels are not Arduino pin names.** The back
+silkscreen labels the encoder terminals `A1`, `B1`, `A2`, `B2`, meaning channel
+and header. The `A1` terminal reaches the MCU's A3 (table above).
+
 ## G3 has no firmware profile
 
-`DCMT_HW_GEN` accepts only 1 or 2. Flashing a `gen2` build onto a G3 board gives
-correct pins for motor 1 but **swaps motor 2's PWM and DIRECTION**, because G3
-uses `D10 = /PWM1`, `D11 = /DIR1` while `gen2` expects the opposite. Tracked in
-#18.
+`DCMT_HW_GEN` accepts only 1 or 2. Since the G2 D10↔D11 rework, a `gen2` build
+puts every drive pin where G3 expects it: motor 1 on D6, D7 and D8 (`/PWM2`,
+`/DIR2`, `/BR2`), motor 2 on D10, D11 and D12 (`/PWM1`, `/DIR1`, `/BR1`). That
+is a coincidence of layout, not a compatibility guarantee, and G3 also
+transposes the encoder channels as G2 does, so closed loop on G3 needs the same
+compensating wiring. Nothing declares a `gen2` binary acceptable on G3. Tracked
+in #18.
 
 `DCMT_HW_GEN` has no default: a build without the flag fails with an `#error`
 in `firmware/include/config.h` rather than picking a pin map (#17). Build one
@@ -233,8 +306,9 @@ of the `gen*` environments in `firmware/platformio.ini`.
 
 ## Firmware version cannot identify the build
 
-`reply_version` reports `DCMT_MODULE_VER_*`, hardcoded at `1.0.0` in
-`bread-crumbs-contracts` and unchanged by behaviour fixes. A board reports
+`reply_version` reports `DCMT_MODULE_VER_*`, a constant in
+`bread-crumbs-contracts` (`2.0.0` as of contracts 0.11.1). It changes with the
+wire contract, not with firmware behaviour fixes, so a board reports
 byte-identical version before and after any of the changes on this page.
 
 **Record the flashed git SHA by hand at flash time.** Tracked in #13.
