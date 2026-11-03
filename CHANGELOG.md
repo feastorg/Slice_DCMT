@@ -65,7 +65,8 @@ This project did not use formal release tags through most of its history, so thi
   `DCMT_INPUT_ENCODER` (the default) or `DCMT_INPUT_NONE`. A port built
   `NONE` constructs no Encoder, so it claims no pins, and its motor's
   position reads 0. Closed loop is built only when both ports carry an
-  encoder. Otherwise GET_CAPS reports level 1 with flags `0xDE3`, and
+  encoder. Otherwise GET_CAPS reports level 1 with flags `0x5E3`, without
+  `DCMT_CAP_FAULTS` since only closed loop latches a stall, and
   `SET_MODE` position or speed, `SET_SETPOINT` and `SET_PID` are refused
   `BREAD_REFUSE_NOT_BUILT`; over serial, `MODE=POS`, `M1POS=`, `M2POS=`
   and `PIDPOS=` are absent. The position branch is compiled out, so a

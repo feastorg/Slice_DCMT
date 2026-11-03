@@ -462,12 +462,12 @@ void reply_get_caps(crumbs_context_t *ctx, crumbs_message_t *reply, void *user_d
                      DCMT_CAP_REFUSES | DCMT_CAP_SETPOINT_LOOP |
                      DCMT_CAP_WATCHDOG_LEASE | DCMT_CAP_FAULTS;
 #else
-    // Open loop only (DCMT_PORTn_INPUT): none of the closed-loop flags.
-    // GET_FAULTS and CLEAR_FAULTS are still served; nothing latches a fault
-    // without closed loop, so GET_FAULTS reads 0.
+    // Open loop only (DCMT_PORTn_INPUT): none of the closed-loop flags, and
+    // not DCMT_CAP_FAULTS, whose only fault is a stall, which needs closed
+    // loop. GET_FAULTS (always 0) and CLEAR_FAULTS are still answered.
     uint8_t level = DCMT_CAP_LEVEL_1;
     uint32_t flags = DCMT_CAP_BASELINE_FLAGS | DCMT_CAP_CMD_WATCHDOG | DCMT_CAP_CLEAR_WATCHDOG_TRIP |
-                     DCMT_CAP_ESTOP_HOLD | DCMT_CAP_REFUSES | DCMT_CAP_WATCHDOG_LEASE | DCMT_CAP_FAULTS;
+                     DCMT_CAP_ESTOP_HOLD | DCMT_CAP_REFUSES | DCMT_CAP_WATCHDOG_LEASE;
 #endif
     (void)ctx;
     (void)user_data;

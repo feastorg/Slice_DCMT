@@ -106,7 +106,7 @@ int main()
 
     // GET_CAPS: level 1, and exactly the open-loop flags.
     const uint32_t want = DCMT_CAP_BASELINE_FLAGS | DCMT_CAP_CMD_WATCHDOG | DCMT_CAP_CLEAR_WATCHDOG_TRIP |
-                          DCMT_CAP_ESTOP_HOLD | DCMT_CAP_REFUSES | DCMT_CAP_WATCHDOG_LEASE | DCMT_CAP_FAULTS;
+                          DCMT_CAP_ESTOP_HOLD | DCMT_CAP_REFUSES | DCMT_CAP_WATCHDOG_LEASE;
     crumbs_message_t reply;
     bread_caps_result_t caps = {};
     const bool got_caps =
@@ -114,9 +114,10 @@ int main()
     printf("     GET_CAPS: schema %u level %u flags 0x%03lX\n", caps.schema, caps.level, (unsigned long)caps.flags);
     host_check("GET_CAPS answers schema 1", got_caps && caps.schema == BREAD_CAPS_SCHEMA_V1);
     host_check("GET_CAPS reports level 1", caps.level == DCMT_CAP_LEVEL_1);
-    host_check("GET_CAPS flags are 0xDE3: open loop, brakes, watchdog, trip clear, e-stop hold, refusals, lease, "
-               "faults",
-               caps.flags == want && want == 0xDE3u);
+    host_check("GET_CAPS flags are 0x5E3: open loop, brakes, watchdog, trip clear, e-stop hold, refusals, lease",
+               caps.flags == want && want == 0x5E3u);
+    host_check("GET_CAPS doesn't advertise faults: nothing here can latch a stall",
+               (caps.flags & DCMT_CAP_FAULTS) == 0);
 
     // The closed-loop modes are refused NOT_BUILT; an undefined one as before.
     set_mode(DCMT_MODE_CLOSED_POSITION);
@@ -191,7 +192,7 @@ int main()
     host_check("serial PIDPOS= is an invalid command", has(serial("PIDPOS=1,0,0\n"), "Invalid command."));
     host_check("serial M1PWM= still works", has(serial("M1PWM=30\n"), "M1PWM-> 30"));
 
-    // Faults: served, and nothing latches one.
+    // Faults: not advertised, still answered, and nothing latches one.
     bread_faults_result_t f = {0xFF};
     host_check("GET_FAULTS answers 0", host_query(BREAD_OP_GET_FAULTS, &reply) &&
                                            bread_faults_parse_payload(reply.data, reply.data_len, &f) == 0 &&

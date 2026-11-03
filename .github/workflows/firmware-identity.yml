@@ -21,6 +21,10 @@ concurrency:
   group: firmware-identity-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
+# Builds and writes the job summary; needs no write access.
+permissions:
+  contents: read
+
 jobs:
   identity:
     name: default firmware unchanged

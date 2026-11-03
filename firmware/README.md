@@ -17,7 +17,9 @@ This firmware separates three concerns:
 4. What each encoder header carries (`DCMT_PORT1_INPUT`, `DCMT_PORT2_INPUT`)
 - `DCMT_INPUT_ENCODER` (the default): a quadrature encoder.
 - `DCMT_INPUT_NONE`: nothing; no Encoder is built on that port's pins and
-  the motor's position reads 0.
+  the motor's position reads 0. That 0 is not a position: GET_STATE has no
+  sentinel for it yet (bread-crumbs-contracts#73), so the missing
+  closed-loop flags in GET_CAPS are what say it means nothing.
 - port 1 is motor 1, port 2 motor 2. Closed loop is built only when both
   ports carry an encoder, since one mode applies to both motors.
 
@@ -83,11 +85,12 @@ Speed commands/capability are only available when `DCMT_ENABLE_SPEED_LOOP=1`.
 Controllers should gate behavior by capability flags, not by generation labels.
 
 All levels also advertise `DCMT_CAP_CMD_WATCHDOG`,
-`DCMT_CAP_CLEAR_WATCHDOG_TRIP`, `DCMT_CAP_ESTOP_HOLD`, `DCMT_CAP_REFUSES`,
-`DCMT_CAP_WATCHDOG_LEASE` and `DCMT_CAP_FAULTS`. Levels 2 and 3 also
-advertise `DCMT_CAP_SETPOINT_LOOP`. Level 1's flags are `0xDE3`; it keeps
-`DCMT_CAP_FAULTS` because GET_FAULTS and CLEAR_FAULTS are still served,
-though nothing latches a fault without closed loop.
+`DCMT_CAP_CLEAR_WATCHDOG_TRIP`, `DCMT_CAP_ESTOP_HOLD`, `DCMT_CAP_REFUSES`
+and `DCMT_CAP_WATCHDOG_LEASE`. Levels 2 and 3 also advertise
+`DCMT_CAP_SETPOINT_LOOP` and `DCMT_CAP_FAULTS`. Level 1's flags are
+`0x5E3`: its only fault is a stall, which needs closed loop, so it doesn't
+advertise faults, though GET_FAULTS (always 0) and CLEAR_FAULTS are still
+answered.
 
 ## Setpoints
 
@@ -240,9 +243,8 @@ In closed loop (position or speed), a motor driven for
 `DCMT_FAULT_M1_STALL` or `DCMT_FAULT_M2_STALL`. DCMotorServo's stall
 detection does the check, so a motor at rest inside the servo's deadband,
 which is not driven, never latches. Open loop is not checked, so a `_noenc`
-build, which has only open loop, never latches a fault: it serves
-GET_FAULTS (always 0) and CLEAR_FAULTS so a controller can use them
-unchanged. Both values are build flags and starting points, not
+build, which has only open loop, never latches a fault and doesn't
+advertise `DCMT_CAP_FAULTS`. Both values are build flags and starting points, not
 measurements; stall detection has not been checked on the bench yet.
 
 A fault holds the way a watchdog trip does: both motors brake, the PWM
@@ -264,7 +266,7 @@ Clearing resumes nothing. Resume as after a cleared trip: release the brakes,
 then send setpoints, then the mode. A shaft that is still blocked latches
 again once it has been driven for the timeout.
 
-GET_CAPS advertises `DCMT_CAP_FAULTS`.
+GET_CAPS advertises `DCMT_CAP_FAULTS` on the builds with closed loop.
 
 ## References
 
