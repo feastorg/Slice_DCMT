@@ -37,3 +37,4 @@ in bread-infra.
 | 2026-10-25 | [Setpoint loops, the e-stop release and the watchdog lease](2026-10-25-setpoint-loop-lease.md) | `718a41f` | gen2 Nano Every | pass |
 | 2026-10-31 | [Opcode refusal and reply integrity](2026-10-31-refusal-and-bus.md) | `c3e6fca` | gen2 Nano Every, gen2 Nano | pass; no motor steps |
 | 2026-11-01 | [Stall latch, closed-loop speed and the amber LED](2026-11-01-stall-speed-amber.md) | `6a8df02` | gen2 Nano Every | pass, with three findings: a bus hang, a small-step stall latch, M2 overshoot |
+| 2026-11-02 | [The I2C lockup, its fix, and counts per turn](2026-11-02-bus-lockup-and-cpr.md) | `6a8df02`, `b73133a` (#107), `29b9bdf` (#109) | gen2 Nano Every | #101 reproduced and fixed under injection; 848 counts per turn; #105 seen on the bench |

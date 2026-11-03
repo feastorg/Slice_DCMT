@@ -1,0 +1,973 @@
+=== 2026-11-02 13:54:31 (controller clock)
+$ ssh <controller> 'cd dcmt-bench && for c in version state wdog faults; do venv/bin/python dcmt_bench.py $c 2>&1 | tail -1; done'
+13:54:32.903 Version(crumbs_version=1700, major=2, minor=0, patch=0)
+13:54:33.229 state mode=0 m1_pwm=0 m2_pwm=0 sp=-32768,-32768 pos=0,0 spd=-32768,-32768 brakes=0b00 estop=0 estop_count=0
+13:54:33.538 wdog [armed][timeout_ms][tripped][trips] 0000000000
+13:54:33.846 faults 0x00 none
+
+=== 2026-11-02 14:15:32 (controller clock)
+$ ssh <controller> 'cd dcmt-bench && B="venv/bin/python -u dcmt_bench.py" && $B brake 1 1 && $B wdl 1000 0 && $B state && $B mode 2 && $B sp5 2 10 0 && $B brake 0 1 && $B speedlog 1 58 10 | tail -6; $B brake 1 1; $B state; $B mode 1 && $B sp 7980 0 && $B brake 0 1 && $B watch 4; $B brake 1 1; $B wd 0; $B state; $B faults'
+14:15:34.798 sent 0x02 0101 -> ack Ack(counter=1, opcode=2, status=1, reason=0)
+14:15:35.117 sent 0x7E e80300 -> ack Ack(counter=2, opcode=126, status=1, reason=0)
+14:15:35.424 state mode=0 m1_pwm=0 m2_pwm=0 sp=-32768,-32768 pos=-11,0 spd=-32768,-32768 brakes=0b11 estop=0 estop_count=0
+14:15:35.743 sent 0x03 02 -> ack Ack(counter=3, opcode=3, status=1, reason=0)
+14:15:36.062 sent 0x04 020a000000 -> ack Ack(counter=4, opcode=4, status=1, reason=0)
+14:15:36.380 sent 0x02 0001 -> ack Ack(counter=5, opcode=2, status=1, reason=0)
+14:16:34.689 faults 0x00 none
+14:16:34.689 summary: 580 polls, 0 failed
+  first within 5 % of 10 (200 ms RPM): t=1.32 s
+  first within 5 % of 10 (1 s RPM): t=1.02 s
+  peak 1 s mean: 11.0 RPM at t=9.12 s
+  mean over the last 5 s: 10.1 RPM (52.92 to 57.92 s)
+14:16:35.047 sent 0x02 0101 -> ack Ack(counter=6, opcode=2, status=1, reason=0)
+14:16:35.364 state mode=2 m1_pwm=0 m2_pwm=0 sp=10,0 pos=7758,0 spd=0,0 brakes=0b11 estop=0 estop_count=0
+14:16:35.682 sent 0x03 01 -> ack Ack(counter=7, opcode=3, status=1, reason=0)
+14:16:36.002 sent 0x04 2c1f0000 -> ack Ack(counter=8, opcode=4, status=1, reason=0)
+14:16:36.320 sent 0x02 0001 -> ack Ack(counter=9, opcode=2, status=1, reason=0)
+14:16:36.646 state mode=1 m1_pwm=20 m2_pwm=0 sp=7980,0 pos=7938,0 spd=-32768,-32768 brakes=0b10 estop=0 estop_count=0
+14:16:36.881 state mode=1 m1_pwm=0 m2_pwm=0 sp=7980,0 pos=7972,0 spd=-32768,-32768 brakes=0b10 estop=0 estop_count=0
+14:16:40.794 wdog [armed][timeout_ms][tripped][trips] 01e8030000
+14:16:41.164 sent 0x02 0101 -> ack Ack(counter=10, opcode=2, status=1, reason=0)
+14:16:41.485 sent 0x7E 0000 -> ack Ack(counter=11, opcode=126, status=1, reason=0)
+14:16:41.794 state mode=1 m1_pwm=0 m2_pwm=0 sp=7980,0 pos=7972,0 spd=-32768,-32768 brakes=0b11 estop=0 estop_count=0
+14:16:42.114 faults 0x00 none
+
+=== 2026-11-02 14:18:50 (controller clock)
+$ ssh <controller> 'md5sum dcmt-bench/dcmt_bench.py; cd dcmt-bench && venv/bin/python -m py_compile dcmt_bench.py && echo ok && venv/bin/python dcmt_bench.py state'
+56c0f732caf56434bf54550742323cfc  dcmt-bench/dcmt_bench.py
+ok
+14:18:52.560 state mode=1 m1_pwm=0 m2_pwm=0 sp=7980,0 pos=7972,0 spd=-32768,-32768 brakes=0b11 estop=0 estop_count=0
+
+=== 2026-11-02 14:19:25 (controller clock)
+$ ssh <controller> 'cd dcmt-bench && B="venv/bin/python -u dcmt_bench.py" && $B brake 1 1 && $B wdl 1000 0 && $B speedto 1 7980 10; $B brake 1 1; $B wd 0; $B state; $B faults'
+14:19:26.752 sent 0x02 0101 -> ack Ack(counter=12, opcode=2, status=1, reason=0)
+14:19:27.073 sent 0x7E e80300 -> ack Ack(counter=13, opcode=126, status=1, reason=0)
+14:19:27.392 sent 0x02 0101 -> ack Ack(counter=14, opcode=2, status=1, reason=0)
+14:19:27.421 sent 0x03 02 -> ack Ack(counter=15, opcode=3, status=1, reason=0)
+14:19:27.467 sent 0x04 020a000000 -> ack Ack(counter=16, opcode=4, status=1, reason=0)
+14:19:27.467 speedto motor 1: start 7972, stop at 15952, 10 RPM
+14:19:27.496 sent 0x02 0001 -> ack Ack(counter=17, opcode=2, status=1, reason=0)
+14:19:27.513    0.0 s pos 7972
+14:19:32.520    5.0 s pos 8595
+14:19:37.564   10.1 s pos 9270
+14:19:42.609   15.1 s pos 9938
+14:19:47.654   20.2 s pos 10616
+14:19:52.699   25.2 s pos 11286
+14:19:57.750   30.3 s pos 11960
+14:20:02.796   35.3 s pos 12629
+14:20:07.842   40.3 s pos 13303
+14:20:12.887   45.4 s pos 13981
+14:20:17.937   50.4 s pos 14646
+14:20:22.981   55.5 s pos 15321
+14:20:27.711 sent 0x04 0200000000 -> ack Ack(counter=18, opcode=4, status=1, reason=0)
+14:20:27.744 sent 0x02 0101 -> ack Ack(counter=19, opcode=2, status=1, reason=0)
+14:20:27.744 crossed at 15952 after 60.2 s
+14:20:28.762 final 15953: moved 7981 counts
+14:20:29.117 sent 0x02 0101 -> ack Ack(counter=20, opcode=2, status=1, reason=0)
+14:20:29.438 sent 0x7E 0000 -> ack Ack(counter=21, opcode=126, status=1, reason=0)
+14:20:29.748 state mode=2 m1_pwm=0 m2_pwm=0 sp=0,0 pos=15953,0 spd=0,0 brakes=0b11 estop=0 estop_count=0
+14:20:30.058 faults 0x00 none
+
+=== 2026-11-02 14:21:46 (controller clock)
+$ ssh <controller> 'cd dcmt-bench && venv/bin/python dcmt_bench.py state'
+14:21:47.546 state mode=2 m1_pwm=0 m2_pwm=0 sp=0,0 pos=15953,0 spd=0,0 brakes=0b11 estop=0 estop_count=0
+
+=== 2026-11-02 14:22:39 (controller clock)
+$ ssh <controller> 'cd dcmt-bench && B="venv/bin/python -u dcmt_bench.py" && $B brake 1 1 && $B wdl 1000 0 && $B mode 2 && $B sp5 2 0 60 && $B brake 1 0 && $B speedlog 2 15 60; $B brake 1 1; $B wd 0; $B faults; $B state'
+14:22:40.664 sent 0x02 0101 -> ack Ack(counter=22, opcode=2, status=1, reason=0)
+14:22:40.987 sent 0x7E e80300 -> ack Ack(counter=23, opcode=126, status=1, reason=0)
+14:22:41.306 sent 0x03 02 -> ack Ack(counter=24, opcode=3, status=2, reason=2)
+14:22:41.627 sent 0x04 0200003c00 -> ack Ack(counter=25, opcode=4, status=2, reason=2)
+14:22:41.948 sent 0x02 0100 -> ack Ack(counter=26, opcode=2, status=2, reason=2)
+14:22:42.238 speedlog motor 2 15 s, CPR 798, target 60 RPM
+stamp t pos rpm200 rpm1s spd pwm brakes estop
+14:22:42.255   0.02 0 - - 0 0 0b11 0
+14:22:42.356   0.12 0 - - 0 0 0b11 0
+14:22:42.455   0.22 0 0.0 - 0 0 0b11 0
+14:22:42.555   0.32 0 0.0 - 0 0 0b11 0
+14:22:42.655   0.42 0 0.0 - 0 0 0b11 0
+14:22:42.755   0.52 0 0.0 - 0 0 0b11 0
+14:22:42.855   0.62 0 0.0 - 0 0 0b11 0
+14:22:42.955   0.72 0 0.0 - 0 0 0b11 0
+14:22:43.055   0.82 0 0.0 - 0 0 0b11 0
+14:22:43.155   0.92 0 0.0 - 0 0 0b11 0
+14:22:43.255   1.02 0 0.0 0.0 0 0 0b11 0
+14:22:43.355   1.12 0 0.0 0.0 0 0 0b11 0
+14:22:43.455   1.22 0 0.0 0.0 0 0 0b11 0
+14:22:43.555   1.32 0 0.0 0.0 0 0 0b11 0
+14:22:43.655   1.42 0 0.0 0.0 0 0 0b11 0
+14:22:43.755   1.52 0 0.0 0.0 0 0 0b11 0
+14:22:43.855   1.62 0 0.0 0.0 0 0 0b11 0
+14:22:43.955   1.72 0 0.0 0.0 0 0 0b11 0
+14:22:44.055   1.82 0 0.0 0.0 0 0 0b11 0
+14:22:44.155   1.92 0 0.0 0.0 0 0 0b11 0
+14:22:44.255   2.02 0 0.0 0.0 0 0 0b11 0
+14:22:44.355   2.12 0 0.0 0.0 0 0 0b11 0
+14:22:44.455   2.22 0 0.0 0.0 0 0 0b11 0
+14:22:44.555   2.32 0 0.0 0.0 0 0 0b11 0
+14:22:44.655   2.42 0 0.0 0.0 0 0 0b11 0
+14:22:44.755   2.52 0 0.0 0.0 0 0 0b11 0
+14:22:44.855   2.62 0 0.0 0.0 0 0 0b11 0
+14:22:44.955   2.72 0 0.0 0.0 0 0 0b11 0
+14:22:45.055   2.82 0 0.0 0.0 0 0 0b11 0
+14:22:45.155   2.92 0 0.0 0.0 0 0 0b11 0
+14:22:45.255   3.02 0 0.0 0.0 0 0 0b11 0
+14:22:45.355   3.12 0 0.0 0.0 0 0 0b11 0
+14:22:45.455   3.22 0 0.0 0.0 0 0 0b11 0
+14:22:45.555   3.32 0 0.0 0.0 0 0 0b11 0
+14:22:45.658   3.42 0 0.0 0.0 0 0 0b11 0
+14:22:45.756   3.52 0 0.0 0.0 0 0 0b11 0
+14:22:45.855   3.62 0 0.0 0.0 0 0 0b11 0
+14:22:45.955   3.72 0 0.0 0.0 0 0 0b11 0
+14:22:46.055   3.82 0 0.0 0.0 0 0 0b11 0
+14:22:46.156   3.92 0 0.0 0.0 0 0 0b11 0
+14:22:46.255   4.02 0 0.0 0.0 0 0 0b11 0
+14:22:46.355   4.12 0 0.0 0.0 0 0 0b11 0
+14:22:46.455   4.22 0 0.0 0.0 0 0 0b11 0
+14:22:46.556   4.32 0 0.0 0.0 0 0 0b11 0
+14:22:46.656   4.42 0 0.0 0.0 0 0 0b11 0
+14:22:46.756   4.52 0 0.0 0.0 0 0 0b11 0
+14:22:46.855   4.62 0 0.0 0.0 0 0 0b11 0
+14:22:46.955   4.72 0 0.0 0.0 0 0 0b11 0
+14:22:47.055   4.82 0 0.0 0.0 0 0 0b11 0
+14:22:47.155   4.92 0 0.0 0.0 0 0 0b11 0
+14:22:47.255   5.02 0 0.0 0.0 0 0 0b11 0
+14:22:47.355   5.12 0 0.0 0.0 0 0 0b11 0
+14:22:47.455   5.22 0 0.0 0.0 0 0 0b11 0
+14:22:47.555   5.32 0 0.0 0.0 0 0 0b11 0
+14:22:47.655   5.42 0 0.0 0.0 0 0 0b11 0
+14:22:47.756   5.52 0 0.0 0.0 0 0 0b11 0
+14:22:47.856   5.62 0 0.0 0.0 0 0 0b11 0
+14:22:47.955   5.72 0 0.0 0.0 0 0 0b11 0
+14:22:48.055   5.82 0 0.0 0.0 0 0 0b11 0
+14:22:48.155   5.92 0 0.0 0.0 0 0 0b11 0
+14:22:48.255   6.02 0 0.0 0.0 0 0 0b11 0
+14:22:48.355   6.12 0 0.0 0.0 0 0 0b11 0
+14:22:48.455   6.22 0 0.0 0.0 0 0 0b11 0
+14:22:48.555   6.32 0 0.0 0.0 0 0 0b11 0
+14:22:48.655   6.42 0 0.0 0.0 0 0 0b11 0
+14:22:48.756   6.52 0 0.0 0.0 0 0 0b11 0
+14:22:48.855   6.62 0 0.0 0.0 0 0 0b11 0
+14:22:48.955   6.72 0 0.0 0.0 0 0 0b11 0
+14:22:49.055   6.82 0 0.0 0.0 0 0 0b11 0
+14:22:49.155   6.92 0 0.0 0.0 0 0 0b11 0
+14:22:49.255   7.02 0 0.0 0.0 0 0 0b11 0
+14:22:49.356   7.12 0 0.0 0.0 0 0 0b11 0
+14:22:49.455   7.22 0 0.0 0.0 0 0 0b11 0
+14:22:49.555   7.32 0 0.0 0.0 0 0 0b11 0
+14:22:49.655   7.42 0 0.0 0.0 0 0 0b11 0
+14:22:49.755   7.52 0 0.0 0.0 0 0 0b11 0
+14:22:49.856   7.62 0 0.0 0.0 0 0 0b11 0
+14:22:49.966   7.73 0 0.0 0.0 0 0 0b11 0
+14:22:50.056   7.82 0 0.0 0.0 0 0 0b11 0
+14:22:50.155   7.92 0 0.0 0.0 0 0 0b11 0
+14:22:50.255   8.02 0 0.0 0.0 0 0 0b11 0
+14:22:50.355   8.12 0 0.0 0.0 0 0 0b11 0
+14:22:50.455   8.22 0 0.0 0.0 0 0 0b11 0
+14:22:50.556   8.32 0 0.0 0.0 0 0 0b11 0
+14:22:50.656   8.42 0 0.0 0.0 0 0 0b11 0
+14:22:50.756   8.52 0 0.0 0.0 0 0 0b11 0
+14:22:50.855   8.62 0 0.0 0.0 0 0 0b11 0
+14:22:50.955   8.72 0 0.0 0.0 0 0 0b11 0
+14:22:51.055   8.82 0 0.0 0.0 0 0 0b11 0
+14:22:51.155   8.92 0 0.0 0.0 0 0 0b11 0
+14:22:51.255   9.02 0 0.0 0.0 0 0 0b11 0
+14:22:51.355   9.12 0 0.0 0.0 0 0 0b11 0
+14:22:51.455   9.22 0 0.0 0.0 0 0 0b11 0
+14:22:51.555   9.32 0 0.0 0.0 0 0 0b11 0
+14:22:51.655   9.42 0 0.0 0.0 0 0 0b11 0
+14:22:51.755   9.52 0 0.0 0.0 0 0 0b11 0
+14:22:51.856   9.62 0 0.0 0.0 0 0 0b11 0
+14:22:51.956   9.72 0 0.0 0.0 0 0 0b11 0
+14:22:52.055   9.82 0 0.0 0.0 0 0 0b11 0
+14:22:52.155   9.92 0 0.0 0.0 0 0 0b11 0
+14:22:52.255  10.02 0 0.0 0.0 0 0 0b11 0
+14:22:52.355  10.12 0 0.0 0.0 0 0 0b11 0
+14:22:52.455  10.22 0 0.0 0.0 0 0 0b11 0
+14:22:52.555  10.32 0 0.0 0.0 0 0 0b11 0
+14:22:52.655  10.42 0 0.0 0.0 0 0 0b11 0
+14:22:52.755  10.52 0 0.0 0.0 0 0 0b11 0
+14:22:52.855  10.62 0 0.0 0.0 0 0 0b11 0
+14:22:52.955  10.72 0 0.0 0.0 0 0 0b11 0
+14:22:53.056  10.82 0 0.0 0.0 0 0 0b11 0
+14:22:53.155  10.92 0 0.0 0.0 0 0 0b11 0
+14:22:53.255  11.02 0 0.0 0.0 0 0 0b11 0
+14:22:53.355  11.12 0 0.0 0.0 0 0 0b11 0
+14:22:53.455  11.22 0 0.0 0.0 0 0 0b11 0
+14:22:53.555  11.32 0 0.0 0.0 0 0 0b11 0
+14:22:53.655  11.42 0 0.0 0.0 0 0 0b11 0
+14:22:53.755  11.52 0 0.0 0.0 0 0 0b11 0
+14:22:53.856  11.62 0 0.0 0.0 0 0 0b11 0
+14:22:53.955  11.72 0 0.0 0.0 0 0 0b11 0
+14:22:54.055  11.82 0 0.0 0.0 0 0 0b11 0
+14:22:54.155  11.92 0 0.0 0.0 0 0 0b11 0
+14:22:54.263  12.02 0 0.0 0.0 0 0 0b11 0
+14:22:54.355  12.12 0 0.0 0.0 0 0 0b11 0
+14:22:54.456  12.22 0 0.0 0.0 0 0 0b11 0
+14:22:54.556  12.32 0 0.0 0.0 0 0 0b11 0
+14:22:54.656  12.42 0 0.0 0.0 0 0 0b11 0
+14:22:54.755  12.52 0 0.0 0.0 0 0 0b11 0
+14:22:54.865  12.63 0 0.0 0.0 0 0 0b11 0
+14:22:54.956  12.72 0 0.0 0.0 0 0 0b11 0
+14:22:55.055  12.82 0 0.0 0.0 0 0 0b11 0
+14:22:55.155  12.92 0 0.0 0.0 0 0 0b11 0
+14:22:55.255  13.02 0 0.0 0.0 0 0 0b11 0
+14:22:55.355  13.12 0 0.0 0.0 0 0 0b11 0
+14:22:55.455  13.22 0 0.0 0.0 0 0 0b11 0
+14:22:55.556  13.32 0 0.0 0.0 0 0 0b11 0
+14:22:55.655  13.42 0 0.0 0.0 0 0 0b11 0
+14:22:55.756  13.52 0 0.0 0.0 0 0 0b11 0
+14:22:55.856  13.62 0 0.0 0.0 0 0 0b11 0
+14:22:55.955  13.72 0 0.0 0.0 0 0 0b11 0
+14:22:56.055  13.82 0 0.0 0.0 0 0 0b11 0
+14:22:56.155  13.92 0 0.0 0.0 0 0 0b11 0
+14:22:56.255  14.02 0 0.0 0.0 0 0 0b11 0
+14:22:56.355  14.12 0 0.0 0.0 0 0 0b11 0
+14:22:56.455  14.22 0 0.0 0.0 0 0 0b11 0
+14:22:56.555  14.32 0 0.0 0.0 0 0 0b11 0
+14:22:56.655  14.42 0 0.0 0.0 0 0 0b11 0
+14:22:56.756  14.52 0 0.0 0.0 0 0 0b11 0
+14:22:56.856  14.62 0 0.0 0.0 0 0 0b11 0
+14:22:56.955  14.72 0 0.0 0.0 0 0 0b11 0
+14:22:57.056  14.82 0 0.0 0.0 0 0 0b11 0
+14:22:57.155  14.92 0 0.0 0.0 0 0 0b11 0
+14:22:57.255 faults 0x00 none
+14:22:57.255 summary: 150 polls, 0 failed
+  first within 5 % of 60 (200 ms RPM): never
+  first within 5 % of 60 (1 s RPM): never
+  peak 1 s mean: 0.0 RPM at t=1.02 s
+  mean over the last 5 s: 0.0 RPM (9.92 to 14.92 s)
+14:22:57.620 sent 0x02 0101 -> ack Ack(counter=27, opcode=2, status=1, reason=0)
+14:22:57.948 sent 0x7E 0000 -> ack Ack(counter=28, opcode=126, status=1, reason=0)
+14:22:58.258 faults 0x00 none
+14:22:58.568 state mode=2 m1_pwm=0 m2_pwm=0 sp=0,0 pos=15953,0 spd=0,0 brakes=0b11 estop=0 estop_count=0
+
+=== 2026-11-02 14:23:08 (controller clock)
+$ ssh <controller> 'cd dcmt-bench && venv/bin/python dcmt_bench.py wdog'
+14:23:09.051 wdog [armed][timeout_ms][tripped][trips] 0000000101
+
+=== 2026-11-02 14:23:25 (controller clock)
+$ ssh <controller> 'cd dcmt-bench && md5sum dcmt_bench.py && B="venv/bin/python -u dcmt_bench.py" && $B clear && $B wdog && $B faults && $B state'
+37de8db695cb207ba4baf01e81365fb4  dcmt_bench.py
+14:23:29.249 sent 0x7C  -> ack Ack(counter=29, opcode=124, status=1, reason=0)
+14:23:29.558 wdog [armed][timeout_ms][tripped][trips] 0000000001
+14:23:29.869 faults 0x00 none
+14:23:30.178 state mode=2 m1_pwm=0 m2_pwm=0 sp=0,0 pos=15953,0 spd=0,0 brakes=0b11 estop=0 estop_count=0
+
+=== 2026-11-02 14:23:46 (controller clock)
+$ ssh <controller> 'cd dcmt-bench && B="venv/bin/python -u dcmt_bench.py" && $B brake 1 1 && $B wdl 1000 0 && $B mode 2 && $B sp5 2 0 60 && $B brake 1 0 && $B speedlog 2 15 60; $B brake 1 1; $B wd 0; $B wdog; $B faults; $B state'
+14:23:47.693 sent 0x02 0101 -> ack Ack(counter=30, opcode=2, status=1, reason=0)
+14:23:48.015 sent 0x7E e80300 -> ack Ack(counter=31, opcode=126, status=1, reason=0)
+14:23:48.336 sent 0x03 02 -> ack Ack(counter=32, opcode=3, status=1, reason=0)
+14:23:48.656 sent 0x04 0200003c00 -> ack Ack(counter=33, opcode=4, status=1, reason=0)
+14:23:48.977 sent 0x02 0100 -> ack Ack(counter=34, opcode=2, status=1, reason=0)
+14:23:49.268 speedlog motor 2 15 s, CPR 798, target 60 RPM
+stamp t pos rpm200 rpm1s spd pwm brakes estop
+14:23:49.286   0.02 130 - - 45 32 0b01 0
+14:23:49.386   0.12 194 - - 60 37 0b01 0
+14:23:49.486   0.22 260 48.9 - 45 34 0b01 0
+14:23:49.586   0.32 326 49.6 - 45 30 0b01 0
+14:23:49.686   0.42 391 49.3 - 60 44 0b01 0
+14:23:49.786   0.52 464 51.9 - 60 37 0b01 0
+14:23:49.886   0.62 536 54.5 - 45 34 0b01 0
+14:23:49.986   0.72 611 55.3 - 60 35 0b01 0
+14:23:50.086   0.82 684 55.6 - 60 35 0b01 0
+14:23:50.186   0.92 757 54.9 - 45 37 0b01 0
+14:23:50.286   1.02 838 57.9 53.2 60 35 0b01 0
+14:23:50.386   1.12 911 57.9 53.9 45 35 0b01 0
+14:23:50.486   1.22 988 56.4 54.7 60 35 0b01 0
+14:23:50.586   1.32 1066 58.3 55.6 45 34 0b01 0
+14:23:50.686   1.42 1142 57.9 56.5 45 33 0b01 0
+14:23:50.786   1.52 1213 55.3 56.3 60 41 0b01 0
+14:23:50.886   1.62 1290 55.7 56.7 60 35 0b01 0
+14:23:50.986   1.72 1367 57.9 56.8 60 35 0b01 0
+14:23:51.086   1.82 1445 58.3 57.2 45 33 0b01 0
+14:23:51.186   1.92 1520 57.5 57.4 60 35 0b01 0
+14:23:51.286   2.02 1594 56.0 56.8 60 36 0b01 0
+14:23:51.386   2.12 1670 56.4 57.1 60 38 0b01 0
+14:23:51.486   2.22 1753 59.8 57.5 60 32 0b01 0
+14:23:51.586   2.32 1828 59.4 57.3 60 39 0b01 0
+14:23:51.686   2.42 1911 59.4 57.8 60 44 0b01 0
+14:23:51.786   2.52 1997 63.5 58.9 60 34 0b01 0
+14:23:51.886   2.62 2075 61.4 59.0 45 34 0b01 0
+14:23:51.986   2.72 2147 56.4 58.6 60 42 0b01 0
+14:23:52.086   2.82 2229 58.1 58.9 60 36 0b01 0
+14:23:52.186   2.92 2306 59.8 59.1 60 43 0b01 0
+14:23:52.286   3.02 2387 59.4 59.6 60 42 0b01 0
+14:23:52.386   3.12 2470 61.7 60.2 60 37 0b01 0
+14:23:52.489   3.22 2485 36.3 54.9 0 65 0b01 0
+14:23:52.586   3.32 2491 7.9 49.8 15 65 0b01 0
+14:23:52.686   3.42 2530 17.2 46.5 45 61 0b01 0
+14:23:52.786   3.52 2628 51.5 47.4 60 37 0b01 0
+14:23:52.886   3.62 2714 69.2 48.1 60 37 0b01 0
+14:23:52.986   3.72 2795 62.8 48.7 45 42 0b01 0
+14:23:53.086   3.82 2883 63.5 49.2 60 40 0b01 0
+14:23:53.186   3.92 2968 65.0 49.8 60 35 0b01 0
+14:23:53.286   4.02 3048 62.0 49.7 75 41 0b01 0
+14:23:53.386   4.12 3134 62.4 49.9 60 39 0b01 0
+14:23:53.486   4.22 3220 64.7 55.4 60 32 0b01 0
+14:23:53.586   4.32 3297 61.3 60.6 60 41 0b01 0
+14:23:53.686   4.42 3378 59.4 63.8 60 39 0b01 0
+14:23:53.786   4.52 3469 64.6 63.2 60 32 0b01 0
+14:23:53.886   4.62 3545 62.8 62.5 60 38 0b01 0
+14:23:53.986   4.72 3625 58.7 62.4 60 34 0b01 0
+14:23:54.086   4.82 3711 62.4 62.3 60 34 0b01 0
+14:23:54.186   4.92 3789 61.7 61.7 60 38 0b01 0
+14:23:54.286   5.02 3868 59.0 61.7 60 34 0b01 0
+14:23:54.386   5.12 3948 59.7 61.2 62 40 0b01 0
+14:23:54.486   5.22 4032 61.6 61.0 75 38 0b01 0
+14:23:54.586   5.32 4110 60.9 61.1 75 45 0b01 0
+14:23:54.686   5.42 4193 60.5 61.3 60 39 0b01 0
+14:23:54.786   5.52 4275 62.0 60.6 75 38 0b01 0
+14:23:54.886   5.62 4358 62.1 61.1 75 43 0b01 0
+14:23:54.986   5.72 4442 62.8 61.4 45 36 0b01 0
+14:23:55.086   5.82 4518 60.2 60.7 60 38 0b01 0
+14:23:55.186   5.92 4600 59.4 61.0 60 41 0b01 0
+14:23:55.286   6.02 4682 61.6 61.2 45 36 0b01 0
+14:23:55.386   6.12 4760 60.1 61.1 60 38 0b01 0
+14:23:55.486   6.22 4841 59.8 60.8 75 38 0b01 0
+14:23:55.586   6.32 4922 60.9 61.1 60 38 0b01 0
+14:23:55.686   6.42 5007 62.4 61.2 60 31 0b01 0
+14:23:55.786   6.52 5082 60.2 60.7 60 39 0b01 0
+14:23:55.886   6.62 5164 59.0 60.6 60 38 0b01 0
+14:23:55.986   6.72 5245 61.3 60.4 60 38 0b01 0
+14:23:56.086   6.82 5329 62.0 61.0 60 32 0b01 0
+14:23:56.186   6.92 5403 59.4 60.4 60 38 0b01 0
+14:23:56.286   7.02 5484 58.3 60.3 60 38 0b01 0
+14:23:56.386   7.12 5568 62.1 60.8 60 31 0b01 0
+14:23:56.486   7.22 5647 61.3 60.6 60 36 0b01 0
+14:23:56.586   7.32 5724 58.6 60.3 60 41 0b01 0
+14:23:56.686   7.42 5804 59.0 59.9 50 36 0b01 0
+14:23:56.797   7.53 5890 59.2 60.1 60 37 0b01 0
+14:23:56.886   7.62 5961 59.0 59.9 60 38 0b01 0
+14:23:56.986   7.72 6042 60.5 59.9 60 38 0b01 0
+14:23:57.086   7.82 6123 60.9 59.7 60 38 0b01 0
+14:23:57.186   7.92 6204 60.9 60.2 60 37 0b01 0
+14:23:57.286   8.02 6282 59.8 60.0 60 33 0b01 0
+14:23:57.386   8.12 6360 58.6 59.5 60 40 0b01 0
+14:23:57.486   8.22 6444 60.8 59.9 60 38 0b01 0
+14:23:57.586   8.32 6526 62.4 60.3 60 38 0b01 0
+14:23:57.686   8.42 6606 61.1 60.3 60 38 0b01 0
+14:23:57.786   8.52 6688 60.9 60.7 60 37 0b01 0
+14:23:57.886   8.62 6764 59.4 60.4 60 36 0b01 0
+14:23:57.986   8.72 6840 57.2 60.0 60 37 0b01 0
+14:23:58.086   8.82 6921 59.0 60.0 60 43 0b01 0
+14:23:58.186   8.92 7004 61.7 60.2 60 35 0b01 0
+14:23:58.286   9.02 7081 60.2 60.1 60 38 0b01 0
+14:23:58.386   9.12 7162 59.4 60.3 75 43 0b01 0
+14:23:58.486   9.22 7241 60.1 60.0 60 38 0b01 0
+14:23:58.586   9.32 7322 60.1 59.9 75 39 0b01 0
+14:23:58.686   9.42 7399 59.4 59.6 60 40 0b01 0
+14:23:58.786   9.52 7484 60.9 59.8 75 39 0b01 0
+14:23:58.886   9.62 7566 62.8 60.3 60 37 0b01 0
+14:23:58.986   9.72 7649 62.0 60.8 50 31 0b01 0
+14:23:59.086   9.82 7722 58.6 60.2 60 42 0b01 0
+14:23:59.186   9.92 7804 58.3 60.2 60 36 0b01 0
+14:23:59.286  10.02 7886 61.7 60.5 45 36 0b01 0
+14:23:59.386  10.12 7964 60.1 60.3 60 36 0b01 0
+14:23:59.486  10.22 8041 58.3 60.1 60 37 0b01 0
+14:23:59.586  10.32 8122 59.4 60.2 60 32 0b01 0
+14:23:59.686  10.42 8201 60.1 60.3 60 33 0b01 0
+14:23:59.786  10.52 8282 60.1 60.0 45 33 0b01 0
+14:23:59.903  10.63 8377 60.9 59.9 60 36 0b01 0
+14:24:00.003  10.73 8455 59.9 59.6 60 38 0b01 0
+14:24:00.086  10.82 8522 59.7 60.2 60 37 0b01 0
+14:24:00.186  10.92 8604 61.3 60.2 60 42 0b01 0
+14:24:00.286  11.02 8686 61.7 60.2 60 34 0b01 0
+14:24:00.386  11.12 8761 59.0 59.9 60 41 0b01 0
+14:24:00.486  11.22 8841 58.3 60.2 60 36 0b01 0
+14:24:00.586  11.32 8918 59.0 59.9 45 37 0b01 0
+14:24:00.686  11.42 9001 60.1 60.2 60 43 0b01 0
+14:24:00.786  11.52 9082 61.6 60.1 60 30 0b01 0
+14:24:00.886  11.62 9158 59.0 59.8 60 44 0b01 0
+14:24:00.986  11.72 9244 60.9 60.4 75 40 0b01 0
+14:24:01.086  11.82 9321 61.3 60.1 60 40 0b01 0
+14:24:01.186  11.92 9400 58.7 59.8 60 36 0b01 0
+14:24:01.286  12.02 9481 60.2 59.8 50 42 0b01 0
+14:24:01.386  12.12 9560 60.1 60.1 60 41 0b01 0
+14:24:01.486  12.22 9642 60.5 60.2 60 36 0b01 0
+14:24:01.586  12.32 9721 60.5 60.4 45 37 0b01 0
+14:24:01.686  12.42 9800 59.4 60.1 60 37 0b01 0
+14:24:01.786  12.52 9880 59.8 60.0 60 37 0b01 0
+14:24:01.886  12.62 9964 61.7 60.6 60 36 0b01 0
+14:24:01.986  12.72 10041 60.5 59.9 60 35 0b01 0
+14:24:02.086  12.82 10118 57.9 59.9 75 37 0b01 0
+14:24:02.186  12.92 10200 59.8 60.2 60 31 0b01 0
+14:24:02.286  13.02 10276 59.4 59.8 60 39 0b01 0
+14:24:02.386  13.12 10358 59.4 60.0 75 37 0b01 0
+14:24:02.486  13.22 10446 63.9 60.5 60 29 0b01 0
+14:24:02.586  13.32 10521 61.1 60.1 60 33 0b01 0
+14:24:02.686  13.42 10595 56.0 59.8 60 37 0b01 0
+14:24:02.786  13.52 10680 59.9 60.1 75 36 0b01 0
+14:24:02.886  13.62 10758 61.3 59.7 60 36 0b01 0
+14:24:02.986  13.72 10837 59.0 59.8 45 37 0b01 0
+14:24:03.086  13.82 10918 60.2 60.1 60 37 0b01 0
+14:24:03.186  13.92 10998 60.5 60.0 60 36 0b01 0
+14:24:03.286  14.02 11078 60.1 60.3 45 38 0b01 0
+14:24:03.386  14.12 11154 58.6 59.8 60 39 0b01 0
+14:24:03.486  14.22 11236 59.4 59.4 60 33 0b01 0
+14:24:03.586  14.32 11319 62.1 60.0 62 45 0b01 0
+14:24:03.686  14.42 11399 61.3 60.5 60 36 0b01 0
+14:24:03.786  14.52 11479 60.2 60.1 60 38 0b01 0
+14:24:03.886  14.62 11562 61.2 60.4 45 39 0b01 0
+14:24:03.986  14.72 11642 61.3 60.5 45 34 0b01 0
+14:24:04.086  14.82 11717 58.3 60.1 60 36 0b01 0
+14:24:04.186  14.92 11797 58.3 60.1 60 37 0b01 0
+14:24:04.286 faults 0x00 none
+14:24:04.286 summary: 150 polls, 0 failed
+  first within 5 % of 60 (200 ms RPM): t=1.02 s
+  first within 5 % of 60 (1 s RPM): t=1.82 s
+  peak 1 s mean: 63.8 RPM at t=4.42 s
+  mean over the last 5 s: 60.0 RPM (9.92 to 14.92 s)
+14:24:04.648 sent 0x02 0101 -> ack Ack(counter=35, opcode=2, status=1, reason=0)
+14:24:04.969 sent 0x7E 0000 -> ack Ack(counter=36, opcode=126, status=1, reason=0)
+14:24:05.278 wdog [armed][timeout_ms][tripped][trips] 0000000001
+14:24:05.586 faults 0x00 none
+14:24:05.896 state mode=2 m1_pwm=0 m2_pwm=0 sp=0,60 pos=15953,12170 spd=0,0 brakes=0b11 estop=0 estop_count=0
+
+=== 2026-11-02 14:31:13 (controller clock)
+$ ssh <controller> 'cd dcmt-bench && B="venv/bin/python -u dcmt_bench.py" && $B brake 1 1 && $B wdog && $B mode 1 && $B sp -30000 12170 && $B brake 0 1 && sleep 15; $B state; $B brake 1 1; $B faults'
+14:31:17.184 sent 0x02 0101 -> ack Ack(counter=37, opcode=2, status=1, reason=0)
+14:31:17.499 wdog [armed][timeout_ms][tripped][trips] 0000000001
+14:31:17.818 sent 0x03 01 -> ack Ack(counter=38, opcode=3, status=1, reason=0)
+14:31:18.139 sent 0x04 d08a8a2f -> ack Ack(counter=39, opcode=4, status=1, reason=0)
+14:31:18.460 sent 0x02 0001 -> ack Ack(counter=40, opcode=2, status=1, reason=0)
+14:31:33.828 state mode=1 m1_pwm=0 m2_pwm=0 sp=-30000,12170 pos=-30009,12170 spd=-32768,-32768 brakes=0b10 estop=0 estop_count=0
+14:31:34.147 sent 0x02 0101 -> ack Ack(counter=41, opcode=2, status=1, reason=0)
+14:31:34.454 faults 0x00 none
+
+=== 2026-11-02 14:31:37 (controller clock)
+$ ssh <controller> 'cd dcmt-bench && B="venv/bin/python -u dcmt_bench.py" && $B brake 1 1 && $B wdl 1000 0 && $B mode 2 && $B sp5 2 120 0 && $B brake 0 1 && $B speedlog 1 60 120; $B brake 1 1; $B wd 0; $B wdog; $B faults; $B state'
+(exit code 1)
+14:31:40.012 sent 0x02 0101 -> ack Ack(counter=42, opcode=2, status=1, reason=0)
+14:31:40.332 sent 0x7E e80300 -> ack Ack(counter=43, opcode=126, status=1, reason=0)
+14:31:40.652 sent 0x03 02 -> ack Ack(counter=44, opcode=3, status=1, reason=0)
+14:31:40.973 sent 0x04 0278000000 -> ack Ack(counter=45, opcode=4, status=1, reason=0)
+14:31:41.293 sent 0x02 0001 -> ack Ack(counter=46, opcode=2, status=1, reason=0)
+14:31:41.584 speedlog motor 1 60 s, CPR 798, target 120 RPM
+stamp t pos rpm200 rpm1s spd pwm brakes estop
+14:31:41.602   0.02 -29785 - - 60 42 0b10 0
+14:31:41.702   0.12 -29687 - - 60 46 0b10 0
+14:31:41.802   0.22 -29589 73.7 - 75 50 0b10 0
+14:31:41.902   0.32 -29486 75.6 - 75 42 0b10 0
+14:31:42.004   0.42 -29385 76.0 - 75 48 0b10 0
+14:31:42.102   0.52 -29282 76.7 - 75 47 0b10 0
+14:31:42.202   0.62 -29177 79.0 - 90 48 0b10 0
+14:31:42.302   0.72 -29074 78.2 - 75 50 0b10 0
+14:31:42.402   0.82 -28967 78.9 - 75 52 0b10 0
+14:31:42.502   0.92 -28859 80.8 - 90 51 0b10 0
+14:31:42.602   1.02 -28751 81.2 77.7 90 52 0b10 0
+14:31:42.702   1.12 -28638 83.1 78.9 90 52 0b10 0
+14:31:42.802   1.22 -28525 84.9 80.0 90 49 0b10 0
+14:31:42.902   1.32 -28414 84.2 80.6 90 52 0b10 0
+14:31:43.002   1.42 -28298 85.3 81.9 75 53 0b10 0
+14:31:43.102   1.52 -28184 86.5 82.6 75 51 0b10 0
+14:31:43.202   1.62 -28071 85.4 83.2 75 51 0b10 0
+14:31:43.302   1.72 -27956 85.7 84.1 90 53 0b10 0
+14:31:43.402   1.82 -27840 86.8 84.7 75 53 0b10 0
+14:31:43.502   1.92 -27725 86.9 85.3 75 53 0b10 0
+14:31:43.602   2.02 -27609 86.8 85.9 90 54 0b10 0
+14:31:43.702   2.12 -27497 85.7 85.8 90 54 0b10 0
+14:31:43.802   2.22 -27377 87.2 86.3 105 52 0b10 0
+14:31:43.902   2.32 -27258 89.8 86.9 105 53 0b10 0
+14:31:44.019   2.43 -27120 88.9 87.1 90 55 0b10 0
+14:31:44.102   2.52 -27018 90.2 87.7 105 55 0b10 0
+14:31:44.202   2.62 -26895 92.6 88.4 90 53 0b10 0
+14:31:44.302   2.72 -26773 92.0 88.9 90 56 0b10 0
+14:31:44.402   2.82 -26650 92.1 89.5 90 54 0b10 0
+14:31:44.502   2.92 -26526 92.9 90.1 105 54 0b10 0
+14:31:44.602   3.02 -26401 93.6 90.8 105 55 0b10 0
+14:31:44.702   3.12 -26275 94.4 91.9 105 57 0b10 0
+14:31:44.802   3.22 -26149 94.7 92.3 90 50 0b10 0
+14:31:44.902   3.32 -26026 93.5 92.6 105 57 0b10 0
+14:31:45.002   3.42 -25899 93.9 93.4 90 56 0b10 0
+14:31:45.102   3.52 -25770 96.2 93.8 90 56 0b10 0
+14:31:45.202   3.62 -25643 96.2 94.1 105 56 0b10 0
+14:31:45.302   3.72 -25515 95.9 94.6 90 57 0b10 0
+14:31:45.402   3.82 -25390 95.1 94.7 75 58 0b10 0
+14:31:45.502   3.92 -25258 96.7 95.3 105 58 0b10 0
+14:31:45.602   4.02 -25126 99.3 95.9 105 58 0b10 0
+14:31:45.719   4.14 -24969 99.9 96.5 105 59 0b10 0
+14:31:45.802   4.22 -24858 100.7 97.1 120 58 0b10 0
+14:31:45.902   4.32 -24724 101.0 97.9 105 59 0b10 0
+14:31:46.002   4.42 -24588 101.5 98.6 105 59 0b10 0
+14:31:46.102   4.52 -24453 101.9 99.0 105 59 0b10 0
+14:31:46.202   4.62 -24318 101.5 99.6 105 59 0b10 0
+14:31:46.311   4.73 -24174 100.5 100.0 105 60 0b10 0
+14:31:46.402   4.82 -24050 100.7 100.8 105 60 0b10 0
+14:31:46.502   4.92 -23911 103.4 101.3 120 60 0b10 0
+14:31:46.602   5.02 -23773 104.1 101.7 105 60 0b10 0
+14:31:46.702   5.12 -23633 104.5 102.2 105 61 0b10 0
+14:31:46.802   5.22 -23493 105.2 102.6 120 61 0b10 0
+14:31:46.913   5.33 -23341 104.0 102.8 105 62 0b10 0
+14:31:47.019   5.44 -23190 104.8 103.3 87 62 0b10 0
+14:31:47.119   5.53 -23046 107.6 104.0 120 62 0b10 0
+14:31:47.202   5.62 -22927 108.4 104.6 105 61 0b10 0
+14:31:47.302   5.72 -22783 108.3 105.5 105 62 0b10 0
+14:31:47.402   5.82 -22638 108.7 106.2 90 62 0b10 0
+14:31:47.502   5.92 -22494 108.7 106.5 105 63 0b10 0
+14:31:47.602   6.02 -22348 109.0 107.1 105 62 0b10 0
+14:31:47.702   6.12 -22204 109.0 107.4 90 58 0b10 0
+14:31:47.802   6.22 -22062 107.5 107.6 120 63 0b10 0
+14:31:47.902   6.32 -21915 108.6 108.4 120 63 0b10 0
+14:31:48.002   6.42 -21766 111.3 109.0 120 63 0b10 0
+14:31:48.102   6.52 -21618 111.7 109.3 120 64 0b10 0
+14:31:48.202   6.62 -21468 112.0 109.7 105 64 0b10 0
+14:31:48.302   6.72 -21322 111.3 109.8 120 64 0b10 0
+14:31:48.402   6.82 -21171 111.7 110.3 120 65 0b10 0
+14:31:48.502   6.92 -21019 113.9 110.9 120 65 0b10 0
+14:31:48.602   7.02 -20870 113.2 111.1 120 66 0b10 0
+14:31:48.702   7.12 -20717 113.5 111.8 105 65 0b10 0
+14:31:48.802   7.22 -20562 115.7 112.8 120 66 0b10 0
+14:31:48.902   7.32 -20407 116.5 113.4 120 66 0b10 0
+14:31:49.002   7.42 -20251 117.0 113.9 120 66 0b10 0
+14:31:49.102   7.52 -20096 116.9 114.4 120 66 0b10 0
+14:31:49.202   7.62 -19946 114.7 114.4 105 66 0b10 0
+14:31:49.302   7.72 -19790 115.1 115.2 120 66 0b10 0
+14:31:49.402   7.82 -19634 117.3 115.6 105 67 0b10 0
+14:31:49.502   7.92 -19476 118.0 116.0 120 67 0b10 0
+14:31:49.602   8.02 -19318 118.8 116.7 120 66 0b10 0
+14:31:49.719   8.13 -19131 119.3 117.2 120 68 0b10 0
+14:31:49.802   8.22 -18998 120.2 117.6 120 67 0b10 0
+14:31:49.902   8.32 -18838 120.7 118.0 120 68 0b10 0
+14:31:50.002   8.42 -18678 120.4 118.3 120 68 0b10 0
+14:31:50.102   8.52 -18516 121.0 118.8 135 69 0b10 0
+14:31:50.202   8.62 -18354 121.8 119.7 135 69 0b10 0
+14:31:50.319   8.
+
+[about 14614 characters of this run were not captured: the polls from about 8.6 s until the hang, and the start of the errors]
+
+last):
+  File "/home/<user>/dcmt-bench/dcmt_bench.py", line 414, in <module>
+    main()
+    ~~~~^^
+  File "/home/<user>/dcmt-bench/dcmt_bench.py", line 174, in main
+    send(c, d.DCMT_OP_SET_BRAKE, d.dcmt_send_set_brake(int(args[0]), int(args[1])))
+    ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/<user>/dcmt-bench/dcmt_bench.py", line 126, in send
+    c.send(ADDR, Message(type_id=d.DCMT_TYPE_ID, opcode=opcode, data=payload))
+    ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/<user>/dcmt-bench/venv/lib/python3.13/site-packages/crumbs_i2c/_controller.py", line 258, in send
+    self.bus.write(address, encode(message))
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/<user>/dcmt-bench/venv/lib/python3.13/site-packages/crumbs_i2c/_linux.py", line 37, in write
+    written = os.write(self._fd, data)
+TimeoutError: [Errno 110] Connection timed out
+Traceback (most recent call last):
+  File "/home/<user>/dcmt-bench/dcmt_bench.py", line 414, in <module>
+    main()
+    ~~~~^^
+  File "/home/<user>/dcmt-bench/dcmt_bench.py", line 180, in main
+    send(c, BREAD_OP_SET_WATCHDOG, d.dcmt_send_set_watchdog(int(args[0])))
+    ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/<user>/dcmt-bench/dcmt_bench.py", line 126, in send
+    c.send(ADDR, Message(type_id=d.DCMT_TYPE_ID, opcode=opcode, data=payload))
+    ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/<user>/dcmt-bench/venv/lib/python3.13/site-packages/crumbs_i2c/_controller.py", line 258, in send
+    self.bus.write(address, encode(message))
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/<user>/dcmt-bench/venv/lib/python3.13/site-packages/crumbs_i2c/_linux.py", line 37, in write
+    written = os.write(self._fd, data)
+TimeoutError: [Errno 110] Connection timed out
+Traceback (most recent call last):
+  File "/home/<user>/dcmt-bench/dcmt_bench.py", line 414, in <module>
+    main()
+    ~~~~^^
+  File "/home/<user>/dcmt-bench/dcmt_bench.py", line 165, in main
+    r = c.query(ADDR, type_id=d.DCMT_TYPE_ID, opcode=BREAD_OP_GET_WATCHDOG)
+  File "/home/<user>/dcmt-bench/venv/lib/python3.13/site-packages/crumbs_i2c/_controller.py", line 286, in query
+    self.send(address, Message(TYPE_ID_ANY, SET_REPLY, bytes((opcode,))))
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/<user>/dcmt-bench/venv/lib/python3.13/site-packages/crumbs_i2c/_controller.py", line 258, in send
+    self.bus.write(address, encode(message))
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/<user>/dcmt-bench/venv/lib/python3.13/site-packages/crumbs_i2c/_linux.py", line 37, in write
+    written = os.write(self._fd, data)
+TimeoutError: [Errno 110] Connection timed out
+Traceback (most recent call last):
+  File "/home/<user>/dcmt-bench/dcmt_bench.py", line 414, in <module>
+    main()
+    ~~~~^^
+  File "/home/<user>/dcmt-bench/dcmt_bench.py", line 194, in main
+    show_faults(c)
+    ~~~~~~~~~~~^^^
+  File "/home/<user>/dcmt-bench/dcmt_bench.py", line 209, in show_faults
+    q = c.query(ADDR, type_id=d.DCMT_TYPE_ID, opcode=BREAD_OP_GET_FAULTS)
+  File "/home/<user>/dcmt-bench/venv/lib/python3.13/site-packages/crumbs_i2c/_controller.py", line 286, in query
+    self.send(address, Message(TYPE_ID_ANY, SET_REPLY, bytes((opcode,))))
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/<user>/dcmt-bench/venv/lib/python3.13/site-packages/crumbs_i2c/_controller.py", line 258, in send
+    self.bus.write(address, encode(message))
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/<user>/dcmt-bench/venv/lib/python3.13/site-packages/crumbs_i2c/_linux.py", line 37, in write
+    written = os.write(self._fd, data)
+TimeoutError: [Errno 110] Connection timed out
+Traceback (most recent call last):
+  File "/home/<user>/dcmt-bench/dcmt_bench.py", line 414, in <module>
+    main()
+    ~~~~^^
+  File "/home/<user>/dcmt-bench/dcmt_bench.py", line 168, in main
+    show_state(c)
+    ~~~~~~~~~~^^^
+  File "/home/<user>/dcmt-bench/dcmt_bench.py", line 94, in show_state
+    c.query(ADDR, type_id=d.DCMT_TYPE_ID, opcode=d.DCMT_OP_GET_STATE).data
+    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/<user>/dcmt-bench/venv/lib/python3.13/site-packages/crumbs_i2c/_controller.py", line 286, in query
+    self.send(address, Message(TYPE_ID_ANY, SET_REPLY, bytes((opcode,))))
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/<user>/dcmt-bench/venv/lib/python3.13/site-packages/crumbs_i2c/_controller.py", line 258, in send
+    self.bus.write(address, encode(message))
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/<user>/dcmt-bench/venv/lib/python3.13/site-packages/crumbs_i2c/_linux.py", line 37, in write
+    written = os.write(self._fd, data)
+TimeoutError: [Errno 110] Connection timed out
+
+=== 2026-11-02 15:07:13 (controller clock)
+$ ssh <controller> 'ls /dev/ttyACM* 2>&1; pinctrl get 3; cd dcmt-bench && for c in version caps state wdog faults; do venv/bin/python dcmt_bench.py $c 2>&1 | tail -1; done'
+ls: cannot access '/dev/ttyACM*': No such file or directory
+ 3: a0    pu | hi // GPIO3 = SCL1
+15:07:16.462 Version(crumbs_version=1700, major=2, minor=0, patch=0)
+15:07:16.788 caps 0103ff0f0000
+15:07:17.096 state mode=0 m1_pwm=0 m2_pwm=0 sp=-32768,-32768 pos=0,0 spd=-32768,-32768 brakes=0b00 estop=0 estop_count=0
+15:07:17.404 wdog [armed][timeout_ms][tripped][trips] 0000000000
+15:07:17.712 faults 0x00 none
+
+=== 2026-11-02 15:09:25 (controller clock)
+$ ssh <controller> 'ls -l /dev/ttyACM* /dev/serial/by-id/ 2>&1; cd dcmt-bench && venv/bin/python dcmt_bench.py ser "STARVE?" 2>&1 | tail -4'
+crw-rw---- 1 root dialout 166, 0 Nov  2 15:09 /dev/ttyACM0
+
+/dev/serial/by-id/:
+total 0
+lrwxrwxrwx 1 root root 13 Nov  2 15:09 usb-Arduino_LLC_Arduino_Nano_Every_8724EF195153433347202020FF082743-if00 -> ../../ttyACM0
+15:09:27.667 > STARVE?
+
+=== 2026-11-02 15:09:31 (controller clock)
+$ ssh <controller> 'cd dcmt-bench && venv/bin/python dcmt_bench.py ser READ "STARVE?" 2>&1 | tail -8'
+15:09:33.588 > READ
+15:09:33.938 > STARVE?
+
+=== 2026-11-02 15:09:48 (controller clock)
+$ ssh <controller> 'cd dcmt-bench && venv/bin/python dcmt_bench.py prep && sleep 2 && venv/bin/python dcmt_bench.py ser READ "STARVE?" 2>&1 | tail -8; venv/bin/python dcmt_bench.py state'
+15:09:49.645 /dev/ttyACM0: hupcl off
+15:09:52.096 > READ
+15:09:52.296 < Mode:OPEN, M1PWM:0, M2PWM:0, M1POS_SP:0, M2POS_SP:0, M1POS:0, M2POS:0, M1SPD_SP:0, M2SPD_SP:0, M1SPD:0, M2SPD:0, B1:0, B2:0, ESTOP:0, WDOG:off, WDTRIP:0/0, FAULT:0x0
+15:09:52.446 > STARVE?
+15:09:52.647 < STARVE: none recorded
+15:09:52.960 state mode=0 m1_pwm=0 m2_pwm=0 sp=-32768,-32768 pos=0,0 spd=-32768,-32768 brakes=0b00 estop=0 estop_count=0
+
+=== 2026-11-02 15:10:00 (controller clock)
+$ ssh <controller> 'cd dcmt-bench && (timeout 150 cat /dev/ttyACM0 > ser-repro.log 2>&1 &) ; B="venv/bin/python -u dcmt_bench.py" && $B brake 1 1 && $B mode 1 && $B sp -30000 0 && $B brake 0 1 && sleep 12; $B state; $B brake 1 1; $B wdl 1000 0 && $B mode 2 && $B sp5 2 120 0 && $B brake 0 1 && $B speedlog 1 60 120 | awk "NR<=3 || NR%20==3 || /failed|faults|summary|mean|within/"; $B brake 1 1; $B wd 0; $B wdog; $B faults; $B state'
+15:10:01.845 sent 0x02 0101 -> ack Ack(counter=1, opcode=2, status=1, reason=0)
+15:10:02.163 sent 0x03 01 -> ack Ack(counter=2, opcode=3, status=1, reason=0)
+15:10:02.482 sent 0x04 d08a0000 -> ack Ack(counter=3, opcode=4, status=1, reason=0)
+15:10:02.803 sent 0x02 0001 -> ack Ack(counter=4, opcode=2, status=1, reason=0)
+15:10:15.166 state mode=1 m1_pwm=0 m2_pwm=0 sp=-30000,0 pos=-30008,0 spd=-32768,-32768 brakes=0b10 estop=0 estop_count=0
+15:10:15.486 sent 0x02 0101 -> ack Ack(counter=5, opcode=2, status=1, reason=0)
+15:10:15.804 sent 0x7E e80300 -> ack Ack(counter=6, opcode=126, status=1, reason=0)
+15:10:16.124 sent 0x03 02 -> ack Ack(counter=7, opcode=3, status=1, reason=0)
+15:10:16.445 sent 0x04 0278000000 -> ack Ack(counter=8, opcode=4, status=1, reason=0)
+15:10:16.766 sent 0x02 0001 -> ack Ack(counter=9, opcode=2, status=1, reason=0)
+15:10:17.057 speedlog motor 1 60 s, CPR 798, target 120 RPM
+stamp t pos rpm200 rpm1s spd pwm brakes estop
+15:10:17.075   0.02 -29777 - - 75 48 0b10 0
+15:10:19.075   2.02 -27580 85.7 85.7 105 52 0b10 0
+15:10:21.075   4.02 -25103 98.9 97.1 105 54 0b10 0
+15:10:23.075   6.02 -22313 109.4 108.0 105 63 0b10 0
+15:10:25.075   8.02 -19295 117.7 115.5 105 67 0b10 0
+15:10:27.075  10.02 -16007 127.8 126.5 135 71 0b10 0
+15:10:29.082  12.02 -12480 134.2 133.8 135 76 0b10 0
+15:10:31.075  14.02 -8752 144.4 142.0 150 79 0b10 0
+15:10:33.075  16.02 -4887 143.7 144.2 150 74 0b10 0
+15:10:35.075  18.02 -1301 126.3 128.5 120 64 0b10 0
+15:10:37.075  20.02 1941 121.4 121.8 120 61 0b10 0
+15:10:39.075  22.02 5142 119.5 120.1 120 69 0b10 0
+15:10:41.075  24.02 8348 121.8 120.7 120 65 0b10 0
+15:10:43.075  26.02 11088 86.8 86.6 90 38 0b10 0
+15:10:45.075  28.02 13490 94.3 93.1 90 55 0b10 0
+15:10:47.075  30.02 16147 105.2 101.8 90 60 0b10 0
+15:10:49.075  32.02 19076 112.8 112.3 120 63 0b10 0
+15:10:51.075  34.02 22232 123.7 120.7 135 68 0b10 0
+15:10:53.075  36.02 25623 127.1 129.1 135 74 0b10 0
+15:10:55.075  38.02 29258 140.2 139.8 150 74 0b10 0
+15:10:57.075  40.02 32767 sat sat 135 83 0b10 0
+15:10:59.075  42.02 32767 sat sat 120 68 0b10 0
+15:11:01.075  44.02 32767 sat sat 135 64 0b10 0
+15:11:03.075  46.02 32767 sat sat 120 67 0b10 0
+15:11:05.075  48.02 32767 sat sat 120 67 0b10 0
+15:11:07.075  50.02 32767 sat sat 90 51 0b10 0
+15:11:09.075  52.02 32767 sat sat 105 56 0b10 0
+15:11:11.075  54.02 32767 sat sat 120 61 0b10 0
+15:11:13.092  56.03 32767 sat sat 120 64 0b10 0
+15:11:15.075  58.02 32767 sat sat 135 70 0b10 0
+15:11:17.075 faults 0x00 none
+15:11:17.075 summary: 600 polls, 0 failed
+  first within 5 % of 120 (200 ms RPM): t=6.92 s
+  first within 5 % of 120 (1 s RPM): t=7.42 s
+  peak 1 s mean: 146.4 RPM at t=15.02 s
+  mean over the last 5 s: none (position saturated at +-32767)
+15:11:17.397 sent 0x02 0101 -> ack Ack(counter=10, opcode=2, status=1, reason=0)
+15:11:17.716 sent 0x7E 0000 -> ack Ack(counter=11, opcode=126, status=1, reason=0)
+15:11:18.024 wdog [armed][timeout_ms][tripped][trips] 0000000000
+15:11:18.332 faults 0x00 none
+15:11:18.686 state mode=2 m1_pwm=0 m2_pwm=0 sp=120,0 pos=32767,0 spd=0,0 brakes=0b11 estop=0 estop_count=0
+
+=== 2026-11-02 15:12:54 (controller clock)
+$ ssh <controller> 'cd dcmt-bench && (timeout 150 cat /dev/ttyACM0 >> ser-repro.log 2>&1 &) ; B="venv/bin/python -u dcmt_bench.py" && $B brake 1 1 && $B mode 1 && $B sp -30000 0 && $B brake 0 1 && sleep 15; $B state; $B brake 1 1; $B wdl 1000 0 && $B mode 2 && $B sp5 2 120 0 && $B brake 0 1 && $B speedlog 1 60 120 | awk "NR<=2 || NR%50==3 || /failed|faults|summary|peak/"; $B brake 1 1; $B wd 0; $B wdog; $B faults'
+15:12:55.805 sent 0x02 0101 -> ack Ack(counter=12, opcode=2, status=1, reason=0)
+15:12:56.125 sent 0x03 01 -> ack Ack(counter=13, opcode=3, status=1, reason=0)
+15:12:56.445 sent 0x04 d08a0000 -> ack Ack(counter=14, opcode=4, status=1, reason=0)
+15:12:56.782 sent 0x02 0001 -> ack Ack(counter=15, opcode=2, status=1, reason=0)
+15:13:12.156 state mode=1 m1_pwm=-150 m2_pwm=0 sp=-30000,0 pos=3255,0 spd=-32768,-32768 brakes=0b10 estop=0 estop_count=0
+15:13:12.475 sent 0x02 0101 -> ack Ack(counter=16, opcode=2, status=1, reason=0)
+15:13:12.801 sent 0x7E e80300 -> ack Ack(counter=17, opcode=126, status=1, reason=0)
+15:13:13.120 sent 0x03 02 -> ack Ack(counter=18, opcode=3, status=1, reason=0)
+15:13:13.442 sent 0x04 0278000000 -> ack Ack(counter=19, opcode=4, status=1, reason=0)
+15:13:13.763 sent 0x02 0001 -> ack Ack(counter=20, opcode=2, status=1, reason=0)
+15:13:14.066 speedlog motor 1 60 s, CPR 798, target 120 RPM
+stamp t pos rpm200 rpm1s spd pwm brakes estop
+15:13:14.084   0.02 2167 - - 75 50 0b10 0
+15:13:16.945 poll failed: OSError(5, 'Input/output error')
+15:13:16.946 poll failed: OSError(5, 'Input/output error')
+15:13:16.947 poll failed: OSError(5, 'Input/output error')
+15:13:16.948 poll failed: OSError(5, 'Input/output error')
+15:13:16.949 poll failed: OSError(5, 'Input/output error')
+15:13:16.950 poll failed: OSError(5, 'Input/output error')
+15:13:16.951 poll failed: OSError(5, 'Input/output error')
+15:13:16.952 poll failed: OSError(5, 'Input/output error')
+15:13:16.953 poll failed: OSError(5, 'Input/output error')
+15:13:16.953 poll failed: OSError(5, 'Input/output error')
+15:13:16.954 poll failed: OSError(5, 'Input/output error')
+15:13:16.955 poll failed: OSError(5, 'Input/output error')
+15:13:16.967 poll failed: OSError(5, 'Input/output error')
+15:13:19.084   5.02 0 0.0 0.0 - 0 0b00 0
+15:13:24.084  10.02 0 0.0 0.0 - 0 0b00 0
+15:13:29.086  15.02 0 0.0 0.0 - 0 0b00 0
+15:13:34.084  20.02 0 0.0 0.0 - 0 0b00 0
+15:13:39.084  25.02 0 0.0 0.0 - 0 0b00 0
+15:13:44.084  30.02 0 0.0 0.0 - 0 0b00 0
+15:13:49.084  35.02 0 0.0 0.0 - 0 0b00 0
+15:13:54.084  40.02 0 0.0 0.0 - 0 0b00 0
+15:13:59.084  45.02 0 0.0 0.0 - 0 0b00 0
+15:14:04.084  50.02 0 0.0 0.0 - 0 0b00 0
+15:14:09.084  55.02 0 0.0 0.0 - 0 0b00 0
+15:14:14.084 faults 0x00 none
+15:14:14.084 summary: 587 polls, 13 failed
+  peak 1 s mean: -210.4 RPM at t=3.02 s
+15:14:14.452 sent 0x02 0101 -> ack Ack(counter=1, opcode=2, status=1, reason=0)
+15:14:14.772 sent 0x7E 0000 -> ack Ack(counter=2, opcode=126, status=1, reason=0)
+15:14:15.082 wdog [armed][timeout_ms][tripped][trips] 0000000000
+15:14:15.391 faults 0x00 none
+
+=== 2026-11-02 15:14:27 (controller clock)
+$ ssh <controller> 'cd dcmt-bench && cat ser-repro.log | tr -d "\r" | grep -v "^$" | tail -20; venv/bin/python dcmt_bench.py ser "STARVE?" 2>&1 | tail -2'
+15:14:28.334 > STARVE?
+15:14:28.535 < STARVE: count 1 SREG 0x82 CPUINT.STATUS 0x00 TWI0.SSTATUS 0xBB TWI0.SCTRLA 0xE1 TWI0.MSTATUS 0x03 TCB3.INTCTRL 0x01 TCB3.INTFLAGS 0x01 RSTFR 0x08
+
+=== 2026-11-02 15:18:34 (controller clock)
+$ ssh <controller> 'md5sum dcmt-bench/dcmt_bench.py; cd dcmt-bench && venv/bin/python -m py_compile dcmt_bench.py && echo ok && venv/bin/python dcmt_bench.py state && venv/bin/python dcmt_bench.py ser "STARVE?" | tail -1'
+73931ae3657be98270fa1b95ad293f0b  dcmt-bench/dcmt_bench.py
+ok
+15:18:38.361 state mode=0 m1_pwm=0 m2_pwm=0 sp=-32768,-32768 pos=0,0 spd=-32768,-32768 brakes=0b11 estop=0 estop_count=0
+15:18:39.009 < STARVE: count 1 SREG 0x82 CPUINT.STATUS 0x00 TWI0.SSTATUS 0xBB TWI0.SCTRLA 0xE1 TWI0.MSTATUS 0x03 TCB3.INTCTRL 0x01 TCB3.INTFLAGS 0x01 RSTFR 0x08
+
+=== 2026-11-02 15:51:48 (controller clock)
+$ ssh <controller> 'cd dcmt-bench && sh twi_trial.sh 5'
+(exit code 1)
+=== trial 1
+15:51:52.460 sent 0x02 0101 -> ack Ack(counter=3, opcode=2, status=1, reason=0)
+15:51:52.488 sent 0x03 01 -> ack Ack(counter=4, opcode=3, status=1, reason=0)
+15:51:52.517 sent 0x04 00000000 -> ack Ack(counter=5, opcode=4, status=1, reason=0)
+15:51:52.546 sent 0x02 0000 -> ack Ack(counter=6, opcode=2, status=1, reason=0)
+15:51:52.592 sent 0x02 0101 -> ack Ack(counter=7, opcode=2, status=1, reason=0)
+15:51:52.592 home (0, 0): reached after 0.0 s, pos 0,0
+15:51:55.290 wdog [armed][timeout_ms][tripped][trips] 01e8030000
+15:51:55.612 sent 0x03 02 -> ack Ack(counter=12, opcode=3, status=1, reason=0)
+15:51:55.934 sent 0x04 0278000000 -> ack Ack(counter=13, opcode=4, status=1, reason=0)
+1  peak 1 s mean: 115.3 RPM at t=7.92 s
+1 summary: 80 polls, 0 failed
+15:52:05.199 wdog [armed][timeout_ms][tripped][trips] 0000000000
+15:52:05.849 < STARVE: count 1 SREG 0x82 CPUINT.STATUS 0x00 TWI0.SSTATUS 0xBB TWI0.SCTRLA 0xE1 TWI0.MSTATUS 0x03 TCB3.INTCTRL 0x01 TCB3.INTFLAGS 0x01 RSTFR 0x08
+=== trial 2
+15:52:06.177 sent 0x02 0101 -> ack Ack(counter=16, opcode=2, status=1, reason=0)
+15:52:06.206 sent 0x03 01 -> ack Ack(counter=17, opcode=3, status=1, reason=0)
+15:52:06.235 sent 0x04 00000000 -> ack Ack(counter=18, opcode=4, status=1, reason=0)
+15:52:06.263 sent 0x02 0000 -> ack Ack(counter=19, opcode=2, status=1, reason=0)
+15:52:09.192 sent 0x02 0101 -> ack Ack(counter=20, opcode=2, status=1, reason=0)
+15:52:09.193 home (0, 0): reached after 2.9 s, pos -11,0
+15:52:11.935 wdog [armed][timeout_ms][tripped][trips] 01e8030000
+15:52:12.257 sent 0x03 02 -> ack Ack(counter=25, opcode=3, status=1, reason=0)
+15:52:12.578 sent 0x04 0278000000 -> ack Ack(counter=26, opcode=4, status=1, reason=0)
+1  peak 1 s mean: 117.1 RPM at t=7.92 s
+1 summary: 80 polls, 0 failed
+15:52:21.886 wdog [armed][timeout_ms][tripped][trips] 0000000000
+15:52:22.536 < STARVE: count 1 SREG 0x82 CPUINT.STATUS 0x00 TWI0.SSTATUS 0xBB TWI0.SCTRLA 0xE1 TWI0.MSTATUS 0x03 TCB3.INTCTRL 0x01 TCB3.INTFLAGS 0x01 RSTFR 0x08
+=== trial 3
+15:52:22.865 sent 0x02 0101 -> ack Ack(counter=29, opcode=2, status=1, reason=0)
+15:52:22.894 sent 0x03 01 -> ack Ack(counter=30, opcode=3, status=1, reason=0)
+15:52:22.923 sent 0x04 00000000 -> ack Ack(counter=31, opcode=4, status=1, reason=0)
+15:52:22.951 sent 0x02 0000 -> ack Ack(counter=32, opcode=2, status=1, reason=0)
+15:52:26.418 sent 0x02 0101 -> ack Ack(counter=33, opcode=2, status=1, reason=0)
+15:52:26.419 home (0, 0): reached after 3.5 s, pos -8,0
+15:52:29.163 wdog [armed][timeout_ms][tripped][trips] 01e8030000
+15:52:29.485 sent 0x03 02 -> ack Ack(counter=38, opcode=3, status=1, reason=0)
+15:52:29.807 sent 0x04 0278000000 -> ack Ack(counter=39, opcode=4, status=1, reason=0)
+1  peak 1 s mean: 117.1 RPM at t=7.92 s
+1 summary: 80 polls, 0 failed
+15:52:39.075 wdog [armed][timeout_ms][tripped][trips] 0000000000
+15:52:39.725 < STARVE: count 1 SREG 0x82 CPUINT.STATUS 0x00 TWI0.SSTATUS 0xBB TWI0.SCTRLA 0xE1 TWI0.MSTATUS 0x03 TCB3.INTCTRL 0x01 TCB3.INTFLAGS 0x01 RSTFR 0x08
+=== trial 4
+15:52:40.079 sent 0x02 0101 -> ack Ack(counter=42, opcode=2, status=1, reason=0)
+15:52:40.107 sent 0x03 01 -> ack Ack(counter=43, opcode=3, status=1, reason=0)
+15:52:40.136 sent 0x04 00000000 -> ack Ack(counter=44, opcode=4, status=1, reason=0)
+15:52:40.165 sent 0x02 0000 -> ack Ack(counter=45, opcode=2, status=1, reason=0)
+15:52:43.532 sent 0x02 0101 -> ack Ack(counter=46, opcode=2, status=1, reason=0)
+15:52:43.532 home (0, 0): reached after 3.4 s, pos -9,0
+15:52:46.271 wdog [armed][timeout_ms][tripped][trips] 01e8030000
+15:52:46.593 sent 0x03 02 -> ack Ack(counter=51, opcode=3, status=1, reason=0)
+15:52:46.916 sent 0x04 0278000000 -> ack Ack(counter=52, opcode=4, status=1, reason=0)
+1  peak 1 s mean: 116.6 RPM at t=7.92 s
+1 summary: 80 polls, 0 failed
+15:52:56.227 wdog [armed][timeout_ms][tripped][trips] 0000000000
+15:52:56.878 < STARVE: count 1 SREG 0x82 CPUINT.STATUS 0x00 TWI0.SSTATUS 0xBB TWI0.SCTRLA 0xE1 TWI0.MSTATUS 0x03 TCB3.INTCTRL 0x01 TCB3.INTFLAGS 0x01 RSTFR 0x08
+=== trial 5
+15:52:57.206 sent 0x02 0101 -> ack Ack(counter=55, opcode=2, status=1, reason=0)
+15:52:57.235 sent 0x03 01 -> ack Ack(counter=56, opcode=3, status=1, reason=0)
+15:52:57.264 sent 0x04 00000000 -> ack Ack(counter=57, opcode=4, status=1, reason=0)
+15:52:57.292 sent 0x02 0000 -> ack Ack(counter=58, opcode=2, status=1, reason=0)
+15:52:59.558 sent 0x02 0101 -> ack Ack(counter=59, opcode=2, status=1, reason=0)
+Traceback (most recent call last):
+  File "/home/<user>/dcmt-bench/dcmt_bench.py", line 448, in <module>
+    main()
+    ~~~~^^
+  File "/home/<user>/dcmt-bench/dcmt_bench.py", line 203, in main
+    home(c, int(args[0]), int(args[1]))
+    ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/<user>/dcmt-bench/dcmt_bench.py", line 278, in home
+    c.query(ADDR, type_id=d.DCMT_TYPE_ID, opcode=d.DCMT_OP_GET_STATE).data
+    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/<user>/dcmt-bench/venv/lib/python3.13/site-packages/crumbs_i2c/_controller.py", line 288, in query
+    return self.read_expect(address, type_id=type_id, opcode=opcode)
+           ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/<user>/dcmt-bench/venv/lib/python3.13/site-packages/crumbs_i2c/_controller.py", line 270, in read_expect
+    reply = self.read(address)
+  File "/home/<user>/dcmt-bench/venv/lib/python3.13/site-packages/crumbs_i2c/_controller.py", line 265, in read
+    return decode(raw[: frame_length(raw)])
+  File "/home/<user>/dcmt-bench/venv/lib/python3.13/site-packages/crumbs_i2c/_frame.py", line 109, in decode
+    raise FrameError(f"CRC 0x{frame[-1]:02X} does not match 0x{expected:02X}", crc=True)
+crumbs_i2c._frame.FrameError: CRC 0xE6 does not match 0x39
+home failed, stopping
+
+=== 2026-11-02 15:53:25 (controller clock)
+$ ssh <controller> 'md5sum dcmt-bench/dcmt_bench.py; cd dcmt-bench && venv/bin/python dcmt_bench.py brake 1 1; venv/bin/python dcmt_bench.py state'
+fbae80ff00324995e804f50da05dea7d  dcmt-bench/dcmt_bench.py
+15:53:28.415 sent 0x02 0101 -> ack Ack(counter=62, opcode=2, status=1, reason=0)
+15:53:28.726 state mode=1 m1_pwm=0 m2_pwm=0 sp=0,0 pos=2988,0 spd=-32768,-32768 brakes=0b11 estop=0 estop_count=0
+
+=== 2026-11-02 18:19:55 (controller clock)
+$ ssh <controller> 'date +%H:%M:%S; cd rlht-bench && ../dcmt-bench/venv/bin/python replylog.py 21 2 90 2>&1 | tail -25; cd ../dcmt-bench && venv/bin/python dcmt_bench.py ser "STARVE?" | tail -1; venv/bin/python dcmt_bench.py state'
+(ran in the background; its output is at the end of this file)
+
+=== 2026-11-02 18:24:20 (controller clock)
+$ ssh <controller> 'ls /dev/ttyACM0 && cd dcmt-bench && venv/bin/python dcmt_bench.py prep >/dev/null; for c in version caps faults; do venv/bin/python dcmt_bench.py $c | tail -1; done; venv/bin/python dcmt_bench.py ser "STARVE?" | tail -1'
+/dev/ttyACM0
+18:24:21.136 Version(crumbs_version=1700, major=2, minor=0, patch=0)
+18:24:21.462 caps 0103ff0f0000
+18:24:21.773 faults 0x00 none
+18:24:22.222 > STARVE?
+
+=== 2026-11-02 18:24:25 (controller clock)
+$ ssh <controller> 'cd dcmt-bench && sleep 1; venv/bin/python dcmt_bench.py ser READ "STARVE?" | tail -3'
+18:24:27.836 < Mode:OPEN, M1PWM:0, M2PWM:0, M1POS_SP:0, M2POS_SP:0, M1POS:0, M2POS:0, M1SPD_SP:0, M2SPD_SP:0, M1SPD:0, M2SPD:0, B1:0, B2:0, ESTOP:0, WDOG:off, WDTRIP:0/0, FAULT:0x0
+18:24:27.986 > STARVE?
+18:24:28.186 < STARVE: none recorded
+
+=== 2026-11-02 18:24:32 (controller clock)
+$ ssh <controller> 'date +%H:%M:%S; cd rlht-bench && ../dcmt-bench/venv/bin/python replylog.py 21 2 90 2>&1 | tail -25; cd ../dcmt-bench && venv/bin/python dcmt_bench.py ser READ "STARVE?" | tail -2; venv/bin/python dcmt_bench.py state'
+(ran in the background; its output is at the end of this file)
+
+=== 2026-11-02 18:34:24 (controller clock)
+$ ssh <controller> 'cd dcmt-bench && venv/bin/python dcmt_bench.py state; venv/bin/python dcmt_bench.py faults'
+18:34:25.529 state mode=0 m1_pwm=0 m2_pwm=0 sp=-32768,-32768 pos=0,0 spd=-32768,-32768 brakes=0b00 estop=0 estop_count=0
+18:34:25.891 faults 0x00 none
+
+=== 2026-11-02 18:36:37 (controller clock)
+$ ssh <controller> 'cd dcmt-bench && B="venv/bin/python -u dcmt_bench.py" && $B state | tail -1 && $B wdl 1000 0 >/dev/null && $B home 7980 0 | tail -1; $B wd 0 >/dev/null; $B state; $B faults'
+18:36:38.537 state mode=0 m1_pwm=0 m2_pwm=0 sp=-32768,-32768 pos=0,0 spd=-32768,-32768 brakes=0b00 estop=0 estop_count=0
+18:36:41.852 home (7980, 0): reached after 2.6 s, pos 7988,0
+18:36:42.486 state mode=1 m1_pwm=0 m2_pwm=0 sp=7980,0 pos=7988,0 spd=-32768,-32768 brakes=0b11 estop=0 estop_count=0
+18:36:42.797 faults 0x00 none
+
+=== 2026-11-02 18:37:21 (controller clock)
+$ ssh <controller> 'cd dcmt-bench && B="venv/bin/python -u dcmt_bench.py" && $B wdl 1000 0 >/dev/null && $B speedto 1 7980 10 | grep -E "speedto|crossed|final"; $B brake 1 1 >/dev/null; $B wd 0 >/dev/null; $B wdog; $B faults; $B state'
+18:37:23.171 speedto motor 1: start 7988, stop at 15968, 10 RPM
+18:38:23.570 crossed at 15976 after 60.4 s
+18:38:24.645 final 15978: moved 7990 counts
+18:38:25.639 wdog [armed][timeout_ms][tripped][trips] 0000000000
+18:38:25.949 faults 0x00 none
+18:38:26.259 state mode=2 m1_pwm=0 m2_pwm=0 sp=0,0 pos=15978,0 spd=0,0 brakes=0b11 estop=0 estop_count=0
+
+=== 2026-11-02 18:39:29 (controller clock)
+$ ssh <controller> 'cd dcmt-bench && B="venv/bin/python -u dcmt_bench.py" && $B wdl 1000 0 >/dev/null && $B home -16000 0 | tail -1; $B wd 0 >/dev/null; $B faults'
+18:39:39.016 home (-16000, 0): reached after 8.7 s, pos -16008,0
+18:39:39.689 faults 0x00 none
+
+=== 2026-11-02 18:19:57 (controller clock): collision injection, #107 guard build (last 25 lines of replylog.py, then STARVE? and state)
+18:21:17.725 ReplyMismatch('expected type 0x02 opcode 0x80, got type 0x00 opcode 0x00') 00000000000000000000000000000000000000000000000000000000000000
+18:21:17.842 ReplyMismatch('expected type 0x02 opcode 0x80, got type 0x00 opcode 0x00') 00000000000000000000000000000000000000000000000000000000000000
+18:21:17.960 ReplyMismatch('expected type 0x02 opcode 0x80, got type 0x00 opcode 0x00') 00000000000000000000000000000000000000000000000000000000000000
+18:21:20.306 ReplyMismatch('expected type 0x02 opcode 0x80, got type 0x00 opcode 0x00') 00000000000000000000000000000000000000000000000000000000000000
+18:21:20.423 ReplyMismatch('expected type 0x02 opcode 0x80, got type 0x00 opcode 0x00') 00000000000000000000000000000000000000000000000000000000000000
+18:21:20.658 ReplyMismatch('expected type 0x02 opcode 0x80, got type 0x00 opcode 0x00') 00000000000000000000000000000000000000000000000000000000000000
+18:21:20.775 FrameError('the header declares 255 payload bytes, more than 27') 0007ffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+18:21:20.892 ReplyMismatch('expected type 0x02 opcode 0x80, got type 0x00 opcode 0x00') 00000000000000000000000000000000000000000000000000000000000000
+18:21:21.010 ReplyMismatch('expected type 0x02 opcode 0x80, got type 0x00 opcode 0x00') 00000000000000000000000000000000000000000000000000000000000000
+18:21:21.596 ReplyMismatch('expected type 0x02 opcode 0x80, got type 0x00 opcode 0x00') 00000000000000000000000000000000000000000000000000000000000000
+18:21:21.713 ReplyMismatch('expected type 0x02 opcode 0x80, got type 0x00 opcode 0x00') 00000000000000000000000000000000000000000000000000000000000000
+18:21:21.831 ReplyMismatch('expected type 0x02 opcode 0x80, got type 0x00 opcode 0x00') 00000000000000000000000000000000000000000000000000000000000000
+18:21:23.239 ReplyMismatch('expected type 0x02 opcode 0x80, got type 0x00 opcode 0x00') 00000000000000000000000000000000000000000000000000000000000000
+18:21:23.357 ReplyMismatch('expected type 0x02 opcode 0x80, got type 0x00 opcode 0x00') 00000000000000000000000000000000000000000000000000000000000000
+18:21:23.474 ReplyMismatch('expected type 0x02 opcode 0x80, got type 0x00 opcode 0x00') 00000000000000000000000000000000000000000000000000000000000000
+18:21:23.592 ReplyMismatch('expected type 0x02 opcode 0x80, got type 0x00 opcode 0x00') 00000000000000000000000000000000000000000000000000000000000000
+18:21:23.709 ReplyMismatch('expected type 0x02 opcode 0x80, got type 0x00 opcode 0x00') 00000000000000000000000000000000000000000000000000000000000000
+18:21:23.838 ReplyMismatch('expected type 0x02 opcode 0x80, got type 0x00 opcode 0x00') 00000000000000000000000000000000000000000000000000000000000000
+18:21:25.665 FrameError('CRC 0x00 does not match 0xD6') 02000000000000000000000000000000000000000000000000000000000000
+18:21:25.783 ReplyMismatch('expected type 0x02 opcode 0x80, got type 0x00 opcode 0x00') 00000000000000000000000000000000000000000000000000000000000000
+18:21:25.900 ReplyMismatch('expected type 0x02 opcode 0x80, got type 0x00 opcode 0x00') 00000000000000000000000000000000000000000000000000000000000000
+18:21:26.018 ReplyMismatch('expected type 0x02 opcode 0x80, got type 0x00 opcode 0x00') 00000000000000000000000000000000000000000000000000000000000000
+18:21:26.140 ReplyMismatch('expected type 0x02 opcode 0x80, got type 0x00 opcode 0x00') 00000000000000000000000000000000000000000000000000000000000000
+18:21:26.257 ReplyMismatch('expected type 0x02 opcode 0x80, got type 0x00 opcode 0x00') 00000000000000000000000000000000000000000000000000000000000000
+polls=748 failed=241 ff_passed=0
+18:21:27.868 < STARVE: count 6 SREG 0x82 CPUINT.STATUS 0x00 TWI0.SSTATUS 0xAB TWI0.SCTRLA 0xE1 TWI0.MSTATUS 0x03 TCB3.INTCTRL 0x01 TCB3.INTFLAGS 0x01 RSTFR 0x08
+18:21:28.183 state mode=0 m1_pwm=0 m2_pwm=0 sp=-32768,-32768 pos=0,0 spd=-32768,-32768 brakes=0b00 estop=0 estop_count=0
+
+
+=== 2026-11-02 18:24:33 (controller clock): collision injection, 29b9bdf (last 25 lines of replylog.py, then STARVE? and state)
+18:25:51.619 ReplyMismatch('expected type 0x02 opcode 0x80, got type 0x00 opcode 0x00') 00000000000000000000000000000000000000000000000000000000000000
+18:25:51.737 ReplyMismatch('expected type 0x02 opcode 0x80, got type 0x00 opcode 0x00') 00000000000000000000000000000000000000000000000000000000000000
+18:25:51.854 ReplyMismatch('expected type 0x02 opcode 0x80, got type 0x00 opcode 0x00') 00000000000000000000000000000000000000000000000000000000000000
+18:25:56.565 ReplyMismatch('expected type 0x02 opcode 0x80, got type 0x00 opcode 0x00') 00000000000000000000000000000000000000000000000000000000000000
+18:25:56.682 ReplyMismatch('expected type 0x02 opcode 0x80, got type 0x00 opcode 0x00') 00000000000000000000000000000000000000000000000000000000000000
+18:25:56.800 ReplyMismatch('expected type 0x02 opcode 0x80, got type 0x00 opcode 0x00') 00000000000000000000000000000000000000000000000000000000000000
+18:25:56.917 ReplyMismatch('expected type 0x02 opcode 0x80, got type 0x00 opcode 0x00') 00000000000000000000000000000000000000000000000000000000000000
+18:25:57.036 ReplyMismatch('expected type 0x02 opcode 0x80, got type 0x00 opcode 0x00') 00000000000000000000000000000000000000000000000000000000000000
+18:25:57.153 ReplyMismatch('expected type 0x02 opcode 0x80, got type 0x00 opcode 0x00') 00000000000000000000000000000000000000000000000000000000000000
+18:25:57.271 ReplyMismatch('expected type 0x02 opcode 0x80, got type 0x00 opcode 0x00') 00000000000000000000000000000000000000000000000000000000000000
+18:25:57.388 ReplyMismatch('expected type 0x02 opcode 0x80, got type 0x00 opcode 0x00') 00000000000000000000000000000000000000000000000000000000000000
+18:25:57.506 ReplyMismatch('expected type 0x02 opcode 0x80, got type 0x00 opcode 0x00') 00000000000000000000000000000000000000000000000000000000000000
+18:25:57.623 ReplyMismatch('expected type 0x02 opcode 0x80, got type 0x00 opcode 0x00') 00000000000000000000000000000000000000000000000000000000000000
+18:25:57.740 ReplyMismatch('expected type 0x02 opcode 0x80, got type 0x00 opcode 0x00') 00000000000000000000000000000000000000000000000000000000000000
+18:25:57.858 ReplyMismatch('expected type 0x02 opcode 0x80, got type 0x00 opcode 0x00') 00000000000000000000000000000000000000000000000000000000000000
+18:25:57.975 ReplyMismatch('expected type 0x02 opcode 0x80, got type 0x00 opcode 0x00') 00000000000000000000000000000000000000000000000000000000000000
+18:25:58.093 ReplyMismatch('expected type 0x02 opcode 0x80, got type 0x00 opcode 0x00') 00000000000000000000000000000000000000000000000000000000000000
+18:25:58.210 ReplyMismatch('expected type 0x02 opcode 0x80, got type 0x00 opcode 0x00') 00000000000000000000000000000000000000000000000000000000000000
+18:25:58.327 ReplyMismatch('expected type 0x02 opcode 0x80, got type 0x00 opcode 0x00') 00000000000000000000000000000000000000000000000000000000000000
+18:25:58.445 ReplyMismatch('expected type 0x02 opcode 0x80, got type 0x00 opcode 0x00') 00000000000000000000000000000000000000000000000000000000000000
+18:25:58.562 ReplyMismatch('expected type 0x02 opcode 0x80, got type 0x00 opcode 0x00') 00000000000000000000000000000000000000000000000000000000000000
+18:25:58.680 ReplyMismatch('expected type 0x02 opcode 0x80, got type 0x00 opcode 0x00') 00000000000000000000000000000000000000000000000000000000000000
+18:25:58.797 ReplyMismatch('expected type 0x02 opcode 0x80, got type 0x00 opcode 0x00') 00000000000000000000000000000000000000000000000000000000000000
+18:25:58.914 ReplyMismatch('expected type 0x02 opcode 0x80, got type 0x00 opcode 0x00') 00000000000000000000000000000000000000000000000000000000000000
+polls=766 failed=214 ff_passed=0
+18:26:04.428 > STARVE?
+18:26:04.628 < STARVE: none recorded
+18:26:04.943 state mode=0 m1_pwm=0 m2_pwm=0 sp=-32768,-32768 pos=0,0 spd=-32768,-32768 brakes=0b00 estop=0 estop_count=0
+
