@@ -21,11 +21,22 @@ inline long host_stall_min_counts[2] = {-1, -1};
 // The encoder count each servo's getActualPosition() returns; a test sets it.
 inline long host_servo_actual[2] = {0, 0};
 
+class DCMotorServo;
+// Each servo by index, so a test can call the encoder callbacks the firmware
+// handed it (readEncoder()/writeEncoder()), which the stub doesn't otherwise
+// use: getActualPosition() returns host_servo_actual instead.
+inline DCMotorServo *host_servo[2] = {nullptr, nullptr};
+
 class DCMotorServo
 {
 public:
-    DCMotorServo(MotorWriteFunc w, MotorBrakeFunc b, EncoderReadFunc, EncoderWriteFunc)
-        : index(count() < 2 ? count()++ : 1), write_(w), brake_(b) {}
+    DCMotorServo(MotorWriteFunc w, MotorBrakeFunc b, EncoderReadFunc r, EncoderWriteFunc e)
+        : index(count() < 2 ? count()++ : 1), write_(w), brake_(b), read_(r), writeEnc_(e)
+    {
+        host_servo[index] = this;
+    }
+    long readEncoder() { return read_(); }
+    void writeEncoder(long p) { writeEnc_(p); }
     void run() { write_(host_servo_output[index]); }
     void stop() { brake_(); }
     void moveTo(long p) { target = p; }
@@ -51,4 +62,6 @@ private:
     static int &count() { static int n = 0; return n; }
     MotorWriteFunc write_;
     MotorBrakeFunc brake_;
+    EncoderReadFunc read_;
+    EncoderWriteFunc writeEnc_;
 };

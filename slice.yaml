@@ -97,6 +97,11 @@ firmware:
     - "gen2_nano"
     - "gen1_nanoevery"
     - "gen2_nanoevery"
+    # No encoder on either port: open loop only (firmware/README.md).
+    - "gen1_nano_noenc"
+    - "gen2_nano_noenc"
+    - "gen1_nanoevery_noenc"
+    - "gen2_nanoevery_noenc"
   lib_deps:
     - "cameronbrooks11/CRUMBS @ ^0.17.0"
     - "cameronbrooks11/bread-crumbs-contracts @ ^0.11.1"

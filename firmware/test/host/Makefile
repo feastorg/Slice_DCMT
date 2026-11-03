@@ -40,6 +40,15 @@ FLAGS_gen2_nano      := -DDCMT_HW_GEN=2 -D__AVR_ATmega328P__
 FLAGS_gen1_nanoevery := -DDCMT_HW_GEN=1 -D__AVR_ATmega4809__ -DARDUINO_ARCH_MEGAAVR
 FLAGS_gen2_nanoevery := -DDCMT_HW_GEN=2 -D__AVR_ATmega4809__ -DARDUINO_ARCH_MEGAAVR
 
+# The *_noenc envs: no encoder on either port, so open loop only. They run
+# test_noenc and the stub tests that don't use a closed loop.
+NOENC_ENVS := gen1_nano_noenc gen2_nano_noenc gen1_nanoevery_noenc gen2_nanoevery_noenc
+NOENC      := -DDCMT_PORT1_INPUT=DCMT_INPUT_NONE -DDCMT_PORT2_INPUT=DCMT_INPUT_NONE
+FLAGS_gen1_nano_noenc      := $(FLAGS_gen1_nano) $(NOENC)
+FLAGS_gen2_nano_noenc      := $(FLAGS_gen2_nano) $(NOENC)
+FLAGS_gen1_nanoevery_noenc := $(FLAGS_gen1_nanoevery) $(NOENC)
+FLAGS_gen2_nanoevery_noenc := $(FLAGS_gen2_nanoevery) $(NOENC)
+
 INCLUDES := -Istubs -I. -I$(FW)/include -I$(CRUMBS) -I$(CRUMBS)/crc -I$(CONTRACTS) -I$(CORE)
 FW_SRC   := $(wildcard $(FW)/src/*.cpp) $(wildcard $(CORE)/*.cpp)
 CRUMBS_SRC := $(CRUMBS)/core/crumbs_core.c $(CRUMBS)/crc/crumbs_crc.c $(CRUMBS)/crc/crc8_nibble.c
@@ -48,6 +57,8 @@ CRUMBS_OBJ := $(OUT)/crumbs_core.o $(OUT)/crumbs_crc.o $(OUT)/crc8_nibble.o
 # run once.
 SINGLE   := test_dispatch test_mode_pwm test_applied_pwm test_serial_burst test_max_lead test_estop_hold test_watchdog_trip test_serial_numbers test_setpoint_loop test_watchdog_lease test_stall_fault test_hold_brakes test_speed_freeze test_status_led_hold
 TESTS    := $(SINGLE) test_status_led
+NOENC_SINGLE := test_noenc test_dispatch test_serial_burst test_estop_hold test_watchdog_trip test_watchdog_lease test_hold_brakes test_status_led_hold
+NOENC_TESTS  := $(NOENC_SINGLE) test_status_led
 
 .PHONY: all test motor clean check-libdeps check-motor-libdeps FORCE
 all: test motor
@@ -85,14 +96,24 @@ $(OUT)/$(1)/$(2): $(2).cpp host.cpp host.h $(FW_SRC) $(wildcard $(FW)/include/*.
 	$(CXX) $(CXXFLAGS) $(FLAGS_$(1)) $(INCLUDES) $(2).cpp host.cpp $(FW_SRC) $(CRUMBS_OBJ) -o $$@
 endef
 $(foreach e,$(ENVS),$(foreach t,$(TESTS),$(eval $(call TEST_template,$(e),$(t)))))
+$(foreach e,$(NOENC_ENVS),$(foreach t,$(NOENC_TESTS),$(eval $(call TEST_template,$(e),$(t)))))
 
 BINS := $(foreach e,$(ENVS),$(foreach t,$(TESTS),$(OUT)/$(e)/$(t)))
+NOENC_BINS := $(foreach e,$(NOENC_ENVS),$(foreach t,$(NOENC_TESTS),$(OUT)/$(e)/$(t)))
 
 # Runs every binary, prints each result line, and fails if any test failed.
-test: $(BINS)
+test: $(BINS) $(NOENC_BINS)
 	@status=0; \
 	for e in $(ENVS); do \
 	  for t in $(SINGLE); do \
+	    echo "== $$e: $$t"; $(OUT)/$$e/$$t || status=1; \
+	  done; \
+	  for line in released held; do \
+	    echo "== $$e: test_status_led $$line"; $(OUT)/$$e/test_status_led $$line || status=1; \
+	  done; \
+	done; \
+	for e in $(NOENC_ENVS); do \
+	  for t in $(NOENC_SINGLE); do \
 	    echo "== $$e: $$t"; $(OUT)/$$e/$$t || status=1; \
 	  done; \
 	  for line in released held; do \
