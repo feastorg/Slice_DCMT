@@ -26,7 +26,7 @@ The gen1 silkscreen numbering sent the first test voltage to the wrong header (N
 | Motor 2 | connected, no encoder |
 | Controller | Raspberry Pi 4, I2C at 50 kHz, CRUMBS Python binding 0.16.2, through [`dcmt_bench.py`](assets/2026-11-05-analog-inputs/dcmt_bench.py) (md5 `fb17649b…`). It adds `inputs [N]`, which queries GET_INPUTS (0x81) and decodes the 10-byte reply itself, so the venv's contracts 0.11.0 is enough. Its volts assume a 5.000 V reference |
 | Power | backplane; the board's 5 V rail measured 5.0x V |
-| Sensor | turbidity probe on a DFRobot SEN0189 adapter, switch on `A`. Signal to terminal B, VCC to 5V, GND to GND (uwo-fast/turbidity-sensor `docs/hardware.md`) |
+| Sensor | a TST-10-type turbidity probe head in its stock housing, on a DFRobot SEN0189 adapter, mode switch on `A` (analog output). Adapter signal to terminal B, VCC to 5V, GND to GND. Results are for this head, housing and adapter only: a different adapter, a modified one or the head in another housing reads differently |
 
 ## Steps and Results
 
