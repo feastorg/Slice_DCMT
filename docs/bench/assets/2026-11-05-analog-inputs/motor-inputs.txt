@@ -1,0 +1,43 @@
+14:19:52.258 sent 0x7E e80300 -> ack Ack(counter=1, opcode=126, status=1, reason=0)
+14:19:52.572 sent 0x03 00 -> ack Ack(counter=2, opcode=3, status=1, reason=0)
+14:19:52.887 sent 0x01 00009600 -> ack Ack(counter=3, opcode=1, status=1, reason=0)
+14:19:53.201 sent 0x02 0100 -> ack Ack(counter=4, opcode=2, status=1, reason=0)
+run150 14:19:53.505 inputs valid=0x03 bits=10 p1a=0(0.000V) p1b=665(3.247V) p2a=- p2b=-
+run150 14:19:54.022 inputs valid=0x03 bits=10 p1a=0(0.000V) p1b=665(3.247V) p2a=- p2b=-
+run150 14:19:54.539 inputs valid=0x03 bits=10 p1a=0(0.000V) p1b=665(3.247V) p2a=- p2b=-
+run150 14:19:55.057 inputs valid=0x03 bits=10 p1a=0(0.000V) p1b=665(3.247V) p2a=- p2b=-
+run150 14:19:55.574 inputs valid=0x03 bits=10 p1a=0(0.000V) p1b=665(3.247V) p2a=- p2b=-
+run150 14:19:56.092 inputs valid=0x03 bits=10 p1a=0(0.000V) p1b=665(3.247V) p2a=- p2b=-
+run150 14:19:56.609 inputs valid=0x03 bits=10 p1a=0(0.000V) p1b=665(3.247V) p2a=- p2b=-
+run150 14:19:57.127 inputs valid=0x03 bits=10 p1a=0(0.000V) p1b=665(3.247V) p2a=- p2b=-
+run150 14:19:57.644 inputs valid=0x03 bits=10 p1a=0(0.000V) p1b=665(3.247V) p2a=- p2b=-
+run150 14:19:58.162 inputs valid=0x03 bits=10 p1a=0(0.000V) p1b=665(3.247V) p2a=- p2b=-
+run150 14:19:58.680 inputs valid=0x03 bits=10 p1a=0(0.000V) p1b=665(3.247V) p2a=- p2b=-
+run150 14:19:59.197 inputs valid=0x03 bits=10 p1a=0(0.000V) p1b=665(3.247V) p2a=- p2b=-
+run150 14:19:59.715 inputs valid=0x03 bits=10 p1a=0(0.000V) p1b=665(3.247V) p2a=- p2b=-
+run150 14:20:00.233 inputs valid=0x03 bits=10 p1a=0(0.000V) p1b=665(3.247V) p2a=- p2b=-
+run150 14:20:00.750 inputs valid=0x03 bits=10 p1a=0(0.000V) p1b=665(3.247V) p2a=- p2b=-
+run150 14:20:01.268 inputs valid=0x03 bits=10 p1a=0(0.000V) p1b=665(3.247V) p2a=- p2b=-
+run150 14:20:01.786 inputs valid=0x03 bits=10 p1a=0(0.000V) p1b=665(3.247V) p2a=- p2b=-
+run150 14:20:02.303 inputs valid=0x03 bits=10 p1a=0(0.000V) p1b=665(3.247V) p2a=- p2b=-
+run150 14:20:02.821 inputs valid=0x03 bits=10 p1a=0(0.000V) p1b=665(3.247V) p2a=- p2b=-
+run150 14:20:03.338 inputs valid=0x03 bits=10 p1a=0(0.000V) p1b=665(3.247V) p2a=- p2b=-
+14:20:03.688 sent 0x01 000001ff -> ack Ack(counter=5, opcode=1, status=1, reason=0)
+rev-255 14:20:03.992 inputs valid=0x03 bits=10 p1a=0(0.000V) p1b=665(3.247V) p2a=- p2b=-
+rev-255 14:20:04.509 inputs valid=0x03 bits=10 p1a=0(0.000V) p1b=665(3.247V) p2a=- p2b=-
+rev-255 14:20:05.026 inputs valid=0x03 bits=10 p1a=0(0.000V) p1b=665(3.247V) p2a=- p2b=-
+rev-255 14:20:05.544 inputs valid=0x03 bits=10 p1a=0(0.000V) p1b=665(3.247V) p2a=- p2b=-
+rev-255 14:20:06.061 inputs valid=0x03 bits=10 p1a=0(0.000V) p1b=665(3.247V) p2a=- p2b=-
+rev-255 14:20:06.579 inputs valid=0x03 bits=10 p1a=0(0.000V) p1b=665(3.247V) p2a=- p2b=-
+14:20:06.893 sent 0x01 0000ff00 -> ack Ack(counter=6, opcode=1, status=1, reason=0)
+rev+255 14:20:07.196 inputs valid=0x03 bits=10 p1a=0(0.000V) p1b=665(3.247V) p2a=- p2b=-
+rev+255 14:20:07.714 inputs valid=0x03 bits=10 p1a=0(0.000V) p1b=665(3.247V) p2a=- p2b=-
+rev+255 14:20:08.231 inputs valid=0x03 bits=10 p1a=0(0.000V) p1b=665(3.247V) p2a=- p2b=-
+rev+255 14:20:08.749 inputs valid=0x03 bits=10 p1a=0(0.000V) p1b=665(3.247V) p2a=- p2b=-
+rev+255 14:20:09.267 inputs valid=0x03 bits=10 p1a=0(0.000V) p1b=665(3.247V) p2a=- p2b=-
+rev+255 14:20:09.784 inputs valid=0x03 bits=10 p1a=0(0.000V) p1b=665(3.247V) p2a=- p2b=-
+14:20:10.143 sent 0x01 00000000 -> ack Ack(counter=7, opcode=1, status=1, reason=0)
+14:20:10.457 sent 0x02 0101 -> ack Ack(counter=8, opcode=2, status=1, reason=0)
+14:20:10.771 sent 0x7E 0000 -> ack Ack(counter=9, opcode=126, status=1, reason=0)
+14:20:11.074 state mode=0 m1_pwm=0 m2_pwm=0 sp=-32768,-32768 pos=0,0 spd=-32768,-32768 brakes=0b11 estop=0 estop_count=0
+14:20:11.377 wdog [armed][timeout_ms][tripped][trips] 0000000000

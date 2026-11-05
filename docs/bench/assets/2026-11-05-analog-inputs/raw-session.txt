@@ -1,0 +1,142 @@
+=== 2026-11-05 14:11:46 (controller clock)
+$ ssh <controller> 'cd dcmt-bench && for c in version caps state; do venv/bin/python dcmt_bench.py $c 2>&1 | tail -1; done; venv/bin/python dcmt_bench.py inputs 4 2>&1 | tail -4'
+14:11:47.102 Version(crumbs_version=1700, major=2, minor=0, patch=0)
+14:11:47.426 caps 0101e3150000
+14:11:47.732 state mode=0 m1_pwm=0 m2_pwm=0 sp=-32768,-32768 pos=0,0 spd=-32768,-32768 brakes=0b00 estop=0 estop_count=0
+14:11:48.039 inputs valid=0x03 bits=10 p1a=23(0.112V) p1b=23(0.112V) p2a=- p2b=-
+14:11:48.556 inputs valid=0x03 bits=10 p1a=25(0.122V) p1b=25(0.122V) p2a=- p2b=-
+14:11:49.073 inputs valid=0x03 bits=10 p1a=24(0.117V) p1b=23(0.112V) p2a=- p2b=-
+14:11:49.591 inputs valid=0x03 bits=10 p1a=22(0.107V) p1b=24(0.117V) p2a=- p2b=-
+
+=== 2026-11-05 14:17:00 (controller clock)
+$ ssh <controller> 'cd dcmt-bench && venv/bin/python dcmt_bench.py inputs 6 2>&1 | tail -6'
+14:17:02.117 inputs valid=0x03 bits=10 p1a=661(3.228V) p1b=666(3.252V) p2a=- p2b=-
+14:17:02.634 inputs valid=0x03 bits=10 p1a=661(3.228V) p1b=666(3.252V) p2a=- p2b=-
+14:17:03.151 inputs valid=0x03 bits=10 p1a=661(3.228V) p1b=666(3.252V) p2a=- p2b=-
+14:17:03.669 inputs valid=0x03 bits=10 p1a=661(3.228V) p1b=666(3.252V) p2a=- p2b=-
+14:17:04.186 inputs valid=0x03 bits=10 p1a=661(3.228V) p1b=666(3.252V) p2a=- p2b=-
+14:17:04.703 inputs valid=0x03 bits=10 p1a=661(3.228V) p1b=666(3.252V) p2a=- p2b=-
+
+=== 2026-11-05 14:19:02 (controller clock)
+$ ssh <controller> 'cd dcmt-bench && venv/bin/python dcmt_bench.py inputs 6 2>&1 | tail -6'
+14:19:04.283 inputs valid=0x03 bits=10 p1a=0(0.000V) p1b=665(3.247V) p2a=- p2b=-
+14:19:04.800 inputs valid=0x03 bits=10 p1a=0(0.000V) p1b=665(3.247V) p2a=- p2b=-
+14:19:05.318 inputs valid=0x03 bits=10 p1a=0(0.000V) p1b=665(3.247V) p2a=- p2b=-
+14:19:05.835 inputs valid=0x03 bits=10 p1a=0(0.000V) p1b=665(3.247V) p2a=- p2b=-
+14:19:06.352 inputs valid=0x03 bits=10 p1a=0(0.000V) p1b=665(3.247V) p2a=- p2b=-
+14:19:06.870 inputs valid=0x03 bits=10 p1a=0(0.000V) p1b=665(3.247V) p2a=- p2b=-
+
+=== 2026-11-05 14:19:50 (controller clock)
+$ ssh <controller> 'cd dcmt-bench && B="venv/bin/python -u dcmt_bench.py" && { $B wdl 1000 0 && $B mode 0 && $B open 0 150 && $B brake 1 0 && $B inputs 20 | sed "s/^/run150 /"; $B open 0 -255 && $B inputs 6 | sed "s/^/rev-255 /"; $B open 0 255 && $B inputs 6 | sed "s/^/rev+255 /"; $B open 0 0; $B brake 1 1; $B wd 0; $B state; $B wdog; } 2>&1 | tee motor-inputs.log | grep -E "state |wdog |Error|failed|refus" ; for t in run150 rev-255 rev+255; do grep "^$t" motor-inputs.log | sed -E "s/.*p1a=([0-9]+).*p1b=([0-9]+).*/\1 \2/" | awk -v t=$t "{if(NR==1||\$1<a)a=\$1; if(\$1>A)A=\$1; if(NR==1||\$2<b)b=\$2; if(\$2>B)B=\$2; n++} END{printf \"%s: %d reads, p1a %d-%d, p1b %d-%d\n\", t, n, a, A, b, B}"; done'
+14:20:11.074 state mode=0 m1_pwm=0 m2_pwm=0 sp=-32768,-32768 pos=0,0 spd=-32768,-32768 brakes=0b11 estop=0 estop_count=0
+14:20:11.377 wdog [armed][timeout_ms][tripped][trips] 0000000000
+run150: 20 reads, p1a 0-0, p1b 665-665
+rev-255: 6 reads, p1a 0-0, p1b 665-665
+rev+255: 6 reads, p1a 0-0, p1b 665-665
+
+=== 2026-11-05 14:24:17 (controller clock)
+$ ssh <controller> 'cd dcmt-bench && venv/bin/python dcmt_bench.py inputs 8 2>&1 | tail -8'
+14:24:19.905 inputs valid=0x03 bits=10 p1a=0(0.000V) p1b=718(3.506V) p2a=- p2b=-
+14:24:20.423 inputs valid=0x03 bits=10 p1a=0(0.000V) p1b=718(3.506V) p2a=- p2b=-
+14:24:20.940 inputs valid=0x03 bits=10 p1a=0(0.000V) p1b=718(3.506V) p2a=- p2b=-
+14:24:21.457 inputs valid=0x03 bits=10 p1a=0(0.000V) p1b=718(3.506V) p2a=- p2b=-
+14:24:21.975 inputs valid=0x03 bits=10 p1a=0(0.000V) p1b=718(3.506V) p2a=- p2b=-
+14:24:22.492 inputs valid=0x03 bits=10 p1a=0(0.000V) p1b=718(3.506V) p2a=- p2b=-
+14:24:23.010 inputs valid=0x03 bits=10 p1a=0(0.000V) p1b=718(3.506V) p2a=- p2b=-
+14:24:23.527 inputs valid=0x03 bits=10 p1a=0(0.000V) p1b=718(3.506V) p2a=- p2b=-
+
+=== 2026-11-05 14:24:29 (controller clock)
+$ ssh <controller> 'cd dcmt-bench && sleep 3 && venv/bin/python dcmt_bench.py inputs 40 2>&1 | grep inputs | sed -E "s/^([0-9:]{8}).*p1b=([0-9]+)\(([0-9.]+)V\).*/\1 \2 \3/"'
+14:24:33 718 3.506
+14:24:33 717 3.501
+14:24:34 717 3.501
+14:24:34 717 3.501
+14:24:35 717 3.501
+14:24:35 717 3.501
+14:24:36 717 3.501
+14:24:36 714 3.486
+14:24:37 714 3.486
+14:24:37 717 3.501
+14:24:38 717 3.501
+14:24:38 717 3.501
+14:24:39 717 3.501
+14:24:39 717 3.501
+14:24:40 717 3.501
+14:24:40 717 3.501
+14:24:41 717 3.501
+14:24:41 717 3.501
+14:24:42 717 3.501
+14:24:42 717 3.501
+14:24:43 717 3.501
+14:24:43 717 3.501
+14:24:44 717 3.501
+14:24:45 717 3.501
+14:24:45 717 3.501
+14:24:46 717 3.501
+14:24:46 717 3.501
+14:24:47 717 3.501
+14:24:47 717 3.501
+14:24:48 717 3.501
+14:24:48 717 3.501
+14:24:49 717 3.501
+14:24:49 717 3.501
+14:24:50 717 3.501
+14:24:50 717 3.501
+14:24:51 717 3.501
+14:24:51 717 3.501
+14:24:52 717 3.501
+14:24:52 717 3.501
+14:24:53 717 3.501
+
+=== 2026-11-05 14:25:20 (controller clock)
+$ ssh <controller> 'cd dcmt-bench && venv/bin/python dcmt_bench.py inputs 8 2>&1 | grep inputs | sed -E "s/^([0-9:]{8}).*p1b=([0-9]+)\(([0-9.]+)V\).*/\1 \2 \3/"'
+14:25:22 4 0.020
+14:25:22 4 0.020
+14:25:23 4 0.020
+14:25:23 4 0.020
+14:25:24 4 0.020
+14:25:24 4 0.020
+14:25:25 4 0.020
+14:25:25 4 0.020
+
+=== 2026-11-05 14:25:41 (controller clock)
+$ ssh <controller> 'cd dcmt-bench && venv/bin/python dcmt_bench.py inputs 6 2>&1 | grep inputs | sed -E "s/^([0-9:]{8}).*p1b=([0-9]+)\(([0-9.]+)V\).*/\1 \2 \3/"'
+14:25:43 718 3.506
+14:25:44 718 3.506
+14:25:44 718 3.506
+14:25:45 718 3.506
+14:25:45 718 3.506
+14:25:46 718 3.506
+
+=== 2026-11-05 14:29:19 (controller clock)
+$ ssh <controller> 'cd dcmt-bench && venv/bin/python dcmt_bench.py inputs 20 2>&1 | tee -a turb-20261105.log | grep inputs | sed -E "s/^([0-9:]{8}).*p1b=([0-9]+)\(([0-9.]+)V\).*/\1 \2 \3/" | awk "NR<=3 || NR%5==0 {print} {s+=\$2; n++; if(n==1||\$2<a)a=\$2; if(\$2>b)b=\$2} END{printf \"clear: n=%d mean %.1f range %d-%d\n\", n, s/n, a, b}"'
+14:29:21 848 4.141
+14:29:21 848 4.141
+14:29:22 848 4.141
+14:29:23 848 4.141
+14:29:25 849 4.146
+14:29:28 849 4.146
+14:29:31 849 4.146
+clear: n=20 mean 848.5 range 848-849
+
+=== 2026-11-05 14:33:52 (controller clock)
+$ ssh <controller> 'cd dcmt-bench && venv/bin/python dcmt_bench.py inputs 20 2>&1 | tee -a turb-20261105.log | grep inputs | sed -E "s/^([0-9:]{8}).*p1b=([0-9]+)\(([0-9.]+)V\).*/\1 \2 \3/" | awk "NR<=3 || NR%5==0 {print} {s+=\$2; n++; if(n==1||\$2<a)a=\$2; if(\$2>b)b=\$2} END{printf \"low: n=%d mean %.1f range %d-%d\n\", n, s/n, a, b}"'
+14:33:53 806 3.936
+14:33:53 806 3.936
+14:33:54 806 3.936
+14:33:55 805 3.931
+14:33:57 806 3.936
+14:34:00 805 3.931
+14:34:03 806 3.936
+low: n=20 mean 805.6 range 805-806
+
+=== 2026-11-05 14:35:44 (controller clock)
+$ ssh <controller> 'cd dcmt-bench && venv/bin/python dcmt_bench.py inputs 20 2>&1 | tee -a turb-20261105.log | grep inputs | sed -E "s/^([0-9:]{8}).*p1b=([0-9]+)\(([0-9.]+)V\).*/\1 \2 \3/" | awk "NR<=3 || NR%5==0 {print} {s+=\$2; n++; if(n==1||\$2<a)a=\$2; if(\$2>b)b=\$2} END{printf \"high: n=%d mean %.1f range %d-%d\n\", n, s/n, a, b}"'
+14:35:45 120 0.586
+14:35:45 120 0.586
+14:35:46 120 0.586
+14:35:47 120 0.586
+14:35:49 119 0.581
+14:35:52 120 0.586
+14:35:54 120 0.586
+high: n=20 mean 119.8 range 119-120
