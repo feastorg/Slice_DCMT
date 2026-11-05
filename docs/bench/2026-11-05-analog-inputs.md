@@ -9,7 +9,7 @@ parent: Bench Records
 
 - a known 3.3 V and GND read correctly;
 - the readings didn't move by a count while motor 2 ran and reversed at full power;
-- a turbidity head reads through it, and drops to the floor when its gap is blocked.
+- a turbidity head reads through it: 848 counts in clear water, falling to 806, 120 and 52 at 100 mg/L, 5 g/L and 10 g/L of kaolin, and to 4 with its gap blocked.
 
 The gen1 silkscreen numbering sent the first test voltage to the wrong header (Notes).
 
@@ -45,8 +45,9 @@ Times are the controller's clock.
 | T4 head in clear DI water | about 4.1 ± 0.3 V (DFRobot's clear-water figure) | p1b 848–849, mean 848.5 over 20 reads (4.14 V) | pass |
 | T5 kaolin 100 mg/L (1 mL of 10 g/L in 99 mL DI) | below T4 | p1b 805–806, mean 805.6 (3.93 V), 5 % below clear | pass |
 | T6 kaolin 5 g/L (50 mL of 10 g/L in 50 mL DI) | well below T5 | p1b 119–120, mean 119.8 (0.58 V), 86 % below clear | pass |
+| T7 kaolin 10 g/L (the stock) | below T6, above the blocked floor (T2) | p1b 51–52, mean 52.0 (0.25 V), 94 % below clear | pass |
 
-T4 to T6 were read 20 times each, about 500 ms apart ([`turbidity-samples.txt`](assets/2026-11-05-analog-inputs/turbidity-samples.txt): T4 at 14:29, T5 at 14:33–14:34, T6 at 14:35). Each held within one count, and the reading falls as turbidity rises.
+T4 to T7 were read 20 times each, about 500 ms apart ([`turbidity-samples.txt`](assets/2026-11-05-analog-inputs/turbidity-samples.txt): T4 at 14:29, T5 at 14:33–14:34, T6 at 14:35, T7 at 14:37). Each held within one count, and the reading falls as turbidity rises.
 
 ## Raw Output
 
