@@ -97,6 +97,25 @@ This project did not use formal release tags through most of its history, so thi
   `firmware/`, it builds the four default envs at the base and at the PR
   in one job, and puts each `firmware.hex` hash in the job summary. With
   the `firmware-unchanged` label, any difference fails the check.
+- **Analog inputs on the encoder headers** (#106, step 2,
+  `DCMT_CAP_INPUTS`). `DCMT_INPUT_ANALOG` is a third value for
+  `DCMT_PORT1_INPUT` and `DCMT_PORT2_INPUT`: the port builds no Encoder and
+  reads both of its pins, port 1 A2/A3 and port 2 A0/A1. `loop()` takes one
+  `analogRead()` per pass, round-robin over those pins, and publishes each
+  pin's mean of 16 reads, rounded. `DCMT_OP_GET_INPUTS` (0x81, through
+  SET_REPLY) answers `[valid][bits][p1a][p1b][p2a][p2b]` from
+  bread-crumbs-contracts 0.12, with a pin's valid bit set from its first
+  average and `bits` 10; a pin that isn't analog reads 0 with its bit clear.
+  The Nano Every sets `analogReference(VDD)` at setup. An analog port
+  means an open-loop-only build, as `NONE` does, and GET_CAPS adds
+  `DCMT_CAP_INPUTS` (flags `0x15E3`). Builds without an analog port don't
+  register GET_INPUTS or advertise the flag. New envs `gen1_nano_analog1`,
+  `gen2_nano_analog1`, `gen1_nanoevery_analog1` and
+  `gen2_nanoevery_analog1` set port 1 `ANALOG` and port 2 `NONE`, for the
+  turbidity sensor board. The four default builds are byte-identical to
+  before. Host-tested only: the bench gate in #106 (a known voltage against
+  a multimeter, and encoder counts per turn with the reader running) is
+  still to do.
 
 ### Fixed
 
@@ -282,6 +301,10 @@ This project did not use formal release tags through most of its history, so thi
 
 ### Changed
 
+- Requires bread-crumbs-contracts `^0.12.0` (`firmware/platformio.ini` and
+  `slice.yaml`), the release that defines GET_INPUTS and
+  `DCMT_CAP_INPUTS`. It is additive: the four default builds are
+  byte-identical on 0.11.1 and 0.12.0.
 - **The status LED shows amber on a firmware hold** (gen2). While a
   command-watchdog trip or a latched stall fault holds the motors, the LED
   is amber (red 50, green 16) instead of green; red still wins while the

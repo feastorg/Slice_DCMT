@@ -15,6 +15,18 @@ void interrupts() {}
 void pinMode(uint8_t, uint8_t) {}
 void digitalWrite(uint8_t, uint8_t) {}
 
+int host_analog_value[32] = {0};
+int host_analog_reads[32] = {0};
+int host_analog_reference = -1;
+
+int analogRead(uint8_t pin)
+{
+    host_analog_reads[pin]++;
+    return host_analog_value[pin];
+}
+
+void analogReference(uint8_t mode) { host_analog_reference = mode; }
+
 int digitalRead(uint8_t pin)
 {
     host_now++;

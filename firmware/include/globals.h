@@ -118,5 +118,8 @@ void reply_get_state(crumbs_context_t *ctx, crumbs_message_t *reply, void *user_
 void reply_get_caps(crumbs_context_t *ctx, crumbs_message_t *reply, void *user_data);
 void reply_get_watchdog(crumbs_context_t *ctx, crumbs_message_t *reply, void *user_data);
 void reply_get_faults(crumbs_context_t *ctx, crumbs_message_t *reply, void *user_data);
+#if DCMT_HAS_ANALOG_INPUTS
+void reply_get_inputs(crumbs_context_t *ctx, crumbs_message_t *reply, void *user_data);
+#endif
 
 #endif // GLOBALS_H

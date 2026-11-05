@@ -21,7 +21,16 @@ int digitalRead(uint8_t pin);
 void digitalWrite(uint8_t pin, uint8_t val);
 void pinMode(uint8_t pin, uint8_t mode);
 inline void analogWrite(uint8_t, int) {}
-inline int analogRead(uint8_t) { return 0; }
+// analogRead() returns host_analog_value[pin], which a test sets, and counts
+// the read in host_analog_reads[pin]. analogReference() records its mode in
+// host_analog_reference, -1 until called. VDD is the megaAVR core's name.
+#define DEFAULT 1
+#define VDD 0x10
+extern int host_analog_value[32];
+extern int host_analog_reads[32];
+extern int host_analog_reference;
+int analogRead(uint8_t pin);
+void analogReference(uint8_t mode);
 
 template <typename T, typename L, typename H>
 inline T constrain(T x, L lo, H hi) { return x < lo ? lo : (x > hi ? hi : x); }
