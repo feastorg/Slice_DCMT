@@ -20,6 +20,9 @@ This firmware separates three concerns:
   the motor's position reads 0. That 0 is not a position: GET_STATE has no
   sentinel for it yet (bread-crumbs-contracts#73), so the missing
   closed-loop flags in GET_CAPS are what say it means nothing.
+- `DCMT_INPUT_ANALOG`: no Encoder either, and the port's two pins are read
+  as analog inputs, reported by GET_INPUTS (see Analog Inputs). The motor's
+  position reads 0, as with `NONE`.
 - port 1 is motor 1, port 2 motor 2. Closed loop is built only when both
   ports carry an encoder, since one mode applies to both motors.
 
@@ -46,6 +49,40 @@ The closed-loop modes, setpoints and gains are refused
 `BREAD_REFUSE_NOT_BUILT` over I2C; over serial, `MODE=POS`, `M1POS=`,
 `M2POS=` and `PIDPOS=` don't exist, as the speed commands don't on a build
 without the speed loop.
+
+The `_analog1` envs (`gen1_nano_analog1`, `gen2_nano_analog1`,
+`gen1_nanoevery_analog1`, `gen2_nanoevery_analog1`) set port 1
+`DCMT_INPUT_ANALOG` and port 2 `DCMT_INPUT_NONE`, for a board that reads an
+analog sensor on port 1, such as the turbidity sensor of #106. They are
+open loop only, with the `_noenc` refusals and serial commands, and
+GET_CAPS adds `DCMT_CAP_INPUTS`. Other mixes come from the build flags.
+
+## Analog Inputs (`GET_INPUTS`)
+
+A port built `DCMT_INPUT_ANALOG` reads both of its pins: port 1
+`MOTOR1_ENCODER_PIN1`/`PIN2` (A2/A3) as `p1a`/`p1b`, port 2
+`MOTOR2_ENCODER_PIN1`/`PIN2` (A0/A1) as `p2a`/`p2b`. Which header
+terminal reaches which pin is in `docs/hardware-revisions.md`.
+
+- **Reader** (`src/analog_inputs.cpp`): one `analogRead()` per `loop()`
+  pass, round-robin over the analog pins, with no interrupts masked during
+  the conversion. Each pin's 16 reads are averaged, rounded to the nearest
+  count, into one published value, so a value refreshes every 16 x (analog
+  pins) passes: 32 on the `_analog1` envs.
+- **Reference:** the Nano Every calls `analogReference(VDD)` at setup, since
+  the megaAVR core's `DEFAULT` is `INTERNAL0V55` (its `init()` already
+  selects VDD; the call makes it this firmware's choice rather than the
+  core's). The classic Nano keeps its default, AVcc.
+- **GET_INPUTS** (`DCMT_OP_GET_INPUTS`, 0x81, through SET_REPLY like
+  GET_STATE), 10 bytes from bread-crumbs-contracts 0.12
+  (`dcmt_inputs_pack`): `[valid:u8][bits:u8][p1a:u16][p1b:u16][p2a:u16][p2b:u16]`.
+  `valid` has `DCMT_INPUT_VALID_P1A`/`P1B`/`P2A`/`P2B` (0x01/0x02/0x04/0x08),
+  set once that pin's first average is published. `bits` is 10, so
+  V = counts x 5 V / 1024. A pin that is not analog, or not yet averaged,
+  reads 0 with its bit clear.
+- Built only when a port is `ANALOG`. On other builds GET_INPUTS has no
+  reply handler, so a query gets no frame back, and `DCMT_CAP_INPUTS` is
+  not advertised: query it only when the flag is.
 
 ## Closed-Loop Backend
 
@@ -78,7 +115,7 @@ Speed commands/capability are only available when `DCMT_ENABLE_SPEED_LOOP=1`.
 
 ## Capability Mapping (`GET_CAPS`)
 
-- Level 1: baseline (open loop and brakes); the `_noenc` envs
+- Level 1: baseline (open loop and brakes); the `_noenc` and `_analog1` envs
 - Level 2: baseline + closed-position + PID tuning
 - Level 3: Level 2 + closed-speed
 
@@ -91,6 +128,9 @@ and `DCMT_CAP_WATCHDOG_LEASE`. Levels 2 and 3 also advertise
 `0x5E3`: its only fault is a stall, which needs closed loop, so it doesn't
 advertise faults, though GET_FAULTS (always 0) and CLEAR_FAULTS are still
 answered.
+
+A build with an analog port also advertises `DCMT_CAP_INPUTS` (bit 12):
+the `_analog1` envs report `0x15E3`.
 
 ## Setpoints
 

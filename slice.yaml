@@ -109,9 +109,15 @@ firmware:
     - "gen2_nano_noenc"
     - "gen1_nanoevery_noenc"
     - "gen2_nanoevery_noenc"
+    # Port 1 analog inputs, no encoder on port 2: open loop only, GET_INPUTS
+    # (firmware/README.md).
+    - "gen1_nano_analog1"
+    - "gen2_nano_analog1"
+    - "gen1_nanoevery_analog1"
+    - "gen2_nanoevery_analog1"
   lib_deps:
     - "cameronbrooks11/CRUMBS @ ^0.17.0"
-    - "cameronbrooks11/bread-crumbs-contracts @ ^0.11.1"
+    - "cameronbrooks11/bread-crumbs-contracts @ ^0.12.0"
     - "cameronbrooks11/LMD18200 @ ^0.1.5"
     - "cameronbrooks11/DCMotorServo @ ^1.2.1"
     - "paulstoffregen/Encoder @ ^1.4.4"

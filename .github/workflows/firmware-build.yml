@@ -31,6 +31,10 @@ jobs:
           - gen2_nano_noenc
           - gen1_nanoevery_noenc
           - gen2_nanoevery_noenc
+          - gen1_nano_analog1
+          - gen2_nano_analog1
+          - gen1_nanoevery_analog1
+          - gen2_nanoevery_analog1
     steps:
       - uses: actions/checkout@v7
 

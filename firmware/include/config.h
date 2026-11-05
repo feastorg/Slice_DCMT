@@ -10,25 +10,37 @@
 // What each encoder header carries, per port: port 1 feeds motor 1, port 2
 // motor 2. ENCODER (the default) builds the quadrature encoder; NONE builds
 // nothing on that port's pins, and the motor's position reads 0, as an empty
-// encoder header reads today. The *_noenc envs set both to NONE.
+// encoder header reads today. ANALOG builds no encoder either, and reads
+// both of the port's pins as analog inputs (GET_INPUTS, analog_inputs.h).
+// The *_noenc envs set both ports to NONE; the *_analog1 envs set port 1 to
+// ANALOG and port 2 to NONE.
 // Override with build flags: -DDCMT_PORT1_INPUT=DCMT_INPUT_NONE
-// Neither value is 0: a misspelt name reads as 0 in #if, and must hit the
+// No value is 0: a misspelt name reads as 0 in #if, and must hit the
 // #error below rather than quietly build a port as NONE.
 #define DCMT_INPUT_NONE 1
 #define DCMT_INPUT_ENCODER 2
+#define DCMT_INPUT_ANALOG 3
 #ifndef DCMT_PORT1_INPUT
 #define DCMT_PORT1_INPUT DCMT_INPUT_ENCODER
 #endif
 #ifndef DCMT_PORT2_INPUT
 #define DCMT_PORT2_INPUT DCMT_INPUT_ENCODER
 #endif
-#if (DCMT_PORT1_INPUT != DCMT_INPUT_NONE && DCMT_PORT1_INPUT != DCMT_INPUT_ENCODER) || \
-    (DCMT_PORT2_INPUT != DCMT_INPUT_NONE && DCMT_PORT2_INPUT != DCMT_INPUT_ENCODER)
-#error "DCMT_PORT1_INPUT and DCMT_PORT2_INPUT take DCMT_INPUT_ENCODER or DCMT_INPUT_NONE"
+#if (DCMT_PORT1_INPUT != DCMT_INPUT_NONE && DCMT_PORT1_INPUT != DCMT_INPUT_ENCODER && \
+     DCMT_PORT1_INPUT != DCMT_INPUT_ANALOG) ||                                       \
+    (DCMT_PORT2_INPUT != DCMT_INPUT_NONE && DCMT_PORT2_INPUT != DCMT_INPUT_ENCODER && \
+     DCMT_PORT2_INPUT != DCMT_INPUT_ANALOG)
+#error "DCMT_PORT1_INPUT and DCMT_PORT2_INPUT take DCMT_INPUT_ENCODER, DCMT_INPUT_NONE or DCMT_INPUT_ANALOG"
 #endif
 
+// Built when either port is ANALOG: the analog reader, GET_INPUTS and
+// DCMT_CAP_INPUTS. Without it, GET_INPUTS has no reply handler.
+#define DCMT_HAS_ANALOG_INPUTS \
+    (DCMT_PORT1_INPUT == DCMT_INPUT_ANALOG || DCMT_PORT2_INPUT == DCMT_INPUT_ANALOG)
+
 // The control mode applies to both motors, so closed loop is built only when
-// both ports carry an encoder. Otherwise the build is open loop only:
+// both ports carry an encoder. Otherwise (NONE or ANALOG on either port) the
+// build is open loop only:
 // GET_CAPS reports level 1, and the closed-loop modes, setpoints and gains
 // are refused BREAD_REFUSE_NOT_BUILT.
 #define DCMT_HAS_POSITION_LOOP \

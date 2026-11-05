@@ -14,6 +14,9 @@
 #endif
 #include "config_hardware.h"
 #include "globals.h"
+#if DCMT_HAS_ANALOG_INPUTS
+#include "analog_inputs.h"
+#endif
 #include <DCMotorServo.h>
 #if DCMT_ENABLE_SPEED_LOOP
 #include <DCMotorTacho.h>
@@ -59,9 +62,9 @@ volatile int16_t motor2AppliedPWM = 0;
 LMD18200 motor1Driver(MOTOR1_PWM_PIN, MOTOR1_DIR_PIN, MOTOR1_BRAKE_PIN, MOTOR1_CSENSE_PIN);
 LMD18200 motor2Driver(MOTOR2_PWM_PIN, MOTOR2_DIR_PIN, MOTOR2_BRAKE_PIN, MOTOR2_CSENSE_PIN);
 
-// Encoders. A port built as DCMT_INPUT_NONE constructs none: the Encoder
-// constructor claims the pins (pull-ups, and interrupts on the Nano Every)
-// at static initialisation and has no way to release them.
+// Encoders. A port built as DCMT_INPUT_NONE or DCMT_INPUT_ANALOG constructs
+// none: the Encoder constructor claims the pins (pull-ups, and interrupts on
+// the Nano Every) at static initialisation and has no way to release them.
 #if DCMT_PORT1_INPUT == DCMT_INPUT_ENCODER
 Encoder motor1Encoder(MOTOR1_ENCODER_PIN1, MOTOR1_ENCODER_PIN2);
 #endif
@@ -146,7 +149,8 @@ static void motor1_write_encoder(long newPosition)
     motor1Encoder.write(newPosition);
 }
 #else
-// No encoder on port 1: the position reads 0, as an empty header does.
+// No encoder on port 1 (NONE or ANALOG): the position reads 0, as an empty
+// header does.
 static long motor1_read_encoder(void)
 {
     return 0;
@@ -180,7 +184,8 @@ static void motor2_write_encoder(long newPosition)
     motor2Encoder.write(newPosition);
 }
 #else
-// No encoder on port 2: the position reads 0, as an empty header does.
+// No encoder on port 2 (NONE or ANALOG): the position reads 0, as an empty
+// header does.
 static long motor2_read_encoder(void)
 {
     return 0;
@@ -437,6 +442,9 @@ void loop()
     watchdogLogic();
     motorControlLogic();
     checkMotorFaults();
+#if DCMT_HAS_ANALOG_INPUTS
+    analogInputsPoll();
+#endif
     serialCommands();
     printSerialOutput();
 }
@@ -557,6 +565,14 @@ void setupSlice()
     if (rc != 0)
         SLICE_DEBUG_PRINTLN(F("CRUMBS: Failed to register BREAD_OP_GET_FAULTS reply handler"));
 
+#if DCMT_HAS_ANALOG_INPUTS
+    // Only when a port is analog: elsewhere GET_INPUTS has no handler, and
+    // DCMT_CAP_INPUTS is not advertised.
+    rc = crumbs_register_reply_handler(&ctx, DCMT_OP_GET_INPUTS, reply_get_inputs, nullptr);
+    if (rc != 0)
+        SLICE_DEBUG_PRINTLN(F("CRUMBS: Failed to register DCMT_OP_GET_INPUTS reply handler"));
+#endif
+
 #ifdef DCMT_WATCHDOG_BOOT_MS
     // Integration opt-in: come up armed (e.g. e-stop wirings that power-cycle
     // the board). Default builds boot disarmed.
@@ -629,6 +645,10 @@ void setupDCMT()
 
     slice.motor1Position = clamp_i16(servo1.getActualPosition());
     slice.motor2Position = clamp_i16(servo2.getActualPosition());
+
+#if DCMT_HAS_ANALOG_INPUTS
+    analogInputsBegin();
+#endif
 
     timing.lastSerialPrint = millis();
     appliedMode = slice.mode;

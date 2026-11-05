@@ -200,5 +200,10 @@ int main()
     host_send(DCMT_TYPE_ID, BREAD_OP_CLEAR_FAULTS, nullptr, 0);
     host_check("CLEAR_FAULTS is applied", applied());
 
+    // No analog port: GET_INPUTS has no reply handler, so no frame comes
+    // back, and DCMT_CAP_INPUTS (outside 0x5E3, checked above) is not
+    // advertised.
+    host_check("GET_INPUTS is not answered", !host_query(DCMT_OP_GET_INPUTS, &reply));
+
     return host_finish();
 }

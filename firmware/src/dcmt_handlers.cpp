@@ -5,6 +5,9 @@
 #include <bread/dcmt_ops.h>
 
 #include "globals.h"
+#if DCMT_HAS_ANALOG_INPUTS
+#include "analog_inputs.h"
+#endif
 
 // While a watchdog trip or a hardware e-stop is held, or a motor fault is
 // latched, SET_OPEN_LOOP, SET_SETPOINT, SET_MODE and a brake release are
@@ -478,9 +481,29 @@ void reply_get_caps(crumbs_context_t *ctx, crumbs_message_t *reply, void *user_d
     level = DCMT_CAP_LEVEL_3;
     flags |= DCMT_CAP_CLOSED_LOOP_SPEED;
 #endif
+#if DCMT_HAS_ANALOG_INPUTS
+    flags |= DCMT_CAP_INPUTS;
+#endif
 
     (void)bread_caps_build_reply(reply, DCMT_TYPE_ID, level, flags);
 }
+
+#if DCMT_HAS_ANALOG_INPUTS
+// GET_INPUTS (DCMT_CAP_INPUTS): the averaged counts of the analog pins. Runs
+// in the I2C interrupt, so the published values cannot change under it.
+void reply_get_inputs(crumbs_context_t *ctx, crumbs_message_t *reply, void *user_data)
+{
+    (void)ctx;
+    (void)user_data;
+    // A reply build proves a live master too.
+    livenessStamp();
+
+    dcmt_inputs_t v;
+    analogInputsRead(&v);
+    crumbs_msg_init(reply, DCMT_TYPE_ID, DCMT_OP_GET_INPUTS);
+    (void)dcmt_inputs_pack(reply, &v);
+}
+#endif
 
 void reply_get_watchdog(crumbs_context_t *ctx, crumbs_message_t *reply, void *user_data)
 {

@@ -49,8 +49,19 @@ FLAGS_gen2_nano_noenc      := $(FLAGS_gen2_nano) $(NOENC)
 FLAGS_gen1_nanoevery_noenc := $(FLAGS_gen1_nanoevery) $(NOENC)
 FLAGS_gen2_nanoevery_noenc := $(FLAGS_gen2_nanoevery) $(NOENC)
 
+# The *_analog1 envs: port 1 analog, port 2 empty, so open loop only. They
+# run test_analog and the stub tests the *_noenc envs run.
+ANALOG_ENVS := gen1_nano_analog1 gen2_nano_analog1 gen1_nanoevery_analog1 gen2_nanoevery_analog1
+ANALOG1     := -DDCMT_PORT1_INPUT=DCMT_INPUT_ANALOG -DDCMT_PORT2_INPUT=DCMT_INPUT_NONE
+FLAGS_gen1_nano_analog1      := $(FLAGS_gen1_nano) $(ANALOG1)
+FLAGS_gen2_nano_analog1      := $(FLAGS_gen2_nano) $(ANALOG1)
+FLAGS_gen1_nanoevery_analog1 := $(FLAGS_gen1_nanoevery) $(ANALOG1)
+FLAGS_gen2_nanoevery_analog1 := $(FLAGS_gen2_nanoevery) $(ANALOG1)
+
 INCLUDES := -Istubs -I. -I$(FW)/include -I$(CRUMBS) -I$(CRUMBS)/crc -I$(CONTRACTS) -I$(CORE)
 FW_SRC   := $(wildcard $(FW)/src/*.cpp) $(wildcard $(CORE)/*.cpp)
+# Every firmware header, src/ included, so a change to one rebuilds the tests.
+FW_HDR   := $(wildcard $(FW)/include/*.h $(FW)/src/*.h)
 CRUMBS_SRC := $(CRUMBS)/core/crumbs_core.c $(CRUMBS)/crc/crumbs_crc.c $(CRUMBS)/crc/crc8_nibble.c
 CRUMBS_OBJ := $(OUT)/crumbs_core.o $(OUT)/crumbs_crc.o $(OUT)/crc8_nibble.o
 # test_status_led runs once per e-stop case (the test target); the others
@@ -59,6 +70,8 @@ SINGLE   := test_dispatch test_mode_pwm test_applied_pwm test_serial_burst test_
 TESTS    := $(SINGLE) test_status_led
 NOENC_SINGLE := test_noenc test_dispatch test_serial_burst test_estop_hold test_watchdog_trip test_watchdog_lease test_hold_brakes test_status_led_hold
 NOENC_TESTS  := $(NOENC_SINGLE) test_status_led
+ANALOG_SINGLE := test_analog $(filter-out test_noenc,$(NOENC_SINGLE))
+ANALOG_TESTS  := $(ANALOG_SINGLE) test_status_led
 
 .PHONY: all test motor clean check-libdeps check-motor-libdeps FORCE
 all: test motor
@@ -91,18 +104,20 @@ $(OUT)/%.o: $(CRUMBS)/crc/%.c $(STAMP) | check-libdeps
 
 # $(1) env, $(2) test
 define TEST_template
-$(OUT)/$(1)/$(2): $(2).cpp host.cpp host.h $(FW_SRC) $(wildcard $(FW)/include/*.h) $(wildcard stubs/*.h stubs/avr/*.h) $(CRUMBS_OBJ) $(STAMP)
+$(OUT)/$(1)/$(2): $(2).cpp host.cpp host.h $(FW_SRC) $(FW_HDR) $(wildcard stubs/*.h stubs/avr/*.h) $(CRUMBS_OBJ) $(STAMP)
 	@mkdir -p $(OUT)/$(1)
 	$(CXX) $(CXXFLAGS) $(FLAGS_$(1)) $(INCLUDES) $(2).cpp host.cpp $(FW_SRC) $(CRUMBS_OBJ) -o $$@
 endef
 $(foreach e,$(ENVS),$(foreach t,$(TESTS),$(eval $(call TEST_template,$(e),$(t)))))
 $(foreach e,$(NOENC_ENVS),$(foreach t,$(NOENC_TESTS),$(eval $(call TEST_template,$(e),$(t)))))
+$(foreach e,$(ANALOG_ENVS),$(foreach t,$(ANALOG_TESTS),$(eval $(call TEST_template,$(e),$(t)))))
 
 BINS := $(foreach e,$(ENVS),$(foreach t,$(TESTS),$(OUT)/$(e)/$(t)))
 NOENC_BINS := $(foreach e,$(NOENC_ENVS),$(foreach t,$(NOENC_TESTS),$(OUT)/$(e)/$(t)))
+ANALOG_BINS := $(foreach e,$(ANALOG_ENVS),$(foreach t,$(ANALOG_TESTS),$(OUT)/$(e)/$(t)))
 
 # Runs every binary, prints each result line, and fails if any test failed.
-test: $(BINS) $(NOENC_BINS)
+test: $(BINS) $(NOENC_BINS) $(ANALOG_BINS)
 	@status=0; \
 	for e in $(ENVS); do \
 	  for t in $(SINGLE); do \
@@ -114,6 +129,14 @@ test: $(BINS) $(NOENC_BINS)
 	done; \
 	for e in $(NOENC_ENVS); do \
 	  for t in $(NOENC_SINGLE); do \
+	    echo "== $$e: $$t"; $(OUT)/$$e/$$t || status=1; \
+	  done; \
+	  for line in released held; do \
+	    echo "== $$e: test_status_led $$line"; $(OUT)/$$e/test_status_led $$line || status=1; \
+	  done; \
+	done; \
+	for e in $(ANALOG_ENVS); do \
+	  for t in $(ANALOG_SINGLE); do \
 	    echo "== $$e: $$t"; $(OUT)/$$e/$$t || status=1; \
 	  done; \
 	  for line in released held; do \
@@ -142,7 +165,7 @@ MOTOR_SRC   := motor_sim.cpp $(wildcard $(DCMS)/*.cpp) $(PID)/PID_v1.cpp
 
 # $(1) env, $(2) test
 define MOTOR_template
-$(OUT)/$(1)/$(2): $(2).cpp host.cpp host.h motor_sim.cpp motor_sim.h $(FW_SRC) $(MOTOR_SRC) $(wildcard $(DCMS)/*.h) $(wildcard $(FW)/include/*.h) $(wildcard stubs/*.h stubs/avr/*.h) $(CRUMBS_OBJ) $(STAMP) | check-motor-libdeps
+$(OUT)/$(1)/$(2): $(2).cpp host.cpp host.h motor_sim.cpp motor_sim.h $(FW_SRC) $(MOTOR_SRC) $(wildcard $(DCMS)/*.h) $(FW_HDR) $(wildcard stubs/*.h stubs/avr/*.h) $(CRUMBS_OBJ) $(STAMP) | check-motor-libdeps
 	@mkdir -p $(OUT)/$(1)
 	$(CXX) $(CXXFLAGS) $(FLAGS_$(1)) $(MOTOR_INCLUDES) $(2).cpp host.cpp $(FW_SRC) $(MOTOR_SRC) $(CRUMBS_OBJ) -o $$@
 endef

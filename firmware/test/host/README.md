@@ -12,7 +12,9 @@ and run on the host. Nothing is reimplemented:
   driver, Encoder, DCMotorServo and DCMotorTacho. The driver stub records
   what the firmware last asked of each motor. The servo stub's `run()` writes
   `host_servo_output[n]` through the firmware's motor callback, as the real
-  library's output does, and `stop()` brakes through it.
+  library's output does, and `stop()` brakes through it. `analogRead()`
+  returns `host_analog_value[pin]` and counts reads in `host_analog_reads`;
+  `analogReference()` records its mode in `host_analog_reference`.
 
 The motor tests (`make motor`) build the same firmware with the real
 DCMotorServo, DCMotorTacho and PID_v1 from libdeps in place of the two
@@ -41,15 +43,18 @@ macros. The pin map, status LED and speed loop then follow the same `#if`
 paths as on the board. The motor tests are built for `gen1_nanoevery` and
 `gen2_nanoevery` only, the envs that build the speed loop. The four
 `_noenc` envs, with no encoder on either port, run `test_noenc` and the stub
-tests that don't use a closed loop (`NOENC_SINGLE` in the Makefile). `make`
-exits non-zero if any check fails.
+tests that don't use a closed loop (`NOENC_SINGLE` in the Makefile). The
+four `_analog1` envs, port 1 analog and port 2 empty, run `test_analog` and
+the same stub tests (`ANALOG_SINGLE`). `make` exits non-zero if any check
+fails.
 
 ## Tests
 
 | File | Covers |
 | --- | --- |
 | `test_dispatch.cpp` | Which frames are taken as commands: every opcode is swept, GET opcodes sent as commands are refused, queries answer through SET_REPLY, and another family's type is rejected (#45, #50) |
-| `test_noenc.cpp` | A build with no encoder on either port (the `_noenc` envs): no Encoder constructed, GET_CAPS level 1 with flags `0xDE3`, the closed-loop modes, setpoints and gains refused NOT_BUILT and stored nowhere, open loop driving both motors with positions 0, a smuggled closed-loop mode falling back to braked open loop, the serial position commands absent, GET_FAULTS 0 |
+| `test_noenc.cpp` | A build with no encoder on either port (the `_noenc` envs): no Encoder constructed, GET_CAPS level 1 with flags `0x5E3`, the closed-loop modes, setpoints and gains refused NOT_BUILT and stored nowhere, open loop driving both motors with positions 0, a smuggled closed-loop mode falling back to braked open loop, the serial position commands absent, GET_FAULTS 0, GET_INPUTS unanswered |
+| `test_analog.cpp` | A build with port 1 analog and port 2 empty (the `_analog1` envs): no Encoder constructed, one `analogRead()` per `loop()` pass alternating A2/A3, valid bits clear until each pin's 16th read, the published value the rounded mean of 16 injected reads and held until the next 16, GET_INPUTS bytes and port 2 reading 0 invalid, GET_CAPS `0x15E3`, `analogReference(VDD)` on the Nano Every only, the closed-loop modes refused NOT_BUILT |
 | `test_applied_pwm.cpp` | GET_STATE `m1_pwm`/`m2_pwm` report the PWM each motor is driven at: open loop, braked, position and speed (the servo stub's output), and e-stop (#61) |
 | `test_mode_pwm.cpp` | Leaving open loop clears the open-loop PWM through serial `MODE=` and through `SET_MODE`, so GET_STATE reads 0 and a return to open loop doesn't resume the old PWM (#36) |
 | `test_serial_burst.cpp` | A burst of serial lines is answered one line per `loop()` pass, so an e-stop pressed mid-burst is asserted before the next line and the lines after it are refused (#49) |
