@@ -1,9 +1,8 @@
 // #89 regression: at 60 RPM, motor 1's shaft is held and then released.
-// While it is held, the lead cap (DCMT_TACHO_MAX_LEAD) stops the position
-// target 300 counts ahead. Before the fix, the speed PID's integral kept
-// winding up against the cap, and the shaft lunged on release. The firmware
-// now runs the speed PID with Ki 0 while the cap clamps, so the integral is
-// frozen and the shaft returns to about the target.
+// Under DCMotorServo 1.x the speed PID's integral wound up while the shaft
+// was held and the shaft lunged on release. DCMotorServo 2.x bounds the PI
+// trim (SET_SPEED_FF trim 20, sim_boot()) and doesn't integrate while the
+// trim is at that bound, so the shaft returns to about the target.
 //
 // A hold of DCMT_STALL_TIMEOUT_MS or more latches a stall fault (#64), so the
 // motor stays braked when the shaft is let go: the 4 s hold of #89's report

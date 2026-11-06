@@ -38,10 +38,10 @@
 #define SERIAL_UPDATE_TIME_MS 1000
 
 // Closed-loop tuning defaults. These, and the other motor-specific values
-// below (counts/rev, PWM skip and cap, accuracy, the tacho interval and lead
-// cap, the stall thresholds), come from a single bench motor: the PID gains
-// and servo values are the archive implementation's, and the speed Ki was
-// chosen against a first-order model fitted to that motor (#90, the host
+// below (counts/rev, PWM skip and cap, accuracy, the tacho interval, the
+// stall thresholds), come from a single bench motor: the position gains and
+// servo values are the archive implementation's, and the speed gains were
+// checked against a first-order model fitted to that motor (#90, the host
 // motor tests). They are a starting point, not a property of the firmware:
 // tune them per motor at runtime with SET_PID / PIDPOS= / PIDSPEED=, or per
 // build with flags, e.g. -DDCMT_SPEED_PID_KI=<ki>.
@@ -55,17 +55,18 @@
 #define DCMT_POS_PID_KD 0.01f
 #endif
 
+// Speed gains (module major 3, DCMotorServo 2.x): the speed loop is a PI on
+// PWM around the feedforward SET_SPEED_FF sets. KP is PWM per RPM of speed
+// error, KI PWM per RPM-second; KD is accepted and stored but not used.
+// These are DCMotorTacho's own defaults.
 #ifndef DCMT_SPEED_PID_KP
-#define DCMT_SPEED_PID_KP 0.15f
+#define DCMT_SPEED_PID_KP 0.6f
 #endif
-// 0.01 left the speed loop P-only for seconds: 60 RPM settled near 69 % of
-// the target and took about 20 s to close the rest. 0.2 reaches it within
-// 5 % in about 1.3 s in the model (#90).
 #ifndef DCMT_SPEED_PID_KI
-#define DCMT_SPEED_PID_KI 0.2f
+#define DCMT_SPEED_PID_KI 3.0f
 #endif
 #ifndef DCMT_SPEED_PID_KD
-#define DCMT_SPEED_PID_KD 0.01f
+#define DCMT_SPEED_PID_KD 0.0f
 #endif
 
 #ifndef DCMT_SERVO_PWM_SKIP
@@ -81,13 +82,6 @@
 // Speed-loop update interval in milliseconds.
 #ifndef DCMT_TACHO_INTERVAL_MS
 #define DCMT_TACHO_INTERVAL_MS 5
-#endif
-
-// How far, in encoder counts, the speed loop may drive the position target
-// ahead of the encoder. Without a cap a held shaft banks travel and lunges
-// on release; 300 removed that on the 2026-10-22 bench (#63).
-#ifndef DCMT_TACHO_MAX_LEAD
-#define DCMT_TACHO_MAX_LEAD 300
 #endif
 
 // Stall faults (#64, DCMT_CAP_FAULTS). In closed loop, a motor driven for
