@@ -89,22 +89,27 @@ terminal reaches which pin is in `docs/hardware-revisions.md`.
 The runtime uses:
 
 - `DCMotorServo` for closed-loop position control
-- `DCMotorTacho` for cascaded closed-loop speed control
+- `DCMotorTacho` (DCMotorServo 2.x) for closed-loop speed control: a PI on
+  PWM around a per-motor feedforward (see Speed Loop)
 
 These defaults are a starting point for one motor, not properties of the
-firmware. They come from a single bench motor: the gains and servo values
-are the archive implementation's, and the speed Ki was chosen against a
-first-order model fitted to that motor (#90; the model lives in the host
-motor tests, `firmware/test/host/motor_sim.h`). Tune them for each motor:
-the PID gains at runtime with `SET_PID` (or serial `PIDPOS=` /
-`PIDSPEED=`), and every value per build with a flag such as
+firmware. They come from a single bench motor: the position gains and servo
+values are the archive implementation's, and the speed gains were checked
+against a first-order model fitted to that motor (#90; the model lives in
+the host motor tests, `firmware/test/host/motor_sim.h`). Tune them for each
+motor: the gains at runtime with `SET_PID` (or serial `PIDPOS=` /
+`PIDSPEED=`), the speed feedforward with `SET_SPEED_FF` (or serial
+`SPEEDFF=`), and every value per build with a flag such as
 `-DDCMT_SPEED_PID_KI=<ki>` (each is `#ifndef`-guarded in
 `include/config_hardware.h`).
 
-- `MOTOR1_CPR = 798`
-- `MOTOR2_CPR = 798`
+- `MOTOR1_CPR = 848`
+- `MOTOR2_CPR = 848` (measured on the bench, #103)
 - outer (position) PID defaults: `0.15 / 0.01 / 0.01`
-- inner (speed) PID defaults: `0.15 / 0.2 / 0.01`
+- speed PI defaults: Kp `0.6` PWM per RPM, Ki `3.0` PWM per RPM-second
+  (Kd `0.0`, accepted and unused)
+- speed feedforward default: none (static 0, RPM per PWM 0, trim 255): a
+  plain PI until a controller sends `SET_SPEED_FF`
 - servo PWM skip: `15`
 - servo max PWM: `150`
 - servo accuracy: `10`
@@ -113,11 +118,71 @@ the PID gains at runtime with `SET_PID` (or serial `PIDPOS=` /
 
 Speed commands/capability are only available when `DCMT_ENABLE_SPEED_LOOP=1`.
 
+## Speed Loop
+
+Module major 3 (bread-crumbs-contracts 0.13.0, DCMotorServo 2.0.0). Every
+speed interval (`DCMT_TACHO_INTERVAL_MS`) each motor is driven at
+
+```text
+pwm         = feedforward + trim
+feedforward = sign(target) * static + target / rpm_per_pwm
+trim        = Kp * error + integral, bounded to +-trim
+```
+
+with error the target RPM less the measured RPM, and the result bounded to
+the servo max PWM. The integral doesn't accumulate while the trim or the
+output is at its bound in the error's direction, so a held shaft banks at
+most `trim` of drive and doesn't lunge on release (#89). Stall detection
+(see Stall Faults) still latches a shaft held for the stall timeout.
+
+- **Gains:** `SET_PID` with `DCMT_PID_LOOP_SPEED`, or serial
+  `PIDSPEED=kp,ki,kd`. Kp is PWM per RPM of speed error and Ki PWM per
+  RPM-second. Kd is accepted and stored, and unused: the loop is a PI. Gains
+  from module major 2 firmware (DCMotorServo 1.x) don't carry over; they
+  were in the old loop's units.
+- **Feedforward:** `SET_SPEED_FF` (`DCMT_OP_SET_SPEED_FF`, advertised as
+  `DCMT_CAP_SPEED_FEEDFORWARD`, bit 13, only where the speed loop is built),
+  8 bytes `[static1:u8][rpm_per_pwm1:u16][trim1:u8][static2:u8][rpm_per_pwm2:u16][trim2:u8]`:
+  - `static`: PWM that just starts the shaft turning, 0 to 255;
+  - `rpm_per_pwm`: output RPM per PWM step above `static`, x1000 (0 to
+    65.535); 0 is no speed term. The firmware converts it to the library's
+    counts/s per PWM step with the motor's CPR;
+  - `trim`: the bound on the PI trim, PWM; 255 is no bound. About 20 keeps
+    a held shaft from banking more than that.
+
+  Stored per motor and applied on the next speed-mode pass. A payload that
+  isn't 8 bytes is refused `MALFORMED`, and a build without the speed loop
+  refuses it `NOT_BUILT`; either stores nothing. Like `SET_PID`, it is a
+  configuration write and is taken during a watchdog trip, e-stop or
+  fault. There is no readback.
+- **Serial:** `SPEEDFF=static1,rpp1,trim1,static2,rpp2,trim2`, the same six
+  fields in the same order, with `rpp` in RPM per PWM step as a decimal
+  (`SPEEDFF=10,1.719,20,10,1.719,20`). Only where the speed loop is built.
+
+### Calibrating the feedforward
+
+The values come from the motor and its load, so there are no useful
+defaults. In open loop, sweep the PWM in steps (`SET_OPEN_LOOP` or
+`M1PWM=`) and at each step read the steady speed from GET_STATE (or `READ`)
+once it settles. Fit a line, RPM = `rpm_per_pwm` * (PWM - `static`), over
+the PWMs where the shaft turns: `rpm_per_pwm` is the slope and `static`
+where the line crosses 0 RPM (the intercept on the PWM axis). Err towards
+less drive: a lower `static` and a higher `rpm_per_pwm`. Feedforward that
+under-drives costs a little start-up time, which the trim closes, while
+over-drive overshoots at start-up. If the sweep is done in both directions,
+take the lower `static` and the higher `rpm_per_pwm` of the two.
+
+In the host motor model (24.3 counts/s per PWM above a deadband of 10 PWM,
+at CPR 848) that is `static` 10 and `rpm_per_pwm` 24.3 * 60 / 848 = 1.719,
+and with trim 20 and the default gains 60 RPM is within 5 % 210 ms after
+the command (`test_speed_baseline_90`). Not yet checked on a board.
+
 ## Capability Mapping (`GET_CAPS`)
 
 - Level 1: baseline (open loop and brakes); the `_noenc` and `_analog1` envs
 - Level 2: baseline + closed-position + PID tuning
-- Level 3: Level 2 + closed-speed
+- Level 3: Level 2 + closed-speed, with `DCMT_CAP_SPEED_FEEDFORWARD`
+  (`SET_SPEED_FF`)
 
 Controllers should gate behavior by capability flags, not by generation labels.
 
@@ -155,12 +220,12 @@ bread-crumbs-contracts `bread_refuse.h`:
 
 | Reason | When |
 | --- | --- |
-| `BREAD_REFUSE_MALFORMED` | the payload does not unpack; SET_PID is not 13 bytes; SET_SETPOINT is not 4 or 5 bytes; SET_WATCHDOG lacks its u16; CLEAR_WATCHDOG_TRIP or CLEAR_FAULTS carries a payload |
+| `BREAD_REFUSE_MALFORMED` | the payload does not unpack; SET_PID is not 13 bytes; SET_SPEED_FF is not 8 bytes; SET_SETPOINT is not 4 or 5 bytes; SET_WATCHDOG lacks its u16; CLEAR_WATCHDOG_TRIP or CLEAR_FAULTS carries a payload |
 | `BREAD_REFUSE_ESTOP` | SET_OPEN_LOOP, SET_MODE or SET_SETPOINT while the hardware e-stop is held, or a SET_BRAKE that asks for a release then; this reason wins when a watchdog trip is held too |
 | `BREAD_REFUSE_WATCHDOG_TRIP` | SET_OPEN_LOOP, SET_MODE or SET_SETPOINT while a trip is held, or a SET_BRAKE that asks for a release then; this reason wins over a latched fault |
 | `BREAD_REFUSE_FAULT` | SET_OPEN_LOOP, SET_MODE or SET_SETPOINT while a stall fault is latched, or a SET_BRAKE that asks for a release then |
 | `BREAD_REFUSE_UNDEFINED_VALUE` | a SET_MODE, SET_PID or SET_SETPOINT loop the contract does not define; a SET_WATCHDOG flag other than `BREAD_WATCHDOG_FLAG_COMMANDS_ONLY`; a SET_OPEN_LOOP PWM outside `-DCMT_PWM_MAX` to `DCMT_PWM_MAX` (255) |
-| `BREAD_REFUSE_NOT_BUILT` | closed-loop speed (SET_MODE, or a SET_PID or SET_SETPOINT loop SPEED) when the speed loop is not built |
+| `BREAD_REFUSE_NOT_BUILT` | closed-loop speed (SET_MODE, or a SET_PID or SET_SETPOINT loop SPEED) and SET_SPEED_FF when the speed loop is not built |
 | `BREAD_REFUSE_WRONG_MODE` | SET_OPEN_LOOP outside open loop |
 | `BREAD_REFUSE_UNKNOWN_OP` | an opcode with no registered command handler, including a GET opcode sent as a command frame instead of through SET_REPLY |
 
@@ -213,8 +278,9 @@ not stored: `SET_OPEN_LOOP`, `SET_SETPOINT`, `SET_MODE` and a `SET_BRAKE`
 that would release a brake, and over serial `MODE=`, `M1PWM=`/`M2PWM=`,
 `M1POS=`/`M2POS=`, `M1SPEED=`/`M2SPEED=`, `BRAKE1=0` and `BRAKE2=0`.
 The I2C ones are refused with `BREAD_REFUSE_WATCHDOG_TRIP`, so GET_ACK says
-so (see Refused Commands). Engaging a brake, PID tuning (`SET_PID`,
-`PIDPOS=`, `PIDSPEED=`), `SET_WATCHDOG`/`WDOG=` and `READ` still work.
+so (see Refused Commands). Engaging a brake, PID and feedforward tuning (`SET_PID`, `SET_SPEED_FF`,
+`PIDPOS=`, `PIDSPEED=`, `SPEEDFF=`), `SET_WATCHDOG`/`WDOG=` and `READ` still
+work.
 
 Clearing a trip resumes nothing; the brakes stay engaged and no motor
 moves. To resume:

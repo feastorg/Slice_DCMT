@@ -286,6 +286,8 @@ void handler_set_pid(crumbs_context_t *ctx, uint8_t opcode, const uint8_t *data,
 #if DCMT_ENABLE_SPEED_LOOP
     else if (v.loop == DCMT_PID_LOOP_SPEED)
     {
+        // Module major 3: kp PWM per RPM, ki PWM per RPM-second. kd is
+        // stored but the speed loop (a PI) doesn't use it.
         slice.speedPid1 = {kp1, ki1, kd1};
         slice.speedPid2 = {kp2, ki2, kd2};
     }
@@ -306,6 +308,35 @@ void handler_set_pid(crumbs_context_t *ctx, uint8_t opcode, const uint8_t *data,
     (void)crumbs_refuse(ctx, (v.loop == DCMT_PID_LOOP_POSITION || v.loop == DCMT_PID_LOOP_SPEED)
                                  ? BREAD_REFUSE_NOT_BUILT
                                  : BREAD_REFUSE_UNDEFINED_VALUE);
+#endif
+}
+
+// SET_SPEED_FF (DCMT_CAP_SPEED_FEEDFORWARD): the speed loop's per-motor
+// feedforward and trim bound, as SET_PID is its gains. Like SET_PID it is a
+// configuration write, taken during a hold: a malformed payload is refused
+// MALFORMED, a build without the speed loop refuses it NOT_BUILT, and
+// either stores nothing. Every value a field can hold is defined, so there
+// is no UNDEFINED_VALUE. The loop applies it on the next speed-mode pass.
+void handler_set_speed_ff(crumbs_context_t *ctx, uint8_t opcode, const uint8_t *data, uint8_t data_len, void *user_data)
+{
+    dcmt_set_speed_ff_t v;
+    (void)opcode;
+    (void)user_data;
+
+    if (dcmt_parse_set_speed_ff_payload(data, data_len, &v) != 0)
+    {
+        (void)crumbs_refuse(ctx, BREAD_REFUSE_MALFORMED);
+        return;
+    }
+#if DCMT_ENABLE_SPEED_LOOP
+    slice.speedFf1.pwmStatic = v.static1;
+    slice.speedFf1.rpmPerPwmX1000 = v.rpm_per_pwm1_x1000;
+    slice.speedFf1.trim = v.trim1;
+    slice.speedFf2.pwmStatic = v.static2;
+    slice.speedFf2.rpmPerPwmX1000 = v.rpm_per_pwm2_x1000;
+    slice.speedFf2.trim = v.trim2;
+#else
+    (void)crumbs_refuse(ctx, BREAD_REFUSE_NOT_BUILT);
 #endif
 }
 
@@ -479,7 +510,7 @@ void reply_get_caps(crumbs_context_t *ctx, crumbs_message_t *reply, void *user_d
 
 #if DCMT_ENABLE_SPEED_LOOP
     level = DCMT_CAP_LEVEL_3;
-    flags |= DCMT_CAP_CLOSED_LOOP_SPEED;
+    flags |= DCMT_CAP_CLOSED_LOOP_SPEED | DCMT_CAP_SPEED_FEEDFORWARD;
 #endif
 #if DCMT_HAS_ANALOG_INPUTS
     flags |= DCMT_CAP_INPUTS;

@@ -25,6 +25,17 @@ struct PIDTunings
     PIDTunings(float p, float i, float d) : kp(p), ki(i), kd(d) {}
 };
 
+// One motor's speed-loop feedforward, as SET_SPEED_FF carries it: static
+// PWM, output RPM per PWM step above static x1000 (0 = no speed term), and
+// the bound on the PI trim in PWM (DCMT_SPEED_FF_TRIM_UNBOUNDED = none).
+// The defaults are no feedforward and no bound: a plain PI on PWM.
+struct SpeedFeedforward
+{
+    uint8_t pwmStatic = 0;
+    uint16_t rpmPerPwmX1000 = 0;
+    uint8_t trim = 255;
+};
+
 // ---- Shared state structs ----
 struct DCMT_SLICE
 {
@@ -47,6 +58,10 @@ struct DCMT_SLICE
     PIDTunings posPid2 = {DCMT_POS_PID_KP, DCMT_POS_PID_KI, DCMT_POS_PID_KD};
     PIDTunings speedPid1 = {DCMT_SPEED_PID_KP, DCMT_SPEED_PID_KI, DCMT_SPEED_PID_KD};
     PIDTunings speedPid2 = {DCMT_SPEED_PID_KP, DCMT_SPEED_PID_KI, DCMT_SPEED_PID_KD};
+#if DCMT_ENABLE_SPEED_LOOP
+    SpeedFeedforward speedFf1;
+    SpeedFeedforward speedFf2;
+#endif
 };
 
 struct Timing
@@ -110,6 +125,7 @@ void handler_set_brake(crumbs_context_t *ctx, uint8_t opcode, const uint8_t *dat
 void handler_set_mode(crumbs_context_t *ctx, uint8_t opcode, const uint8_t *data, uint8_t data_len, void *user_data);
 void handler_set_setpoint(crumbs_context_t *ctx, uint8_t opcode, const uint8_t *data, uint8_t data_len, void *user_data);
 void handler_set_pid(crumbs_context_t *ctx, uint8_t opcode, const uint8_t *data, uint8_t data_len, void *user_data);
+void handler_set_speed_ff(crumbs_context_t *ctx, uint8_t opcode, const uint8_t *data, uint8_t data_len, void *user_data);
 void handler_set_watchdog(crumbs_context_t *ctx, uint8_t opcode, const uint8_t *data, uint8_t data_len, void *user_data);
 void handler_clear_watchdog_trip(crumbs_context_t *ctx, uint8_t opcode, const uint8_t *data, uint8_t data_len, void *user_data);
 void handler_clear_faults(crumbs_context_t *ctx, uint8_t opcode, const uint8_t *data, uint8_t data_len, void *user_data);

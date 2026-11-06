@@ -8,6 +8,19 @@ This project did not use formal release tags through most of its history, so thi
 
 ### Added
 
+- **SET_SPEED_FF sets the speed loop's feedforward** (`DCMT_OP_SET_SPEED_FF`,
+  `DCMT_CAP_SPEED_FEEDFORWARD`, bread-crumbs-contracts#75). Per motor: the
+  static PWM, the output RPM per PWM step above it (x1000) and the bound on
+  the PI trim. The firmware stores them and applies them on the next
+  speed-mode pass, converting RPM per PWM to DCMotorTacho's counts/s per
+  PWM with each motor's CPR. Until a controller sends it the loop is a
+  plain PI (no feedforward, trim 255, no bound). A payload that isn't 8
+  bytes is refused `MALFORMED`, and a build without the speed loop refuses
+  it `NOT_BUILT`; the capability bit is advertised only where the speed
+  loop is built. Serial `SPEEDFF=static1,rpp1,trim1,static2,rpp2,trim2`
+  does the same, with `rpp` in RPM per PWM step. `firmware/README.md`
+  describes calibrating it from an open-loop PWM sweep.
+
 - **`docs/hardware-revisions.md` records the motors' PWM frequencies**
   (#68). On the Nano, motor 1 (D6, Timer0) switches at 976.6 Hz and
   motor 2 (D10, Timer1) at 490.2 Hz; on the Nano Every both are
@@ -301,6 +314,29 @@ This project did not use formal release tags through most of its history, so thi
 
 ### Changed
 
+- **Breaking: the speed loop drives PWM directly (module major 3).**
+  Requires DCMotorServo `^2.0.0` (feastorg/dcmotorservo#26) and
+  bread-crumbs-contracts `^0.13.0` (`firmware/platformio.ini` and
+  `slice.yaml`). The speed loop is now feedforward (SET_SPEED_FF) plus a PI
+  trim on the measured speed, instead of a PID moving the position target.
+  `DCMT_MODULE_VER_MAJOR` is 3, from the contracts, so a controller built
+  for major 2 refuses this firmware rather than sending gains in the old
+  units. SET_PID's speed gains, and serial `PIDSPEED=`, are now Kp in PWM
+  per RPM and Ki in PWM per RPM-second; Kd is accepted and stored but
+  unused. The defaults are Kp 0.6, Ki 3.0, Kd 0 (were 0.15, 0.2, 0.01 in
+  the old units). In the host motor model with the model's feedforward and
+  trim 20, 60 RPM is within 5 % 210 ms after the command, from 1.29 s on
+  `main`; after a 0.9 s hold the peak 1 s speed is 60.8 RPM, from 61.8.
+  At CPR 848 the old loop drove backwards for one sample on entering speed
+  mode after some open-loop reverse timings (15 of 101 timings from 550 to
+  750 ms); with this loop none does (`test_speed_entry_62 sweep`). Host
+  model only; not yet run on a board.
+- **The encoder counts per turn default to 848** (#103), from 798.
+  `MOTOR1_CPR` and `MOTOR2_CPR` are the E-S Motor 36PG-3429-19-EN's
+  measured counts per output turn
+  ([record](docs/bench/2026-11-02-bus-lockup-and-cpr.md)); at 798 every
+  RPM read and commanded was about 6 % high. Another motor sets its own
+  with `-DMOTOR1_CPR=` / `-DMOTOR2_CPR=`.
 - Requires bread-crumbs-contracts `^0.12.0` (`firmware/platformio.ini` and
   `slice.yaml`), the release that defines GET_INPUTS and
   `DCMT_CAP_INPUTS`. It is additive: the four default builds are
@@ -403,6 +439,18 @@ This project did not use formal release tags through most of its history, so thi
   controller sees a press it did not poll during. A new volatile `estopCount`
   is incremented on the released->pressed transition in `processEStop()`,
   mirroring `wdTripCount`.
+
+### Removed
+
+- **The speed loop's lead cap and the integral freeze** (#63, #89).
+  DCMotorServo 2.0 has no position target to cap, so `setMaxLead()` and
+  `DCMT_TACHO_MAX_LEAD` are gone, and its conditional integration replaces
+  the firmware's stopgap that ran the speed PID with Ki 0 while the cap
+  clamped (`lead_capped()`, `speed_tunings()`). The trim bound from
+  SET_SPEED_FF now limits what a held shaft banks. Stall detection (#64) is
+  unchanged. Their host tests, `test_max_lead` and `test_speed_freeze`, go
+  with them; `test_stall_release_89` still checks for no lunge after a
+  short hold.
 
 ### Fixed
 

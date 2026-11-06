@@ -86,6 +86,9 @@ static bool positionPidApplied = false;
 static PIDTunings appliedSpeedPid1;
 static PIDTunings appliedSpeedPid2;
 static bool speedPidApplied = false;
+static SpeedFeedforward appliedSpeedFf1;
+static SpeedFeedforward appliedSpeedFf2;
+static bool speedFfApplied = false;
 #endif
 
 static int16_t clamp_pwm(long v)
@@ -233,47 +236,58 @@ static void apply_position_pid_if_needed(const DCMT_SLICE &s)
 }
 
 #if DCMT_ENABLE_SPEED_LOOP
-// True while DCMotorTacho's lead cap is clamping: the position target sits
-// DCMT_TACHO_MAX_LEAD or more counts from the encoder, so the speed PID's
-// output no longer moves the shaft.
-static bool lead_capped(DCMotorServo &servo)
+// The speed loop is DCMotorTacho 2.x's PI on PWM: kp PWM per RPM, ki PWM per
+// RPM-second. kd is stored (SET_PID, PIDSPEED=) but not used. The library
+// stops integrating while the trim or the output is at its limit, so a held
+// shaft can't wind the integral up (#89).
+static void apply_speed_pid_if_needed(const DCMT_SLICE &s)
 {
-    const long lead = servo.getRequestedPosition() - servo.getActualPosition();
-    return lead >= DCMT_TACHO_MAX_LEAD || lead <= -DCMT_TACHO_MAX_LEAD;
-}
-
-// The speed gains in force: the runtime ones (SET_PID, serial), with Ki 0
-// while the motor's lead cap is clamping, so a held or stalled shaft doesn't
-// wind up the integral and lunge on release (#89). PID_v1 doesn't rescale
-// its integral when Ki changes, so the integral is frozen, not reset.
-//
-// Conditional integration belongs in DCMotorTacho (feastorg/dcmotorservo);
-// this is a stopgap until it lands there.
-static PIDTunings speed_tunings(const PIDTunings &t, bool freeze)
-{
-    PIDTunings r = t;
-    if (freeze)
-        r.ki = 0.0f;
-    return r;
-}
-
-static void apply_speed_pid_if_needed(const DCMT_SLICE &s, bool freeze1 = false, bool freeze2 = false)
-{
-    const PIDTunings t1 = speed_tunings(s.speedPid1, freeze1);
-    const PIDTunings t2 = speed_tunings(s.speedPid2, freeze2);
     if (speedPidApplied &&
-        pid_tunings_equal(appliedSpeedPid1, t1) &&
-        pid_tunings_equal(appliedSpeedPid2, t2))
+        pid_tunings_equal(appliedSpeedPid1, s.speedPid1) &&
+        pid_tunings_equal(appliedSpeedPid2, s.speedPid2))
     {
         return;
     }
 
-    tacho1.setPIDTunings(t1.kp, t1.ki, t1.kd);
-    tacho2.setPIDTunings(t2.kp, t2.ki, t2.kd);
+    tacho1.setPIDTunings(s.speedPid1.kp, s.speedPid1.ki);
+    tacho2.setPIDTunings(s.speedPid2.kp, s.speedPid2.ki);
 
-    appliedSpeedPid1 = t1;
-    appliedSpeedPid2 = t2;
+    appliedSpeedPid1 = s.speedPid1;
+    appliedSpeedPid2 = s.speedPid2;
     speedPidApplied = true;
+}
+
+static bool speed_ff_equal(const SpeedFeedforward &a, const SpeedFeedforward &b)
+{
+    return a.pwmStatic == b.pwmStatic && a.rpmPerPwmX1000 == b.rpmPerPwmX1000 && a.trim == b.trim;
+}
+
+// SET_SPEED_FF carries output RPM per PWM step; DCMotorTacho takes encoder
+// counts/s per PWM step, which needs the motor's CPR. 0 stays 0: no speed
+// term. A trim of DCMT_SPEED_FF_TRIM_UNBOUNDED (255) is the library's own
+// "no bound" default.
+static void apply_speed_ff(DCMotorTacho &tacho, const SpeedFeedforward &f, double cpr)
+{
+    const double kv = (f.rpmPerPwmX1000 / 1000.0) * cpr / 60.0;
+    tacho.setFeedforward(f.pwmStatic, kv);
+    tacho.setTrimLimit(f.trim);
+}
+
+static void apply_speed_ff_if_needed(const DCMT_SLICE &s)
+{
+    if (speedFfApplied &&
+        speed_ff_equal(appliedSpeedFf1, s.speedFf1) &&
+        speed_ff_equal(appliedSpeedFf2, s.speedFf2))
+    {
+        return;
+    }
+
+    apply_speed_ff(tacho1, s.speedFf1, MOTOR1_CPR);
+    apply_speed_ff(tacho2, s.speedFf2, MOTOR2_CPR);
+
+    appliedSpeedFf1 = s.speedFf1;
+    appliedSpeedFf2 = s.speedFf2;
+    speedFfApplied = true;
 }
 #endif
 
@@ -533,6 +547,11 @@ void setupSlice()
     if (rc != 0)
         SLICE_DEBUG_PRINTLN(F("CRUMBS: Failed to register DCMT_OP_SET_PID"));
 
+    // On every build: one without the speed loop refuses it NOT_BUILT.
+    rc = crumbs_register_handler(&ctx, DCMT_OP_SET_SPEED_FF, handler_set_speed_ff, nullptr);
+    if (rc != 0)
+        SLICE_DEBUG_PRINTLN(F("CRUMBS: Failed to register DCMT_OP_SET_SPEED_FF"));
+
     rc = crumbs_register_handler(&ctx, BREAD_OP_SET_WATCHDOG, handler_set_watchdog, nullptr);
     if (rc != 0)
         SLICE_DEBUG_PRINTLN(F("CRUMBS: Failed to register BREAD_OP_SET_WATCHDOG"));
@@ -637,10 +656,9 @@ void setupDCMT()
 
 #if DCMT_ENABLE_SPEED_LOOP
     apply_speed_pid_if_needed(slice);
+    apply_speed_ff_if_needed(slice);
     tacho1.setSpeedRPM(0);
     tacho2.setSpeedRPM(0);
-    tacho1.setMaxLead(DCMT_TACHO_MAX_LEAD);
-    tacho2.setMaxLead(DCMT_TACHO_MAX_LEAD);
 #endif
 
     slice.motor1Position = clamp_i16(servo1.getActualPosition());
@@ -950,8 +968,11 @@ void motorControlLogic()
         noInterrupts();
         local.speedPid1 = slice.speedPid1;
         local.speedPid2 = slice.speedPid2;
+        local.speedFf1 = slice.speedFf1;
+        local.speedFf2 = slice.speedFf2;
         interrupts();
-        apply_speed_pid_if_needed(local, lead_capped(servo1), lead_capped(servo2));
+        apply_speed_pid_if_needed(local);
+        apply_speed_ff_if_needed(local);
 
         if (local.motor1Brake)
         {

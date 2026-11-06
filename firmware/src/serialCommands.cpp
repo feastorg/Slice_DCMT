@@ -68,6 +68,50 @@ static bool parse_pid_triplet(const char *s, float &kp, float &ki, float &kd)
 }
 #endif
 
+#if DCMT_ENABLE_SPEED_LOOP
+// SPEEDFF=static1,rpp1,trim1,static2,rpp2,trim2: SET_SPEED_FF's six fields
+// in its order. static and trim are whole PWM 0 to 255 (trim 255: no
+// bound); rpp is output RPM per PWM step, 0 to 65.535 (0: no speed term),
+// kept to the wire's x1000 resolution.
+static bool parse_speed_ff(const char *s, SpeedFeedforward &f1, SpeedFeedforward &f2)
+{
+    char buf[sizeof cmdBuf];
+    if (strlen(s) >= sizeof buf)
+        return false;
+    strcpy(buf, s);
+    char *field[6];
+    uint8_t n = 0;
+    char *p = buf;
+    for (;;)
+    {
+        if (n == 6)
+            return false;
+        field[n++] = p;
+        char *comma = strchr(p, ',');
+        if (comma == nullptr)
+            break;
+        *comma = '\0';
+        p = comma + 1;
+    }
+    if (n != 6)
+        return false;
+    SpeedFeedforward *f[2] = {&f1, &f2};
+    for (uint8_t m = 0; m < 2; m++)
+    {
+        long pwmStatic, trim;
+        float rpp;
+        if (!bsc::parseLong(field[3 * m], 0, 255, &pwmStatic) ||
+            !bsc::parseFloat(field[3 * m + 1], 0.0f, 65.535f, &rpp) ||
+            !bsc::parseLong(field[3 * m + 2], 0, 255, &trim))
+            return false;
+        f[m]->pwmStatic = (uint8_t)pwmStatic;
+        f[m]->rpmPerPwmX1000 = (uint16_t)(rpp * 1000.0f + 0.5f);
+        f[m]->trim = (uint8_t)trim;
+    }
+    return true;
+}
+#endif
+
 static void strupper(char *s)
 {
     for (; *s; ++s)
@@ -97,8 +141,8 @@ static void processCommand(char *cmd)
     // While an e-stop or a watchdog trip is held, or a motor fault is
     // latched, commands that could make a motor move are refused, as over
     // I2C (dcmt_handlers.cpp): releasing the e-stop or clearing the trip or
-    // the fault resumes nothing. Engaging a brake, PID tuning, WDOG=,
-    // WDCLEAR, FAULTCLEAR and READ stay available.
+    // the fault resumes nothing. Engaging a brake, PID and feedforward
+    // tuning, WDOG=, WDCLEAR, FAULTCLEAR and READ stay available.
     if ((estopInput.asserted() || commandWatchdog.tripped() || motorFaults != 0) &&
         (starts_with_P(cmd, PSTR("MODE=")) ||
          starts_with_P(cmd, PSTR("M1PWM=")) || starts_with_P(cmd, PSTR("M2PWM=")) ||
@@ -306,6 +350,21 @@ static void processCommand(char *cmd)
         interrupts();
         Serial.println(F("Speed PID updated"));
     }
+    else if (starts_with_P(cmd, PSTR("SPEEDFF=")))
+    {
+        SpeedFeedforward f1, f2;
+        if (!parse_speed_ff(after_prefix_P(cmd, PSTR("SPEEDFF=")), f1, f2))
+        {
+            Serial.println(F("SPEEDFF format: SPEEDFF=static1,rpp1,trim1,static2,rpp2,trim2; static, trim 0 to 255, rpp 0 to 65.535"));
+            return;
+        }
+        // SET_SPEED_FF writes these from the I2C interrupt too.
+        noInterrupts();
+        slice.speedFf1 = f1;
+        slice.speedFf2 = f2;
+        interrupts();
+        Serial.println(F("Speed feedforward updated"));
+    }
 #endif
     else if (strcmp_P(cmd, PSTR("BRAKE1=1")) == 0)
     {
@@ -383,6 +442,7 @@ static void processCommand(char *cmd)
 #endif
 #if DCMT_ENABLE_SPEED_LOOP
         Serial.println(F("Closed-loop: MODE=POS|SPEED, M1POS=, M2POS=, M1SPEED=, M2SPEED=, PIDPOS=kp,ki,kd, PIDSPEED=kp,ki,kd"));
+        Serial.println(F("Speed feedforward: SPEEDFF=static1,rpp1,trim1,static2,rpp2,trim2 (rpp: RPM per PWM step)"));
 #endif
     }
 }

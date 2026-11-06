@@ -66,9 +66,9 @@ CRUMBS_SRC := $(CRUMBS)/core/crumbs_core.c $(CRUMBS)/crc/crumbs_crc.c $(CRUMBS)/
 CRUMBS_OBJ := $(OUT)/crumbs_core.o $(OUT)/crumbs_crc.o $(OUT)/crc8_nibble.o
 # test_status_led runs once per e-stop case (the test target); the others
 # run once.
-SINGLE   := test_dispatch test_mode_pwm test_applied_pwm test_serial_burst test_max_lead test_estop_hold test_watchdog_trip test_serial_numbers test_setpoint_loop test_watchdog_lease test_stall_fault test_hold_brakes test_speed_freeze test_status_led_hold
+SINGLE   := test_dispatch test_mode_pwm test_applied_pwm test_serial_burst test_speed_ff test_estop_hold test_watchdog_trip test_serial_numbers test_setpoint_loop test_watchdog_lease test_stall_fault test_hold_brakes test_status_led_hold
 TESTS    := $(SINGLE) test_status_led
-NOENC_SINGLE := test_noenc test_dispatch test_serial_burst test_estop_hold test_watchdog_trip test_watchdog_lease test_hold_brakes test_status_led_hold
+NOENC_SINGLE := test_noenc test_dispatch test_speed_ff test_serial_burst test_estop_hold test_watchdog_trip test_watchdog_lease test_hold_brakes test_status_led_hold
 NOENC_TESTS  := $(NOENC_SINGLE) test_status_led
 ANALOG_SINGLE := test_analog $(filter-out test_noenc,$(NOENC_SINGLE))
 ANALOG_TESTS  := $(ANALOG_SINGLE) test_status_led
@@ -179,7 +179,7 @@ motor: $(MOTOR_BINS)
 	  for t in $(MOTOR_SINGLE); do \
 	    echo "== $$e: $$t"; $(OUT)/$$e/$$t || status=1; \
 	  done; \
-	  for c in reverse forward; do \
+	  for c in reverse forward sweep; do \
 	    echo "== $$e: test_speed_entry_62 $$c"; $(OUT)/$$e/test_speed_entry_62 $$c || status=1; \
 	  done; \
 	  for c in speed_held position_rest position_held speed_10; do \

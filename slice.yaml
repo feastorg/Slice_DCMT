@@ -117,9 +117,9 @@ firmware:
     - "gen2_nanoevery_analog1"
   lib_deps:
     - "cameronbrooks11/CRUMBS @ ^0.17.0"
-    - "cameronbrooks11/bread-crumbs-contracts @ ^0.12.0"
+    - "cameronbrooks11/bread-crumbs-contracts @ ^0.13.0"
     - "cameronbrooks11/LMD18200 @ ^0.1.5"
-    - "cameronbrooks11/DCMotorServo @ ^1.2.1"
+    - "cameronbrooks11/DCMotorServo @ ^2.0.0"
     - "paulstoffregen/Encoder @ ^1.4.4"
     - "cameronbrooks11/bread-slice-core @ ^0.2.0"
 

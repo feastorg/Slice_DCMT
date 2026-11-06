@@ -1,17 +1,15 @@
-// #90 regression: closed-loop speed at 60 RPM with the firmware's default
-// speed-PID gains, the real DCMotorTacho, DCMotorServo and PID_v1, and the
-// modelled motor.
+// #90 regression: closed-loop speed at 60 RPM with the speed loop configured
+// as sim_boot() sends it (Kp 0.6, Ki 3.0, the model motor's feedforward and
+// trim 20), the real DCMotorTacho, DCMotorServo and PID_v1, and the modelled
+// motor.
 //
-// DCMotorTacho adds the speed PID's output, in counts, to the position target
-// once per DCMT_TACHO_INTERVAL_MS, so the loop is P-only until the integral
-// builds: speed = 15.04 * Kp * (target - speed) at 798 counts/rev and 5 ms,
-// which settles at 69 % of the target with Kp 0.15. PID_v1 scales Ki by the
-// sample time; with the old default Ki 0.01 the rest closed with a time
-// constant of about 20 s (#90). Ki 0.2 reaches the target within 5 % in
-// about 1.3 s.
+// Under DCMotorServo 1.x the speed PID moved the position target and settled
+// at 69 % of the target for seconds before the integral closed the rest
+// (#90). DCMotorServo 2.x drives PWM as feedforward plus a PI trim, so the
+// feedforward carries the speed and the trim closes the rest.
 //
 // The motor is the test's first-order model (motor_sim.h), fitted to one
-// bench motor; the firmware carries none of it, and the default gains are a
+// bench motor; the firmware carries none of it, and the gains are a
 // starting point for that motor, not for every motor.
 #include "host.h"
 #include "motor_sim.h"

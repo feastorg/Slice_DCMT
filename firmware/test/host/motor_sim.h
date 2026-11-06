@@ -38,7 +38,19 @@ struct SimSample
 };
 extern std::vector<SimSample> sim_trace;
 
-// setup(), then one loop() pass.
+// The speed loop's configuration for the model motor, sent by sim_boot():
+// SET_PID speed gains Kp 0.6, Ki 3.0 (x1000), and SET_SPEED_FF with the
+// model's feedforward, the values an open-loop PWM sweep of it gives:
+// static 10 (the deadband) and 24.3 counts/s per PWM, which at CPR 848 is
+// 24.3 * 60 / 848 = 1.719 RPM per PWM; trim 20.
+#define SIM_SPEED_KP_X1000 600
+#define SIM_SPEED_KI_X1000 3000
+#define SIM_FF_STATIC 10
+#define SIM_FF_RPM_PER_PWM_X1000 1719
+#define SIM_FF_TRIM 20
+
+// setup(), one loop() pass, the speed-loop configuration above for both
+// motors, and one more pass.
 void sim_boot();
 
 // Runs loop() for ms of fake time, stepping both motors after every pass.

@@ -57,9 +57,34 @@ static void record()
     sim_trace.push_back({host_now, motor1Encoder.count, motor1AppliedPWM});
 }
 
+static void put16(uint8_t *p, uint16_t v)
+{
+    p[0] = (uint8_t)(v & 0xFF);
+    p[1] = (uint8_t)(v >> 8);
+}
+
+static bool applied();
+
 void sim_boot()
 {
     setup();
+    loop();
+
+    // The speed loop configured as a controller would for the model motor:
+    // gains Kp 0.6 Ki 3.0, and the feedforward an open-loop sweep of it gives.
+    uint8_t pid[13] = {DCMT_PID_LOOP_SPEED};
+    put16(pid + 1, SIM_SPEED_KP_X1000);
+    put16(pid + 3, SIM_SPEED_KI_X1000);
+    put16(pid + 7, SIM_SPEED_KP_X1000);
+    put16(pid + 9, SIM_SPEED_KI_X1000);
+    host_send(DCMT_TYPE_ID, DCMT_OP_SET_PID, pid, 13);
+    host_check("SET_PID speed (Kp 0.6, Ki 3.0) is applied", applied());
+    uint8_t ff[8] = {SIM_FF_STATIC, 0, 0, SIM_FF_TRIM, SIM_FF_STATIC, 0, 0, SIM_FF_TRIM};
+    put16(ff + 1, SIM_FF_RPM_PER_PWM_X1000);
+    put16(ff + 5, SIM_FF_RPM_PER_PWM_X1000);
+    host_send(DCMT_TYPE_ID, DCMT_OP_SET_SPEED_FF, ff, 8);
+    host_check("SET_SPEED_FF (static 10, 1.719 RPM per PWM, trim 20) is applied", applied());
+
     loop();
     record();
 }
