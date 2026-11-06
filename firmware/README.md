@@ -101,8 +101,8 @@ the PID gains at runtime with `SET_PID` (or serial `PIDPOS=` /
 `-DDCMT_SPEED_PID_KI=<ki>` (each is `#ifndef`-guarded in
 `include/config_hardware.h`).
 
-- `MOTOR1_CPR = 798`
-- `MOTOR2_CPR = 798`
+- `MOTOR1_CPR = 848`
+- `MOTOR2_CPR = 848` (measured on the bench, #103)
 - outer (position) PID defaults: `0.15 / 0.01 / 0.01`
 - inner (speed) PID defaults: `0.15 / 0.2 / 0.01`
 - servo PWM skip: `15`

@@ -301,6 +301,12 @@ This project did not use formal release tags through most of its history, so thi
 
 ### Changed
 
+- **The encoder counts per turn default to 848** (#103), from 798.
+  `MOTOR1_CPR` and `MOTOR2_CPR` are the E-S Motor 36PG-3429-19-EN's
+  measured counts per output turn
+  ([record](docs/bench/2026-11-02-bus-lockup-and-cpr.md)); at 798 every
+  RPM read and commanded was about 6 % high. Another motor sets its own
+  with `-DMOTOR1_CPR=` / `-DMOTOR2_CPR=`.
 - Requires bread-crumbs-contracts `^0.12.0` (`firmware/platformio.ini` and
   `slice.yaml`), the release that defines GET_INPUTS and
   `DCMT_CAP_INPUTS`. It is additive: the four default builds are
