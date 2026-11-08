@@ -132,6 +132,12 @@ This project did not use formal release tags through most of its history, so thi
 
 ### Fixed
 
+- **A long position move no longer stops past the target.** DCMotorServo
+  moves to `^2.0.1` (feastorg/dcmotorservo#30). On 2.0.0 the position
+  PID's integral wound up while the drive was saturated, so a 7282-count
+  move on the bench stopped 48 counts past the target with no drive for
+  60 s; 2.0.1 zeroes the integral while the drive is saturated
+  (`docs/bench/2026-11-07-speed-ff-and-position.md`).
 - **A TWI collision no longer locks up the I2C slave** (#101, Nano Every).
   framework-arduino-megaavr 1.8.8's `TWI_SlaveInterruptHandler` handles a
   collision or bus error without clearing the data or address interrupt
