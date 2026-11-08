@@ -1,0 +1,14 @@
+20:11:34.205 state mode=1 m1_pwm=-150 m2_pwm=0 sp=0,0 pos=20725,6 spd=-32768,-32768 brakes=0b10 estop=0 estop_count=0
+20:11:39.380 state mode=1 m1_pwm=-48 m2_pwm=0 sp=0,0 pos=276,6 spd=-32768,-32768 brakes=0b10 estop=0 estop_count=0
+20:11:39.615 state mode=1 m1_pwm=-23 m2_pwm=0 sp=0,0 pos=76,6 spd=-32768,-32768 brakes=0b10 estop=0 estop_count=0
+20:11:39.850 state mode=1 m1_pwm=0 m2_pwm=0 sp=0,0 pos=6,6 spd=-32768,-32768 brakes=0b10 estop=0 estop_count=0
+20:11:45.305 state mode=1 m1_pwm=15 m2_pwm=0 sp=0,0 pos=-18,6 spd=-32768,-32768 brakes=0b10 estop=0 estop_count=0
+20:11:45.758 state mode=1 m1_pwm=16 m2_pwm=0 sp=0,0 pos=-19,6 spd=-32768,-32768 brakes=0b10 estop=0 estop_count=0
+20:11:45.993 state mode=1 m1_pwm=17 m2_pwm=0 sp=0,0 pos=-25,6 spd=-32768,-32768 brakes=0b10 estop=0 estop_count=0
+20:11:46.446 state mode=1 m1_pwm=19 m2_pwm=0 sp=0,0 pos=-39,6 spd=-32768,-32768 brakes=0b10 estop=0 estop_count=0
+20:11:47.333 state mode=1 m1_pwm=21 m2_pwm=0 sp=0,0 pos=-53,6 spd=-32768,-32768 brakes=0b10 estop=0 estop_count=0
+20:11:47.568 state mode=1 m1_pwm=21 m2_pwm=0 sp=0,0 pos=-53,6 spd=-32768,-32768 brakes=0b10 estop=0 estop_count=0
+20:11:47.803 state mode=1 m1_pwm=22 m2_pwm=0 sp=0,0 pos=-53,6 spd=-32768,-32768 brakes=0b10 estop=0 estop_count=0
+20:11:48.473 state mode=1 m1_pwm=0 m2_pwm=0 sp=-144,6 pos=-144,6 spd=-32768,-32768 brakes=0b11 estop=0 estop_count=0
+20:11:48.709 state mode=1 m1_pwm=0 m2_pwm=0 sp=-155,6 pos=-155,6 spd=-32768,-32768 brakes=0b11 estop=0 estop_count=0
+20:11:54.364 wdog [armed][timeout_ms][tripped][trips] 01e8030001

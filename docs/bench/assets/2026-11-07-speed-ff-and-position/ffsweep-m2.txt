@@ -1,0 +1,39 @@
+19:00:55.029 sent 0x03 00 -> ack Ack(counter=50, opcode=3, status=1, reason=0)
+19:00:55.058 sent 0x01 00000000 -> ack Ack(counter=51, opcode=1, status=1, reason=0)
+19:00:55.086 sent 0x02 0100 -> ack Ack(counter=52, opcode=2, status=1, reason=0)
+19:00:55.115 sent 0x01 00000000 -> ack Ack(counter=53, opcode=1, status=1, reason=0)
+19:00:55.731 sent 0x01 00001e00 -> ack Ack(counter=54, opcode=1, status=1, reason=0)
+19:00:59.856 ffsweep motor 2 pwm +30: +45.0 RPM
+19:00:59.885 sent 0x01 00000000 -> ack Ack(counter=55, opcode=1, status=1, reason=0)
+19:01:00.502 sent 0x01 0000e2ff -> ack Ack(counter=56, opcode=1, status=1, reason=0)
+19:01:04.667 ffsweep motor 2 pwm -30: -45.8 RPM
+19:01:04.697 sent 0x01 00000000 -> ack Ack(counter=57, opcode=1, status=1, reason=0)
+19:01:05.314 sent 0x01 00003c00 -> ack Ack(counter=58, opcode=1, status=1, reason=0)
+19:01:09.462 ffsweep motor 2 pwm +60: +101.9 RPM
+19:01:09.491 sent 0x01 00000000 -> ack Ack(counter=59, opcode=1, status=1, reason=0)
+19:01:10.108 sent 0x01 0000c4ff -> ack Ack(counter=60, opcode=1, status=1, reason=0)
+19:01:14.155 ffsweep motor 2 pwm -60: -106.2 RPM
+19:01:14.185 sent 0x01 00000000 -> ack Ack(counter=61, opcode=1, status=1, reason=0)
+19:01:14.801 sent 0x01 00005a00 -> ack Ack(counter=62, opcode=1, status=1, reason=0)
+19:01:18.832 ffsweep motor 2 pwm +90: +160.3 RPM
+19:01:18.861 sent 0x01 00000000 -> ack Ack(counter=63, opcode=1, status=1, reason=0)
+19:01:19.478 sent 0x01 0000a6ff -> ack Ack(counter=64, opcode=1, status=1, reason=0)
+19:01:23.544 ffsweep motor 2 pwm -90: -167.3 RPM
+19:01:23.573 sent 0x01 00000000 -> ack Ack(counter=65, opcode=1, status=1, reason=0)
+19:01:24.190 sent 0x01 00007800 -> ack Ack(counter=66, opcode=1, status=1, reason=0)
+19:01:28.290 ffsweep motor 2 pwm +120: +219.3 RPM
+19:01:28.319 sent 0x01 00000000 -> ack Ack(counter=67, opcode=1, status=1, reason=0)
+19:01:28.936 sent 0x01 000088ff -> ack Ack(counter=68, opcode=1, status=1, reason=0)
+19:01:33.053 ffsweep motor 2 pwm -120: -226.3 RPM
+19:01:33.083 sent 0x01 00000000 -> ack Ack(counter=69, opcode=1, status=1, reason=0)
+19:01:33.699 sent 0x01 00009600 -> ack Ack(counter=70, opcode=1, status=1, reason=0)
+19:01:37.865 ffsweep motor 2 pwm +150: +277.8 RPM
+19:01:37.911 sent 0x01 00000000 -> ack Ack(counter=71, opcode=1, status=1, reason=0)
+19:01:38.527 sent 0x01 00006aff -> ack Ack(counter=72, opcode=1, status=1, reason=0)
+19:01:42.552 ffsweep motor 2 pwm -150: -286.4 RPM
+19:01:42.581 sent 0x01 00000000 -> ack Ack(counter=73, opcode=1, status=1, reason=0)
+19:01:42.610 sent 0x02 0101 -> ack Ack(counter=74, opcode=2, status=1, reason=0)
+19:01:42.610 ffsweep: 0 bad replies retried
+19:01:42.611 ffsweep forward: rpm_per_pwm 1.9429, static 7.2 PWM (5 points, CPR 848)
+19:01:42.611 ffsweep reverse: rpm_per_pwm 2.0046, static 7.0 PWM (5 points, CPR 848)
+19:01:42.611 ffsweep suggest: static 7, rpm_per_pwm 2.0046 (x1000 2005), the lower-driving of the two directions
