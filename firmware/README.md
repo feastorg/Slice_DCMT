@@ -120,7 +120,7 @@ Speed commands/capability are only available when `DCMT_ENABLE_SPEED_LOOP=1`.
 
 ## Speed Loop
 
-Module major 3 (bread-crumbs-contracts 0.13.0, DCMotorServo 2.0.0). Every
+Module major 3 (bread-crumbs-contracts 0.13.0, DCMotorServo 2.0.1). Every
 speed interval (`DCMT_TACHO_INTERVAL_MS`) each motor is driven at
 
 ```text
