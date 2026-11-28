@@ -5,9 +5,11 @@ on:
     branches: [main]
     paths:
       - "slice.yaml"
+      - ".github/workflows/ci.yml"
   pull_request:
     paths:
       - "slice.yaml"
+      - ".github/workflows/ci.yml"
   workflow_dispatch:
 
 permissions:
