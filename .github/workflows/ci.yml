@@ -15,6 +15,6 @@ permissions:
 
 jobs:
   validate:
-    uses: feastorg/bread-infra/.github/workflows/validate-manifest.yml@main
+    uses: feastorg/bread-infra/.github/workflows/validate-manifest.yml@v1.3.0
     with:
       schema_ref: schema-v2.0
