@@ -11,7 +11,7 @@ hardware:
   pcb:
     layers: 2
     dimensions: 70mm x 100mm
-    thickness: 1.6mm
+    thickness: 1.85mm
   mounting:
     pattern: slice-S-v0
   mcu:
